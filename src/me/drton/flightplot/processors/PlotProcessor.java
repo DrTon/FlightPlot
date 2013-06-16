@@ -9,6 +9,8 @@ import java.util.Map;
  * User: ton Date: 12.06.13 Time: 18:25
  */
 public abstract class PlotProcessor {
+    protected static String WHITESPACE_RE = "[ \t]+";
+
     private String title;
     protected Map<String, Object> parameters;
 
@@ -32,6 +34,10 @@ public abstract class PlotProcessor {
 
     public void setParameters(Map<String, Object> params) {
         parameters = params;
+    }
+
+    protected XYSeries createSeries() {
+        return new XYSeries(getTitle(), false);
     }
 
     protected XYSeries createSeries(String label) {

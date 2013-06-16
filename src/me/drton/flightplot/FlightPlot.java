@@ -42,6 +42,7 @@ public class FlightPlot {
     private JList<String> plotsList;
     private DefaultListModel<String> plotsListModel;
     private JButton addPlotButton;
+    private JButton removePlotButton;
 
     private static String appName = "FlightPlot";
     private String fileName = null;
@@ -75,6 +76,12 @@ public class FlightPlot {
             @Override
             public void actionPerformed(ActionEvent e) {
                 showAddPlotDialog();
+            }
+        });
+        removePlotButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                removeSelectedPlot();
             }
         });
     }
@@ -194,8 +201,9 @@ public class FlightPlot {
                         logReader = new PX4LogReader(fileName);
                         generateSeries();
                         setStatus(" ");
-                    } catch (IOException e) {
+                    } catch (Exception e) {
                         setStatus("Error: " + e);
+                        e.printStackTrace();
                     }
                 }
             });
@@ -213,6 +221,9 @@ public class FlightPlot {
             try {
                 t = logReader.readUpdate(data);
             } catch (EOFException e) {
+                break;
+            } catch (Exception e) {
+                setStatus("Error: " + e);
                 break;
             }
             for (PlotProcessor processor : activeProcessors.values()) {
@@ -245,15 +256,24 @@ public class FlightPlot {
         try {
             PlotProcessor processor = processorsList.getProcessorInstance(processorType);
             processor.setTitle(title);
-            plotsListModel.addElement(title);
-            activeProcessors.put(title, processor);
-            plotsList.setSelectedValue(title, true);
-            plotsList.repaint();
+            String fullTitle = title + " [" + processorType + "]";
+            plotsListModel.addElement(fullTitle);
+            activeProcessors.put(fullTitle, processor);
+            plotsList.setSelectedValue(fullTitle, true);
         } catch (Exception e) {
             setStatus("Error creating processor");
             e.printStackTrace();
         }
         processFile();
+    }
+
+    private void removeSelectedPlot() {
+        String selectedProcessor = plotsList.getSelectedValue();
+        if (selectedProcessor != null) {
+            plotsListModel.removeElement(selectedProcessor);
+            activeProcessors.remove(selectedProcessor);
+            processFile();
+        }
     }
 
     private void showPlotParameters() {

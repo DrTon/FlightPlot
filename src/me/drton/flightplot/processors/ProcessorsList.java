@@ -14,6 +14,8 @@ public class ProcessorsList {
 
     public ProcessorsList() throws InstantiationException, IllegalAccessException {
         addProcessorClass(Simple.class);
+        addProcessorClass(LPF.class);
+        addProcessorClass(Abs.class);
     }
 
     private void addProcessorClass(Class<? extends PlotProcessor> processorClass) {

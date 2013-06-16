@@ -1,25 +1,24 @@
 package me.drton.flightplot.processors;
 
+import org.jfree.data.xy.XYSeries;
 import org.jfree.data.xy.XYSeriesCollection;
 
 import java.util.HashMap;
 import java.util.Map;
 
 /**
- * User: ton Date: 15.06.13 Time: 12:04
+ * User: ton Date: 16.06.13 Time: 12:59
  */
-public class Simple extends PlotProcessor {
+public class Abs extends PlotProcessor {
     protected String[] param_Fields;
     protected double param_Scale;
-    protected double param_Offset;
-    protected XYSeriesCollection seriesCollection;
+    protected XYSeries series;
 
     @Override
     public Map<String, Object> getDefaultParameters() {
         Map<String, Object> params = new HashMap<String, Object>();
-        params.put("Fields", "ATT.Pitch ATT.Roll");
+        params.put("Fields", "LPOS.VX LPOS.VY");
         params.put("Scale", 1.0);
-        params.put("Offset", 0.0);
         return params;
     }
 
@@ -27,26 +26,26 @@ public class Simple extends PlotProcessor {
     public void init() {
         param_Fields = ((String) parameters.get("Fields")).split(WHITESPACE_RE);
         param_Scale = (Double) parameters.get("Scale");
-        param_Offset = (Double) parameters.get("Offset");
-        seriesCollection = new XYSeriesCollection();
-        for (String field : param_Fields) {
-            seriesCollection.addSeries(createSeries(field));
-        }
+        series = createSeries();
     }
 
     @Override
     public void process(double time, Map<String, Object> update) {
-        for (int i = 0; i < param_Fields.length; i++) {
-            String field = param_Fields[i];
+        double s = 0.0;
+        for (String field : param_Fields) {
             Object v = update.get(field);
             if (v != null && v instanceof Number) {
-                seriesCollection.getSeries(i).add(time, ((Number) v).doubleValue() * param_Scale + param_Offset);
+                double d = ((Number) v).doubleValue();
+                s += d * d;
+            } else {
+                return;
             }
         }
+        series.add(time, Math.sqrt(s) * param_Scale);
     }
 
     @Override
     public XYSeriesCollection getSeriesCollection() {
-        return seriesCollection;
+        return new XYSeriesCollection(series);
     }
 }
