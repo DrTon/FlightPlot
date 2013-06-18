@@ -1,20 +1,23 @@
 package me.drton.flightplot;
 
+import me.drton.flightplot.processors.PlotProcessor;
+
 import javax.swing.*;
 import java.awt.event.*;
 
-public class AddPlotDialog extends JDialog {
+public class AddProcessorDialog extends JDialog {
     private JPanel contentPane;
     private JButton buttonOK;
     private JButton buttonCancel;
     private JTextField titleField;
-    private JComboBox typeComboBox;
+    private JComboBox processorTypeComboBox;
     private String[] processorsTypes;
 
-    private FlightPlot app;
+    private String oldTitle = null;
+    private String oldProcessorType = null;
+    private Runnable callback;
 
-    public AddPlotDialog(String[] processorsTypes, FlightPlot app) {
-        this.app = app;
+    public AddProcessorDialog(String[] processorsTypes) {
         this.processorsTypes = processorsTypes;
         setContentPane(contentPane);
         setModal(true);
@@ -44,16 +47,48 @@ public class AddPlotDialog extends JDialog {
         }, KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0), JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT);
     }
 
+    public String getTitle() {
+        return titleField.getText();
+    }
+
+    public String getOldTitle() {
+        return oldTitle;
+    }
+
+    public String getOldProcessorType() {
+        return oldProcessorType;
+    }
+
+    public String getProcessorType() {
+        return (String) processorTypeComboBox.getSelectedItem();
+    }
+
+    public void display(Runnable callback, String title, String processorType) {
+        this.callback = callback;
+        if (title != null) {
+            oldTitle = title;
+            oldProcessorType = processorType;
+            titleField.setText(title);
+            processorTypeComboBox.setSelectedItem(processorType);
+        } else {
+            oldTitle = null;
+            oldProcessorType = null;
+            titleField.setText("");
+        }
+        titleField.requestFocus();
+        this.setVisible(true);
+    }
+
     private void onOK() {
-        app.addPlot(titleField.getText(), typeComboBox.getSelectedItem().toString());
-        dispose();
+        setVisible(false);
+        callback.run();
     }
 
     private void onCancel() {
-        dispose();
+        setVisible(false);
     }
 
     private void createUIComponents() {
-        typeComboBox = new JComboBox(processorsTypes);
+        processorTypeComboBox = new JComboBox(processorsTypes);
     }
 }

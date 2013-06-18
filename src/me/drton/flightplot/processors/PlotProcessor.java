@@ -49,4 +49,12 @@ public abstract class PlotProcessor {
     public abstract void process(double time, Map<String, Object> update);
 
     public abstract XYSeriesCollection getSeriesCollection();
+
+    public String getProcessorName() {
+        return getClass().getSimpleName();
+    }
+
+    public static String getFullTitle(String title, String processorType) {
+        return title + " [" + processorType + "]";
+    }
 }
