@@ -10,9 +10,9 @@ import java.util.Map;
 public interface LogReader {
     void close() throws IOException;
 
-    boolean seek(long time) throws IOException;
+    boolean seek(long time) throws IOException, FormatErrorException;
 
-    long readUpdate(Map<String, Object> update) throws IOException;
+    long readUpdate(Map<String, Object> update) throws IOException, FormatErrorException;
 
     Collection<String> getFields();
 }

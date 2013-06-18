@@ -51,6 +51,7 @@ public class FlightPlot {
     private JFreeChart jFreeChart;
     private ProcessorsList processorsList;
     private Map<String, PlotProcessor> activeProcessors = new HashMap<String, PlotProcessor>();
+    private File lastLogDirectory = null;
 
     public static void main(String[] args)
             throws ClassNotFoundException, UnsupportedLookAndFeelException, InstantiationException,
@@ -181,24 +182,41 @@ public class FlightPlot {
 
     public void showOpenFileDialog() {
         JFileChooser fc = new JFileChooser();
+        if (lastLogDirectory != null)
+            fc.setCurrentDirectory(lastLogDirectory);
         int returnVal = fc.showDialog(frame, "Open");
         if (returnVal == JFileChooser.APPROVE_OPTION) {
+            lastLogDirectory = fc.getCurrentDirectory();
             File file = fc.getSelectedFile();
             fileName = file.getPath();
             frame.setTitle(appName + " - " + fileName);
+            if (logReader != null) {
+                try {
+                    logReader.close();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+                logReader = null;
+            }
+            try {
+                logReader = new PX4LogReader(fileName);
+            } catch (Exception e) {
+                logReader = null;
+                setStatus("Error: " + e);
+                e.printStackTrace();
+            }
             setAutoRange(true, true);
             processFile();
         }
     }
 
     private void processFile() {
-        if (fileName != null) {
+        if (logReader != null) {
             setStatus("Processing...");
             SwingUtilities.invokeLater(new Runnable() {
                 @Override
                 public void run() {
                     try {
-                        logReader = new PX4LogReader(fileName);
                         generateSeries();
                         setStatus(" ");
                     } catch (Exception e) {
@@ -210,11 +228,12 @@ public class FlightPlot {
         }
     }
 
-    private void generateSeries() throws IOException {
+    private void generateSeries() throws IOException, FormatErrorException {
         dataset.removeAllSeries();
         for (PlotProcessor processor : activeProcessors.values()) {
             processor.init();
         }
+        logReader.seek(0);
         Map<String, Object> data = new HashMap<String, Object>();
         while (true) {
             long t;

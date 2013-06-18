@@ -2,6 +2,7 @@ package me.drton.flightplot;
 
 import java.io.EOFException;
 import java.io.IOException;
+import java.nio.BufferUnderflowException;
 import java.util.*;
 
 /**
@@ -18,18 +19,21 @@ public class PX4LogReader extends BinaryLogReader {
     private List<String> fieldsList = null;
     private long time = 0;
 
-    public PX4LogReader(String fileName) throws IOException, InvalidHeaderException {
+    public PX4LogReader(String fileName) throws IOException, FormatErrorException {
         super(fileName);
         messageDescriptions.clear();
         readFormats();
     }
 
     @Override
-    public boolean seek(long time) throws IOException {
+    public boolean seek(long time) throws IOException, FormatErrorException {
         position(dataStart);
+        if (time == 0)      // Seek to start of log
+            return true;
         try {
             while (true) {
-                int msgType = readHeaderCorrectErrors();
+                buffer.mark();
+                int msgType = readHeaderFillBuffer();
                 PX4LogMessageDescription messageDescription = messageDescriptions.get(msgType);
                 if (messageDescription == null) {
                     buffer.reset();
@@ -59,7 +63,7 @@ public class PX4LogReader extends BinaryLogReader {
     }
 
     @Override
-    public long readUpdate(Map<String, Object> update) throws IOException {
+    public long readUpdate(Map<String, Object> update) throws IOException, FormatErrorException {
         long t = time;
         while (true) {
             PX4LogMessage msg = readMessage();
@@ -85,7 +89,7 @@ public class PX4LogReader extends BinaryLogReader {
         return fieldsList;
     }
 
-    private void readFormats() throws IOException, InvalidHeaderException {
+    private void readFormats() throws IOException, FormatErrorException {
         fieldsList = new ArrayList<String>();
         while (true) {
             if (fillBuffer() < 0)
@@ -112,26 +116,20 @@ public class PX4LogReader extends BinaryLogReader {
         }
     }
 
-    private int readHeader() throws IOException, InvalidHeaderException {
+    private int readHeader() throws IOException, FormatErrorException {
         if (buffer.get() != HEADER_HEAD1 || buffer.get() != HEADER_HEAD2)
-            throw new InvalidHeaderException(String.format("Invalid header at %s (0x%X)", position(), position()));
+            throw new FormatErrorException(String.format("Invalid header at %s (0x%X)", position(), position()));
         return buffer.get() & 0xFF;
     }
 
-    private int readHeaderCorrectErrors() throws IOException {
+    private int readHeaderFillBuffer() throws IOException, FormatErrorException {
         while (true) {
             if (buffer.remaining() < HEADER_LEN) {
-                fillBuffer();
+                if (fillBuffer() == 0)
+                    throw new BufferUnderflowException();
                 continue;
             }
-            buffer.mark();
-            try {
-                return readHeader();
-            } catch (InvalidHeaderException e) {
-                // Move by one byte
-                buffer.reset();
-                buffer.get();
-            }
+            return readHeader();
         }
     }
 
@@ -142,10 +140,11 @@ public class PX4LogReader extends BinaryLogReader {
      * @throws IOException  on IO error
      * @throws EOFException on end of stream
      */
-    public PX4LogMessage readMessage() throws IOException {
+    public PX4LogMessage readMessage() throws IOException, FormatErrorException {
         PX4LogMessage message;
         while (true) {
-            int msgType = readHeaderCorrectErrors();
+            buffer.mark();
+            int msgType = readHeaderFillBuffer();
             PX4LogMessageDescription messageDescription = messageDescriptions.get(msgType);
             if (messageDescription == null) {
                 buffer.reset();

@@ -16,6 +16,7 @@ public class ProcessorsList {
         addProcessorClass(Simple.class);
         addProcessorClass(LPF.class);
         addProcessorClass(Abs.class);
+        addProcessorClass(ATan2.class);
     }
 
     private void addProcessorClass(Class<? extends PlotProcessor> processorClass) {
