@@ -69,7 +69,7 @@ public class PX4LogMessageDescription {
             } else if (f == 'q' || f == 'Q') {
                 data.add(buffer.getLong());
             } else if (f == 'L') {
-                data.add(buffer.getInt() * 0.0000001);
+                data.add(buffer.getInt() * 1e-7);
             } else {
                 throw new RuntimeException("Invalid format char in message " + name + ": " + f);
             }

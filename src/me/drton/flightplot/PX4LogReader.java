@@ -16,7 +16,7 @@ public class PX4LogReader extends BinaryLogReader {
     private long dataStart = 0;
     private Map<Integer, PX4LogMessageDescription> messageDescriptions
             = new HashMap<Integer, PX4LogMessageDescription>();
-    private List<String> fieldsList = null;
+    private Map<String, String> fieldsList = null;
     private long time = 0;
 
     public PX4LogReader(String fileName) throws IOException, FormatErrorException {
@@ -85,12 +85,12 @@ public class PX4LogReader extends BinaryLogReader {
     }
 
     @Override
-    public Collection<String> getFields() {
+    public Map<String, String> getFields() {
         return fieldsList;
     }
 
     private void readFormats() throws IOException, FormatErrorException {
-        fieldsList = new ArrayList<String>();
+        fieldsList = new HashMap<String, String>();
         while (true) {
             if (fillBuffer() < 0)
                 break;
@@ -103,8 +103,9 @@ public class PX4LogReader extends BinaryLogReader {
                     // Message description
                     PX4LogMessageDescription msgDescr = new PX4LogMessageDescription(buffer);
                     messageDescriptions.put(msgDescr.type, msgDescr);
-                    for (String field : msgDescr.getFields()) {
-                        fieldsList.add(msgDescr.name + "." + field);
+                    for (int i = 0; i < msgDescr.fields.length; i++) {
+                        String field = msgDescr.fields[i];
+                        fieldsList.put(msgDescr.name + "." + field, Character.toString(msgDescr.format.charAt(i)));
                     }
                 } else {
                     // Data message, all formats are read

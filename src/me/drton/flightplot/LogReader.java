@@ -14,5 +14,5 @@ public interface LogReader {
 
     long readUpdate(Map<String, Object> update) throws IOException, FormatErrorException;
 
-    Collection<String> getFields();
+    Map<String, String> getFields();
 }

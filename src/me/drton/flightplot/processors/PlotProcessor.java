@@ -33,7 +33,7 @@ public abstract class PlotProcessor {
     }
 
     public void setParameters(Map<String, Object> params) {
-        parameters = params;
+        parameters.putAll(params);
     }
 
     protected XYSeries createSeries() {
@@ -41,7 +41,7 @@ public abstract class PlotProcessor {
     }
 
     protected XYSeries createSeries(String label) {
-        return new XYSeries(getTitle() + ":" + label, false);
+        return new XYSeries(title + ":" + label, false);
     }
 
     public abstract void init();

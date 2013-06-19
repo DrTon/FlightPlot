@@ -2,6 +2,7 @@ package me.drton.flightplot;
 
 import me.drton.flightplot.processors.PlotProcessor;
 import me.drton.flightplot.processors.ProcessorsList;
+import me.drton.flightplot.processors.Simple;
 import org.jfree.chart.ChartFactory;
 import org.jfree.chart.ChartPanel;
 import org.jfree.chart.JFreeChart;
@@ -39,6 +40,7 @@ public class FlightPlot {
     private JButton addProcessorButton;
     private JButton removeProcessorButton;
     private JButton openLogButton;
+    private JButton fieldsListButton;
 
     private static String appName = "FlightPlot";
     private String fileName = null;
@@ -49,6 +51,7 @@ public class FlightPlot {
     private Map<String, PlotProcessor> activeProcessors = new LinkedHashMap<String, PlotProcessor>();
     private File lastLogDirectory = null;
     private AddProcessorDialog addProcessorDialog;
+    private FieldsList fieldsListFrame;
 
     public static void main(String[] args)
             throws ClassNotFoundException, UnsupportedLookAndFeelException, InstantiationException,
@@ -65,11 +68,30 @@ public class FlightPlot {
 
     public FlightPlot() {
         frame = new JFrame(appName);
-        frame.setContentPane(FlightPlot.this.mainPanel);
+        frame.setContentPane(mainPanel);
         frame.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
         frame.pack();
         createMenuBar();
-        frame.setVisible(true);
+        java.util.List<String> processors = new ArrayList<String>(processorsTypesList.getProcessorsList());
+        Collections.sort(processors);
+        addProcessorDialog = new AddProcessorDialog(processors.toArray(new String[processors.size()]));
+        addProcessorDialog.pack();
+        fieldsListFrame = new FieldsList(new Runnable() {
+            @Override
+            public void run() {
+                StringBuilder fieldsValue = new StringBuilder();
+                for (String field : fieldsListFrame.getSelectedFields()) {
+                    if (fieldsValue.length() > 0)
+                        fieldsValue.append(" ");
+                    fieldsValue.append(field);
+                }
+                PlotProcessor processor = new Simple();
+                processor.getParameters().put("Fields", fieldsValue.toString());
+                addProcessor(processor, fieldsValue.toString());
+                processorsList.repaint();
+                processFile();
+            }
+        });
         addProcessorButton.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
@@ -87,6 +109,13 @@ public class FlightPlot {
                 showOpenFileDialog();
             }
         });
+        fieldsListButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                fieldsListFrame.display();
+            }
+        });
+        frame.setVisible(true);
     }
 
     private void createUIComponents() throws IllegalAccessException, InstantiationException {
@@ -180,10 +209,6 @@ public class FlightPlot {
                     onParameterChanged();
             }
         });
-        java.util.List<String> processors = new ArrayList<String>(processorsTypesList.getProcessorsList());
-        Collections.sort(processors);
-        addProcessorDialog = new AddProcessorDialog(processors.toArray(new String[processors.size()]));
-        addProcessorDialog.pack();
     }
 
     private void createMenuBar() {
@@ -230,6 +255,7 @@ public class FlightPlot {
                 setStatus("Error: " + e);
                 e.printStackTrace();
             }
+            fieldsListFrame.setFieldsList(logReader.getFields());
             setAutoRange(true, true);
             processFile();
         }
@@ -319,14 +345,28 @@ public class FlightPlot {
             String oldFullTitle = PlotProcessor.getFullTitle(oldTitle, oldProcessorType);
             PlotProcessor processor = activeProcessors.get(oldFullTitle);
             activeProcessors.remove(oldFullTitle);
+            if (activeProcessors.containsKey(fullTitle)) {
+                activeProcessors.put(oldFullTitle, processor);
+                setStatus("Title already exists: " + fullTitle);
+                return;
+            }
             if (!oldProcessorType.equals(processorType)) {
                 // Processor type changed, replace instance
+                Map<String, Object> parameters = processor.getParameters();
                 try {
                     processor = processorsTypesList.getProcessorInstance(processorType);
                 } catch (Exception e) {
                     setStatus("Error creating processor");
                     e.printStackTrace();
                     return;
+                }
+                for (Map.Entry<String, Object> entry : processor.getParameters().entrySet()) {
+                    String key = entry.getKey();
+                    Object oldValue = parameters.get(key);
+                    Object newValue = processor.getParameters().get(key);
+                    if (oldValue != null && oldValue.getClass() == newValue.getClass()) {
+                        processor.getParameters().put(key, oldValue);
+                    }
                 }
             }
             processor.setTitle(title);
@@ -338,17 +378,26 @@ public class FlightPlot {
         } else {
             try {
                 PlotProcessor processor = processorsTypesList.getProcessorInstance(processorType);
-                processor.setTitle(title);
-                processorsListModel.addElement(fullTitle);
-                activeProcessors.put(fullTitle, processor);
-                processorsList.setSelectedValue(fullTitle, true);
-                processFile();
+                addProcessor(processor, title);
             } catch (Exception e) {
                 setStatus("Error creating processor");
                 e.printStackTrace();
             }
         }
         processorsList.repaint();
+        processFile();
+    }
+
+    private void addProcessor(PlotProcessor processor, String title) {
+        String fullTitle = PlotProcessor.getFullTitle(title, processor.getClass().getSimpleName());
+        if (activeProcessors.containsKey(fullTitle)) {
+            setStatus("Title already exists: " + fullTitle);
+            return;
+        }
+        processor.setTitle(title);
+        processorsListModel.addElement(fullTitle);
+        activeProcessors.put(fullTitle, processor);
+        processorsList.setSelectedValue(fullTitle, true);
     }
 
     private void removeProcessor(String fullTitle) {
