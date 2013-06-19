@@ -288,6 +288,7 @@ public class FlightPlot {
         Map<String, Object> data = new HashMap<String, Object>();
         while (true) {
             long t;
+            data.clear();
             try {
                 t = logReader.readUpdate(data);
             } catch (EOFException e) {
