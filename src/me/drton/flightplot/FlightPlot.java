@@ -24,6 +24,7 @@ import java.io.EOFException;
 import java.io.File;
 import java.io.IOException;
 import java.util.*;
+import java.util.List;
 
 /**
  * User: ton Date: 03.06.13 Time: 23:24
@@ -421,8 +422,11 @@ public class FlightPlot {
         String selectedProcessor = processorsList.getSelectedValue();
         if (selectedProcessor != null) {
             Map<String, Object> params = activeProcessors.get(selectedProcessor).getParameters();
-            for (Map.Entry<String, Object> entry : params.entrySet()) {
-                parametersTableModel.addRow(new Object[]{entry.getKey(), entry.getValue()});
+            List<String> keys = new ArrayList<String>(params.keySet());
+            Collections.sort(keys);
+            for (String key : keys) {
+                String value = params.get(key).toString();
+                parametersTableModel.addRow(new Object[]{key, value});
             }
         }
     }
@@ -442,13 +446,13 @@ public class FlightPlot {
                     } else if (valueOld instanceof Double) {
                         valueNew = Double.parseDouble(valueNewStr);
                     } else if (valueOld instanceof Float) {
-                        valueNew = Double.parseDouble(valueNewStr);
+                        valueNew = Float.parseFloat(valueNewStr);
                     } else if (valueOld instanceof Integer) {
-                        valueNew = Double.parseDouble(valueNewStr);
+                        valueNew = Integer.parseInt(valueNewStr);
                     } else if (valueOld instanceof Long) {
-                        valueNew = Double.parseDouble(valueNewStr);
+                        valueNew = Long.parseLong(valueNewStr);
                     } else if (valueOld instanceof Boolean) {
-                        valueNew = Double.parseDouble(valueNewStr);
+                        valueNew = Boolean.parseBoolean(valueNewStr);
                     } else {
                         throw new RuntimeException(
                                 String.format("Unsupported parameter type for %s: %s", key, valueOld.getClass()));

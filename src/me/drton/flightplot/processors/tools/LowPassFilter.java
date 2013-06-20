@@ -15,8 +15,9 @@ public class LowPassFilter {
         this.rc = f / 2 / Math.PI;
     }
 
-    public double getF() {
-        return f;
+    public void setT(double t) {
+        this.f = 1 / t;
+        this.rc = f / 2 / Math.PI;
     }
 
     public void reset() {
@@ -36,5 +37,9 @@ public class LowPassFilter {
             this.tLast = t;
             return valueFiltered;
         }
+    }
+
+    public void setInput(double in) {
+        this.inLast = in;
     }
 }

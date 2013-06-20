@@ -17,6 +17,7 @@ public class ProcessorsList {
         addProcessorClass(LPF.class);
         addProcessorClass(Abs.class);
         addProcessorClass(ATan2.class);
+        addProcessorClass(PIDControlSimulator.class);
     }
 
     private void addProcessorClass(Class<? extends PlotProcessor> processorClass) {
