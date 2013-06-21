@@ -1,7 +1,5 @@
 package me.drton.flightplot;
 
-import me.drton.flightplot.processors.PlotProcessor;
-
 import javax.swing.*;
 import java.awt.event.*;
 

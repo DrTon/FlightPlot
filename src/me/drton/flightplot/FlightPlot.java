@@ -1,5 +1,9 @@
 package me.drton.flightplot;
 
+import com.apple.eawt.AppEvent;
+import com.apple.eawt.Application;
+import com.apple.eawt.QuitHandler;
+import com.apple.eawt.QuitResponse;
 import me.drton.flightplot.processors.PlotProcessor;
 import me.drton.flightplot.processors.ProcessorsList;
 import me.drton.flightplot.processors.Simple;
@@ -25,12 +29,13 @@ import java.io.File;
 import java.io.IOException;
 import java.util.*;
 import java.util.List;
+import java.util.prefs.Preferences;
 
 /**
  * User: ton Date: 03.06.13 Time: 23:24
  */
 public class FlightPlot {
-    private JFrame frame;
+    private JFrame mainFrame;
     private JLabel statusLabel;
     private JPanel mainPanel;
     private JTable parametersTable;
@@ -44,6 +49,7 @@ public class FlightPlot {
     private JButton fieldsListButton;
 
     private static String appName = "FlightPlot";
+    private final Preferences preferences;
     private String fileName = null;
     private LogReader logReader = null;
     private XYSeriesCollection dataset;
@@ -52,7 +58,7 @@ public class FlightPlot {
     private Map<String, PlotProcessor> activeProcessors = new LinkedHashMap<String, PlotProcessor>();
     private File lastLogDirectory = null;
     private AddProcessorDialog addProcessorDialog;
-    private FieldsList fieldsListFrame;
+    private FieldsList fieldsList;
 
     public static void main(String[] args)
             throws ClassNotFoundException, UnsupportedLookAndFeelException, InstantiationException,
@@ -68,20 +74,27 @@ public class FlightPlot {
     }
 
     public FlightPlot() {
-        frame = new JFrame(appName);
-        frame.setContentPane(mainPanel);
-        frame.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
-        frame.pack();
+        preferences = Preferences.userRoot().node(appName);
+        mainFrame = new JFrame(appName);
+        mainFrame.setContentPane(mainPanel);
+        mainFrame.setDefaultCloseOperation(WindowConstants.DO_NOTHING_ON_CLOSE);
+        mainFrame.addWindowListener(new WindowAdapter() {
+            @Override
+            public void windowClosing(WindowEvent e) {
+                onQuit();
+            }
+        });
+        mainFrame.pack();
         createMenuBar();
         java.util.List<String> processors = new ArrayList<String>(processorsTypesList.getProcessorsList());
         Collections.sort(processors);
         addProcessorDialog = new AddProcessorDialog(processors.toArray(new String[processors.size()]));
         addProcessorDialog.pack();
-        fieldsListFrame = new FieldsList(new Runnable() {
+        fieldsList = new FieldsList(new Runnable() {
             @Override
             public void run() {
                 StringBuilder fieldsValue = new StringBuilder();
-                for (String field : fieldsListFrame.getSelectedFields()) {
+                for (String field : fieldsList.getSelectedFields()) {
                     if (fieldsValue.length() > 0)
                         fieldsValue.append(" ");
                     fieldsValue.append(field);
@@ -113,10 +126,84 @@ public class FlightPlot {
         fieldsListButton.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                fieldsListFrame.display();
+                fieldsList.display();
             }
         });
-        frame.setVisible(true);
+        processorsList.addListSelectionListener(new ListSelectionListener() {
+            @Override
+            public void valueChanged(ListSelectionEvent e) {
+                showPlotParameters();
+            }
+        });
+        processorsList.addKeyListener(new KeyAdapter() {
+            @Override
+            public void keyTyped(KeyEvent e) {
+                if (e.getKeyChar() == KeyEvent.VK_ENTER)
+                    showAddProcessorDialog(true);
+            }
+        });
+        processorsList.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                if (e.getClickCount() > 1) {
+                    showAddProcessorDialog(true);
+                }
+            }
+        });
+        parametersTableModel.addTableModelListener(new TableModelListener() {
+            @Override
+            public void tableChanged(TableModelEvent e) {
+                if (e.getType() == TableModelEvent.UPDATE)
+                    onParameterChanged();
+            }
+        });
+        new Application().setQuitHandler(new QuitHandler() {
+            @Override
+            public void handleQuitRequestWith(AppEvent.QuitEvent quitEvent, QuitResponse quitResponse) {
+                onQuit();
+            }
+        });
+        loadPreferences();
+        mainFrame.setVisible(true);
+    }
+
+    private void onQuit() {
+        savePreferences();
+        System.exit(0);
+    }
+
+    private void loadPreferences() {
+        loadWindowPreferences(mainFrame, preferences.node("MainWindow"), 800, 600);
+        loadWindowPreferences(fieldsList.getFrame(), preferences.node("FieldsList"), 300, 600);
+        loadWindowPreferences(addProcessorDialog, preferences.node("AddProcessorDialog"), -1, -1);
+        String logDirectoryStr = preferences.get("LogDirectory", null);
+        if (logDirectoryStr != null)
+            lastLogDirectory = new File(logDirectoryStr);
+    }
+
+    private void savePreferences() {
+        saveWindowPreferences(mainFrame, preferences.node("MainWindow"));
+        saveWindowPreferences(fieldsList.getFrame(), preferences.node("FieldsList"));
+        saveWindowPreferences(addProcessorDialog, preferences.node("AddProcessorDialog"));
+        if (lastLogDirectory != null)
+            preferences.put("LogDirectory", lastLogDirectory.getAbsolutePath());
+    }
+
+    private void loadWindowPreferences(Component window, Preferences windowPreferences, int defaultWidth,
+                                       int defaultHeight) {
+        if (defaultWidth > 0)
+            window.setSize(windowPreferences.getInt("Width", defaultWidth),
+                    windowPreferences.getInt("Height", defaultHeight));
+        window.setLocation(windowPreferences.getInt("X", 0), windowPreferences.getInt("Y", 0));
+    }
+
+    private void saveWindowPreferences(Component window, Preferences windowPreferences) {
+        Dimension size = window.getSize();
+        windowPreferences.putInt("Width", size.width);
+        windowPreferences.putInt("Height", size.height);
+        Point location = window.getLocation();
+        windowPreferences.putInt("X", location.x);
+        windowPreferences.putInt("Y", location.y);
     }
 
     private void createUIComponents() throws IllegalAccessException, InstantiationException {
@@ -188,28 +275,6 @@ public class FlightPlot {
         };
         parametersTable.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_ENTER, 0), "startEditing");
         parametersTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-        // Event listeners
-        processorsList.addListSelectionListener(new ListSelectionListener() {
-            @Override
-            public void valueChanged(ListSelectionEvent e) {
-                showPlotParameters();
-            }
-        });
-        processorsList.addMouseListener(new MouseAdapter() {
-            @Override
-            public void mouseClicked(MouseEvent e) {
-                if (e.getClickCount() > 1) {
-                    showAddProcessorDialog(true);
-                }
-            }
-        });
-        parametersTableModel.addTableModelListener(new TableModelListener() {
-            @Override
-            public void tableChanged(TableModelEvent e) {
-                if (e.getType() == TableModelEvent.UPDATE)
-                    onParameterChanged();
-            }
-        });
     }
 
     private void createMenuBar() {
@@ -224,7 +289,7 @@ public class FlightPlot {
         newMenu.add(fileOpenItem);
         JMenuBar menuBar = new JMenuBar();
         menuBar.add(newMenu);
-        frame.setJMenuBar(menuBar);
+        mainFrame.setJMenuBar(menuBar);
     }
 
     public void setStatus(String status) {
@@ -235,12 +300,12 @@ public class FlightPlot {
         JFileChooser fc = new JFileChooser();
         if (lastLogDirectory != null)
             fc.setCurrentDirectory(lastLogDirectory);
-        int returnVal = fc.showDialog(frame, "Open");
+        int returnVal = fc.showDialog(mainFrame, "Open");
         if (returnVal == JFileChooser.APPROVE_OPTION) {
             lastLogDirectory = fc.getCurrentDirectory();
             File file = fc.getSelectedFile();
             fileName = file.getPath();
-            frame.setTitle(appName + " - " + fileName);
+            mainFrame.setTitle(appName + " - " + fileName);
             if (logReader != null) {
                 try {
                     logReader.close();
@@ -256,7 +321,7 @@ public class FlightPlot {
                 setStatus("Error: " + e);
                 e.printStackTrace();
             }
-            fieldsListFrame.setFieldsList(logReader.getFields());
+            fieldsList.setFieldsList(logReader.getFields());
             setAutoRange(true, true);
             processFile();
         }

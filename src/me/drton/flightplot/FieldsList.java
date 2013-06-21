@@ -47,6 +47,10 @@ public class FieldsList {
         });
     }
 
+    public JFrame getFrame() {
+        return frame;
+    }
+
     public void setFieldsList(Map<String, String> fields) {
         while (fieldsTableModel.getRowCount() > 0) {
             fieldsTableModel.removeRow(0);
