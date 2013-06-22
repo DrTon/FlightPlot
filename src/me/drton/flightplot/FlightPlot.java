@@ -1,9 +1,5 @@
 package me.drton.flightplot;
 
-import com.apple.eawt.AppEvent;
-import com.apple.eawt.Application;
-import com.apple.eawt.QuitHandler;
-import com.apple.eawt.QuitResponse;
 import me.drton.flightplot.processors.PlotProcessor;
 import me.drton.flightplot.processors.ProcessorsList;
 import me.drton.flightplot.processors.Simple;
@@ -29,6 +25,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.*;
 import java.util.List;
+import java.util.prefs.BackingStoreException;
 import java.util.prefs.Preferences;
 
 /**
@@ -41,12 +38,14 @@ public class FlightPlot {
     private JTable parametersTable;
     private DefaultTableModel parametersTableModel;
     private ChartPanel chartPanel;
-    private JList<String> processorsList;
-    private DefaultListModel<String> processorsListModel;
+    private JList<PlotProcessor> processorsList;
+    private DefaultListModel<PlotProcessor> processorsListModel;
     private JButton addProcessorButton;
     private JButton removeProcessorButton;
     private JButton openLogButton;
     private JButton fieldsListButton;
+    private JComboBox presetComboBox;
+    private JButton deletePresetButton;
 
     private static String appName = "FlightPlot";
     private final Preferences preferences;
@@ -55,15 +54,17 @@ public class FlightPlot {
     private XYSeriesCollection dataset;
     private JFreeChart jFreeChart;
     private ProcessorsList processorsTypesList;
-    private Map<String, PlotProcessor> activeProcessors = new LinkedHashMap<String, PlotProcessor>();
     private File lastLogDirectory = null;
     private AddProcessorDialog addProcessorDialog;
-    private FieldsList fieldsList;
+    private FieldsListDialog fieldsList;
+    private Map<String, ProcessorPreset> presets = new HashMap<String, ProcessorPreset>();
 
     public static void main(String[] args)
             throws ClassNotFoundException, UnsupportedLookAndFeelException, InstantiationException,
                    IllegalAccessException {
-        System.setProperty("apple.laf.useScreenMenuBar", "true");
+        if (OSValidator.isMac()) {
+            System.setProperty("apple.laf.useScreenMenuBar", "true");
+        }
         UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
         SwingUtilities.invokeLater(new Runnable() {
             @Override
@@ -78,6 +79,22 @@ public class FlightPlot {
         mainFrame = new JFrame(appName);
         mainFrame.setContentPane(mainPanel);
         mainFrame.setDefaultCloseOperation(WindowConstants.DO_NOTHING_ON_CLOSE);
+        if (OSValidator.isMac()) {
+            // Do it via separate class to avoid loading Mac classes
+            new AppleQuitHandler(new Runnable() {
+                @Override
+                public void run() {
+                    onQuit();
+                }
+            });
+        } else {
+            mainFrame.addWindowListener(new WindowAdapter() {
+                @Override
+                public void windowClosing(WindowEvent e) {
+                    onQuit();
+                }
+            });
+        }
         mainFrame.addWindowListener(new WindowAdapter() {
             @Override
             public void windowClosing(WindowEvent e) {
@@ -90,7 +107,7 @@ public class FlightPlot {
         Collections.sort(processors);
         addProcessorDialog = new AddProcessorDialog(processors.toArray(new String[processors.size()]));
         addProcessorDialog.pack();
-        fieldsList = new FieldsList(new Runnable() {
+        fieldsList = new FieldsListDialog(new Runnable() {
             @Override
             public void run() {
                 StringBuilder fieldsValue = new StringBuilder();
@@ -101,8 +118,11 @@ public class FlightPlot {
                 }
                 PlotProcessor processor = new Simple();
                 processor.getParameters().put("Fields", fieldsValue.toString());
-                addProcessor(processor, fieldsValue.toString());
+                processor.setTitle("New");
+                processorsListModel.addElement(processor);
+                processorsList.setSelectedValue(processor, true);
                 processorsList.repaint();
+                showAddProcessorDialog(true);
                 processFile();
             }
         });
@@ -126,7 +146,7 @@ public class FlightPlot {
         fieldsListButton.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                fieldsList.display();
+                fieldsList.setVisible(true);
             }
         });
         processorsList.addListSelectionListener(new ListSelectionListener() {
@@ -157,36 +177,140 @@ public class FlightPlot {
                     onParameterChanged();
             }
         });
-        new Application().setQuitHandler(new QuitHandler() {
+        try {
+            loadPreferences();
+        } catch (BackingStoreException e) {
+            e.printStackTrace();
+        }
+        mainFrame.setVisible(true);
+        presetComboBox.addActionListener(new ActionListener() {
             @Override
-            public void handleQuitRequestWith(AppEvent.QuitEvent quitEvent, QuitResponse quitResponse) {
-                onQuit();
+            public void actionPerformed(ActionEvent e) {
+                onPresetAction(e);
             }
         });
-        loadPreferences();
-        mainFrame.setVisible(true);
+        updatePresetEdited(true);
+        deletePresetButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                onDeletePreset();
+            }
+        });
     }
 
     private void onQuit() {
-        savePreferences();
+        try {
+            savePreferences();
+        } catch (BackingStoreException e) {
+            e.printStackTrace();
+        }
         System.exit(0);
     }
 
-    private void loadPreferences() {
+    private void onPresetAction(ActionEvent e) {
+        if ("comboBoxEdited".equals(e.getActionCommand())) {
+            // Save preset
+            String presetTitle = presetComboBox.getSelectedItem().toString();
+            if (presetTitle.isEmpty())
+                return;
+            Preset preset = formatPreset();
+            preset.setTitle(presetTitle);
+            boolean addNew = true;
+            for (int i = 0; i < presetComboBox.getItemCount(); i++) {
+                if (presetTitle.equals(presetComboBox.getItemAt(i).toString())) {
+                    // Update existing preset
+                    addNew = false;
+                    presetComboBox.removeItemAt(i);
+                    presetComboBox.insertItemAt(preset, i);
+                    presetComboBox.setSelectedIndex(i);
+                    break;
+                }
+            }
+            if (addNew) {
+                // Add new preset
+                presetComboBox.addItem(preset);
+            }
+            updatePresetEdited(false);
+        } else if ("comboBoxChanged".equals(e.getActionCommand())) {
+            // Load preset
+            Object selection = presetComboBox.getSelectedItem();
+            if ("".equals(selection)) {
+                processorsListModel.clear();
+            }
+            if (selection instanceof Preset) {
+                loadPreset((Preset) selection);
+            }
+            updatePresetEdited(false);
+            processFile();
+        }
+    }
+
+    private void onDeletePreset() {
+        int i = presetComboBox.getSelectedIndex();
+        if (i >= 0)
+            presetComboBox.removeItemAt(i);
+        presetComboBox.setSelectedIndex(0);
+    }
+
+    private void updatePresetEdited(boolean edited) {
+        presetComboBox.getEditor().getEditorComponent().setForeground(edited ? Color.GRAY : Color.BLACK);
+    }
+
+    private void loadPreferences() throws BackingStoreException {
         loadWindowPreferences(mainFrame, preferences.node("MainWindow"), 800, 600);
-        loadWindowPreferences(fieldsList.getFrame(), preferences.node("FieldsList"), 300, 600);
+        loadWindowPreferences(fieldsList, preferences.node("FieldsListDialog"), 300, 600);
         loadWindowPreferences(addProcessorDialog, preferences.node("AddProcessorDialog"), -1, -1);
         String logDirectoryStr = preferences.get("LogDirectory", null);
         if (logDirectoryStr != null)
             lastLogDirectory = new File(logDirectoryStr);
+        Preferences presets = preferences.node("Presets");
+        presetComboBox.addItem("");
+        for (String p : presets.childrenNames()) {
+            Preset preset = Preset.unpack(presets.node(p));
+            if (preset != null) {
+                presetComboBox.addItem(preset);
+            }
+        }
     }
 
-    private void savePreferences() {
+    private void savePreferences() throws BackingStoreException {
+        preferences.clear();
         saveWindowPreferences(mainFrame, preferences.node("MainWindow"));
-        saveWindowPreferences(fieldsList.getFrame(), preferences.node("FieldsList"));
+        saveWindowPreferences(fieldsList, preferences.node("FieldsListDialog"));
         saveWindowPreferences(addProcessorDialog, preferences.node("AddProcessorDialog"));
         if (lastLogDirectory != null)
             preferences.put("LogDirectory", lastLogDirectory.getAbsolutePath());
+        Preferences presetsPref = preferences.node("Presets");
+        for (int i = 0; i < presetComboBox.getItemCount(); i++) {
+            Object object = presetComboBox.getItemAt(i);
+            if (object instanceof Preset) {
+                Preset preset = (Preset) object;
+                preset.pack(presetsPref);
+            }
+        }
+    }
+
+    private void loadPreset(Preset preset) {
+        processorsListModel.clear();
+        for (ProcessorPreset pp : preset.getProcessorPresets()) {
+            try {
+                PlotProcessor processor = processorsTypesList.getProcessorInstance(pp.getProcessorType());
+                processor.setTitle(pp.getTitle());
+                processor.setParameters(pp.getParameters());
+                processorsListModel.addElement(processor);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    private Preset formatPreset() {
+        List<ProcessorPreset> processorPresets = new ArrayList<ProcessorPreset>();
+        for (int i = 0; i < processorsListModel.size(); i++) {
+            PlotProcessor processor = processorsListModel.elementAt(i);
+            processorPresets.add(new ProcessorPreset(processor));
+        }
+        return new Preset("PresetLast", processorPresets);
     }
 
     private void loadWindowPreferences(Component window, Preferences windowPreferences, int defaultWidth,
@@ -227,8 +351,8 @@ public class FlightPlot {
         chartPanel.setMouseZoomable(true, false);
         chartPanel.setPopupMenu(null);
         // Processors list
-        processorsListModel = new DefaultListModel<String>();
-        processorsList = new JList<String>(processorsListModel);
+        processorsListModel = new DefaultListModel<PlotProcessor>();
+        processorsList = new JList<PlotProcessor>(processorsListModel);
         // Parameters table
         parametersTableModel = new DefaultTableModel() {
             @Override
@@ -347,8 +471,10 @@ public class FlightPlot {
 
     private void generateSeries() throws IOException, FormatErrorException {
         dataset.removeAllSeries();
-        for (PlotProcessor processor : activeProcessors.values()) {
-            processor.init();
+        PlotProcessor[] processors = new PlotProcessor[processorsListModel.size()];
+        for (int i = 0; i < processorsListModel.size(); i++) {
+            processors[i] = processorsListModel.get(i);
+            processors[i].init();
         }
         logReader.seek(0);
         Map<String, Object> data = new HashMap<String, Object>();
@@ -363,12 +489,12 @@ public class FlightPlot {
                 setStatus("Error: " + e);
                 break;
             }
-            for (PlotProcessor processor : activeProcessors.values()) {
+            for (PlotProcessor processor : processors) {
                 processor.process(t * 0.000001, data);
             }
         }
-        for (PlotProcessor processor : activeProcessors.values()) {
-            for (XYSeries series : (java.util.List<XYSeries>) processor.getSeriesCollection().getSeries()) {
+        for (PlotProcessor processor : processors) {
+            for (XYSeries series : (List<XYSeries>) processor.getSeriesCollection().getSeries()) {
                 dataset.addSeries(series);
             }
         }
@@ -383,43 +509,26 @@ public class FlightPlot {
     }
 
     private void showAddProcessorDialog(boolean editMode) {
-        String title = null;
-        String processorType = null;
-        if (editMode) {
-            String selectedProcessor = processorsList.getSelectedValue();
-            if (selectedProcessor != null) {
-                PlotProcessor processor = activeProcessors.get(selectedProcessor);
-                title = processor.getTitle();
-                processorType = processor.getProcessorName();
-            }
-        }
+        PlotProcessor selectedProcessor = editMode ? processorsList.getSelectedValue() : null;
         addProcessorDialog.display(new Runnable() {
             @Override
             public void run() {
                 onAddProcessorDialogOK();
             }
-        }, title, processorType);
+        }, selectedProcessor);
     }
 
     private void onAddProcessorDialogOK() {
-        String oldTitle = addProcessorDialog.getOldTitle();
-        String oldProcessorType = addProcessorDialog.getOldProcessorType();
+        updatePresetEdited(true);
+        PlotProcessor origProcessor = addProcessorDialog.getOrigProcessor();
         String title = addProcessorDialog.getTitle();
         String processorType = addProcessorDialog.getProcessorType();
-        String fullTitle = PlotProcessor.getFullTitle(title, processorType);
-        if (oldTitle != null) {
+        if (origProcessor != null) {
             // Edit processor
-            String oldFullTitle = PlotProcessor.getFullTitle(oldTitle, oldProcessorType);
-            PlotProcessor processor = activeProcessors.get(oldFullTitle);
-            activeProcessors.remove(oldFullTitle);
-            if (activeProcessors.containsKey(fullTitle)) {
-                activeProcessors.put(oldFullTitle, processor);
-                setStatus("Title already exists: " + fullTitle);
-                return;
-            }
-            if (!oldProcessorType.equals(processorType)) {
+            PlotProcessor processor = origProcessor;
+            if (!origProcessor.getProcessorType().equals(processorType)) {
                 // Processor type changed, replace instance
-                Map<String, Object> parameters = processor.getParameters();
+                Map<String, Object> parameters = origProcessor.getParameters();
                 try {
                     processor = processorsTypesList.getProcessorInstance(processorType);
                 } catch (Exception e) {
@@ -427,55 +536,31 @@ public class FlightPlot {
                     e.printStackTrace();
                     return;
                 }
-                for (Map.Entry<String, Object> entry : processor.getParameters().entrySet()) {
-                    String key = entry.getKey();
-                    Object oldValue = parameters.get(key);
-                    Object newValue = processor.getParameters().get(key);
-                    if (oldValue != null && oldValue.getClass() == newValue.getClass()) {
-                        processor.getParameters().put(key, oldValue);
-                    }
-                }
+                processor.setParameters(parameters);
             }
             processor.setTitle(title);
-            activeProcessors.put(fullTitle, processor);
-            int idx = processorsListModel.indexOf(oldFullTitle);
-            processorsListModel.remove(idx);
-            processorsListModel.add(idx, fullTitle);
-            processorsList.setSelectedValue(fullTitle, true);
+            int idx = processorsListModel.indexOf(origProcessor);
+            processorsListModel.set(idx, processor);
+            processorsList.setSelectedValue(processor, true);
         } else {
             try {
                 PlotProcessor processor = processorsTypesList.getProcessorInstance(processorType);
-                addProcessor(processor, title);
+                processor.setTitle(title);
+                processorsListModel.addElement(processor);
+                processorsList.setSelectedValue(processor, true);
             } catch (Exception e) {
                 setStatus("Error creating processor");
                 e.printStackTrace();
             }
         }
-        processorsList.repaint();
         processFile();
     }
 
-    private void addProcessor(PlotProcessor processor, String title) {
-        String fullTitle = PlotProcessor.getFullTitle(title, processor.getClass().getSimpleName());
-        if (activeProcessors.containsKey(fullTitle)) {
-            setStatus("Title already exists: " + fullTitle);
-            return;
-        }
-        processor.setTitle(title);
-        processorsListModel.addElement(fullTitle);
-        activeProcessors.put(fullTitle, processor);
-        processorsList.setSelectedValue(fullTitle, true);
-    }
-
-    private void removeProcessor(String fullTitle) {
-        processorsListModel.removeElement(fullTitle);
-        activeProcessors.remove(fullTitle);
-    }
-
     private void removeSelectedProcessor() {
-        String selectedProcessor = processorsList.getSelectedValue();
+        PlotProcessor selectedProcessor = processorsList.getSelectedValue();
         if (selectedProcessor != null) {
-            removeProcessor(selectedProcessor);
+            processorsListModel.removeElement(selectedProcessor);
+            updatePresetEdited(true);
             processFile();
         }
     }
@@ -484,9 +569,9 @@ public class FlightPlot {
         while (parametersTableModel.getRowCount() > 0) {
             parametersTableModel.removeRow(0);
         }
-        String selectedProcessor = processorsList.getSelectedValue();
+        PlotProcessor selectedProcessor = processorsList.getSelectedValue();
         if (selectedProcessor != null) {
-            Map<String, Object> params = activeProcessors.get(selectedProcessor).getParameters();
+            Map<String, Object> params = selectedProcessor.getParameters();
             List<String> keys = new ArrayList<String>(params.keySet());
             Collections.sort(keys);
             for (String key : keys) {
@@ -497,37 +582,16 @@ public class FlightPlot {
     }
 
     private void onParameterChanged() {
-        String selectedProcessor = processorsList.getSelectedValue();
+        PlotProcessor selectedProcessor = processorsList.getSelectedValue();
         if (selectedProcessor != null) {
-            Map<String, Object> params = activeProcessors.get(selectedProcessor).getParameters();
+            Map<String, Object> paramsUpdate = new HashMap<String, Object>();
             for (int i = 0; i < parametersTableModel.getRowCount(); i++) {
                 String key = (String) parametersTableModel.getValueAt(i, 0);
-                Object valueOld = params.get(key);
-                String valueNewStr = parametersTableModel.getValueAt(i, 1).toString();
-                Object valueNew;
-                try {
-                    if (valueOld instanceof String) {
-                        valueNew = valueNewStr;
-                    } else if (valueOld instanceof Double) {
-                        valueNew = Double.parseDouble(valueNewStr);
-                    } else if (valueOld instanceof Float) {
-                        valueNew = Float.parseFloat(valueNewStr);
-                    } else if (valueOld instanceof Integer) {
-                        valueNew = Integer.parseInt(valueNewStr);
-                    } else if (valueOld instanceof Long) {
-                        valueNew = Long.parseLong(valueNewStr);
-                    } else if (valueOld instanceof Boolean) {
-                        valueNew = Boolean.parseBoolean(valueNewStr);
-                    } else {
-                        throw new RuntimeException(
-                                String.format("Unsupported parameter type for %s: %s", key, valueOld.getClass()));
-                    }
-                    params.put(key, valueNew);
-                } catch (Exception e) {
-                    setStatus("Error: " + e);
-                    e.printStackTrace();
-                }
+                String valueNew = parametersTableModel.getValueAt(i, 1).toString();
+                paramsUpdate.put(key, valueNew);
             }
+            selectedProcessor.setParameters(paramsUpdate);
+            updatePresetEdited(true);
         }
         processFile();
     }

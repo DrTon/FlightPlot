@@ -33,7 +33,33 @@ public abstract class PlotProcessor {
     }
 
     public void setParameters(Map<String, Object> params) {
-        parameters.putAll(params);
+        for (Map.Entry<String, Object> entry : params.entrySet()) {
+            String key = entry.getKey();
+            Object oldValue = parameters.get(key);
+            Object newValue = params.get(key);
+            if (oldValue != null) {
+                parameters.put(key, castStringValue(oldValue, newValue));
+            }
+        }
+    }
+
+    private Object castStringValue(Object valueOld, Object valueNewObj) {
+        String valueNewStr = valueNewObj.toString();
+        Object valueNew = null;
+        if (valueOld instanceof String) {
+            valueNew = valueNewStr;
+        } else if (valueOld instanceof Double) {
+            valueNew = Double.parseDouble(valueNewStr);
+        } else if (valueOld instanceof Float) {
+            valueNew = Float.parseFloat(valueNewStr);
+        } else if (valueOld instanceof Integer) {
+            valueNew = Integer.parseInt(valueNewStr);
+        } else if (valueOld instanceof Long) {
+            valueNew = Long.parseLong(valueNewStr);
+        } else if (valueOld instanceof Boolean) {
+            valueNew = Boolean.parseBoolean(valueNewStr);
+        }
+        return valueNew;
     }
 
     protected XYSeries createSeries() {
@@ -50,11 +76,12 @@ public abstract class PlotProcessor {
 
     public abstract XYSeriesCollection getSeriesCollection();
 
-    public String getProcessorName() {
+    public String getProcessorType() {
         return getClass().getSimpleName();
     }
 
-    public static String getFullTitle(String title, String processorType) {
-        return title + " [" + processorType + "]";
+    @Override
+    public String toString() {
+        return title + " [" + getProcessorType() + "]";
     }
 }

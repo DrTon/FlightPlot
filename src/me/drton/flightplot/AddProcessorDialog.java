@@ -1,5 +1,7 @@
 package me.drton.flightplot;
 
+import me.drton.flightplot.processors.PlotProcessor;
+
 import javax.swing.*;
 import java.awt.event.*;
 
@@ -11,8 +13,7 @@ public class AddProcessorDialog extends JDialog {
     private JComboBox processorTypeComboBox;
     private String[] processorsTypes;
 
-    private String oldTitle = null;
-    private String oldProcessorType = null;
+    private PlotProcessor origProcessor = null;
     private Runnable callback;
 
     public AddProcessorDialog(String[] processorsTypes) {
@@ -49,28 +50,22 @@ public class AddProcessorDialog extends JDialog {
         return titleField.getText();
     }
 
-    public String getOldTitle() {
-        return oldTitle;
-    }
-
-    public String getOldProcessorType() {
-        return oldProcessorType;
+    public PlotProcessor getOrigProcessor() {
+        return origProcessor;
     }
 
     public String getProcessorType() {
         return (String) processorTypeComboBox.getSelectedItem();
     }
 
-    public void display(Runnable callback, String title, String processorType) {
+    public void display(Runnable callback, PlotProcessor processor) {
         this.callback = callback;
-        if (title != null) {
-            oldTitle = title;
-            oldProcessorType = processorType;
-            titleField.setText(title);
-            processorTypeComboBox.setSelectedItem(processorType);
+        if (processor != null) {
+            origProcessor = processor;
+            titleField.setText(processor.getTitle());
+            processorTypeComboBox.setSelectedItem(processor.getProcessorType());
         } else {
-            oldTitle = null;
-            oldProcessorType = null;
+            origProcessor = null;
             titleField.setText("");
         }
         titleField.requestFocus();

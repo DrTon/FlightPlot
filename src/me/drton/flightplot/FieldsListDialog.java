@@ -2,20 +2,15 @@ package me.drton.flightplot;
 
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
+import java.awt.event.*;
 import java.util.*;
 
-/**
- * User: ton Date: 19.06.13 Time: 13:13
- */
-public class FieldsList {
-    private JFrame frame;
-    private JButton closeButton;
+public class FieldsListDialog extends JDialog {
+    private JPanel contentPane;
     private JButton addButton;
-    private DefaultTableModel fieldsTableModel;
     private JTable fieldsTable;
-    private JPanel mainPanel;
+    private JButton closeButton;
+    private DefaultTableModel fieldsTableModel;
     private static Map<String, String> formatNames = new HashMap<String, String>();
 
     static {
@@ -29,10 +24,10 @@ public class FieldsList {
         formatNames.put("f", "float");
     }
 
-    public FieldsList(final Runnable callbackAdd) {
-        frame = new JFrame("FieldsList");
-        frame.setContentPane(mainPanel);
-        frame.pack();
+    public FieldsListDialog(final Runnable callbackAdd) {
+        setContentPane(contentPane);
+        setModal(true);
+        getRootPane().setDefaultButton(addButton);
         addButton.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
@@ -40,15 +35,27 @@ public class FieldsList {
             }
         });
         closeButton.addActionListener(new ActionListener() {
-            @Override
             public void actionPerformed(ActionEvent e) {
-                frame.setVisible(false);
+                onClose();
             }
         });
+        // call onClose() when cross is clicked
+        setDefaultCloseOperation(DO_NOTHING_ON_CLOSE);
+        addWindowListener(new WindowAdapter() {
+            public void windowClosing(WindowEvent e) {
+                onClose();
+            }
+        });
+        // call onClose() on ESCAPE
+        contentPane.registerKeyboardAction(new ActionListener() {
+            public void actionPerformed(ActionEvent e) {
+                onClose();
+            }
+        }, KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0), JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT);
     }
 
-    public JFrame getFrame() {
-        return frame;
+    private void onClose() {
+        setVisible(false);
     }
 
     public void setFieldsList(Map<String, String> fields) {
@@ -72,10 +79,6 @@ public class FieldsList {
             selectedFields.add((String) fieldsTableModel.getValueAt(i, 0));
         }
         return selectedFields;
-    }
-
-    public void display() {
-        frame.setVisible(true);
     }
 
     private void createUIComponents() {
