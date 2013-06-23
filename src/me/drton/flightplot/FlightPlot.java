@@ -49,6 +49,8 @@ public class FlightPlot {
     private JButton deletePresetButton;
 
     private static String appName = "FlightPlot";
+    private static String version = "0.0.4";
+    private static String appNameAndVersion = appName + " v." + version;
     private final Preferences preferences;
     private String fileName = null;
     private LogReader logReader = null;
@@ -80,7 +82,7 @@ public class FlightPlot {
 
     public FlightPlot() {
         preferences = Preferences.userRoot().node(appName);
-        mainFrame = new JFrame(appName);
+        mainFrame = new JFrame(appNameAndVersion);
         mainFrame.setContentPane(mainPanel);
         mainFrame.setDefaultCloseOperation(WindowConstants.DO_NOTHING_ON_CLOSE);
         if (OSValidator.isMac()) {
@@ -451,7 +453,7 @@ public class FlightPlot {
             lastLogDirectory = fc.getCurrentDirectory();
             File file = fc.getSelectedFile();
             fileName = file.getPath();
-            mainFrame.setTitle(appName + " - " + fileName);
+            mainFrame.setTitle(appNameAndVersion + " - " + fileName);
             if (logReader != null) {
                 try {
                     logReader.close();
