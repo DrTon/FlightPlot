@@ -1,5 +1,9 @@
 package me.drton.flightplot;
 
+import org.json.JSONArray;
+import org.json.JSONObject;
+
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.prefs.BackingStoreException;
@@ -53,6 +57,26 @@ public class Preset {
             processorPresets.add(ProcessorPreset.unpack(preferences.node(k)));
         }
         return new Preset(title, processorPresets);
+    }
+
+    public JSONObject packJSONObject() throws IOException {
+        JSONObject json = new JSONObject();
+        json.put("Title", title);
+        JSONArray jsonProcessorPresets = new JSONArray();
+        for (ProcessorPreset pp : processorPresets) {
+            jsonProcessorPresets.put(pp.packJSONObject());
+        }
+        json.put("ProcessorPresets", jsonProcessorPresets);
+        return json;
+    }
+
+    public static Preset unpackJSONObject(JSONObject json) throws IOException {
+        JSONArray jsonProcessorPresets = json.getJSONArray("ProcessorPresets");
+        List<ProcessorPreset> processorPresets = new ArrayList<ProcessorPreset>();
+        for (int i = 0; i < jsonProcessorPresets.length(); i++) {
+            processorPresets.add(ProcessorPreset.unpackJSONObject(jsonProcessorPresets.getJSONObject(i)));
+        }
+        return new Preset(json.getString("Title"), processorPresets);
     }
 
     @Override

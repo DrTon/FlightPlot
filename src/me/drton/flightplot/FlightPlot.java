@@ -11,18 +11,19 @@ import org.jfree.chart.plot.PlotOrientation;
 import org.jfree.chart.plot.XYPlot;
 import org.jfree.data.xy.XYSeries;
 import org.jfree.data.xy.XYSeriesCollection;
+import org.json.JSONObject;
 
 import javax.swing.*;
 import javax.swing.event.ListSelectionEvent;
 import javax.swing.event.ListSelectionListener;
 import javax.swing.event.TableModelEvent;
 import javax.swing.event.TableModelListener;
+import javax.swing.filechooser.FileNameExtensionFilter;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
 import java.awt.event.*;
-import java.io.EOFException;
-import java.io.File;
-import java.io.IOException;
+import java.io.*;
+import java.nio.charset.Charset;
 import java.util.*;
 import java.util.List;
 import java.util.prefs.BackingStoreException;
@@ -55,8 +56,12 @@ public class FlightPlot {
     private JFreeChart jFreeChart;
     private ProcessorsList processorsTypesList;
     private File lastLogDirectory = null;
+    private File lastPresetDirectory = null;
     private AddProcessorDialog addProcessorDialog;
     private FieldsListDialog fieldsList;
+    private FileNameExtensionFilter logExtensionFilter = new FileNameExtensionFilter("PX4 Logs (*.bin)", "bin");
+    private FileNameExtensionFilter presetExtensionFilter = new FileNameExtensionFilter("FlightPlot Presets (*.fplot)",
+            "fplot");
 
     public static void main(String[] args)
             throws ClassNotFoundException, UnsupportedLookAndFeelException, InstantiationException,
@@ -212,8 +217,7 @@ public class FlightPlot {
             String presetTitle = presetComboBox.getSelectedItem().toString();
             if (presetTitle.isEmpty())
                 return;
-            Preset preset = formatPreset();
-            preset.setTitle(presetTitle);
+            Preset preset = formatPreset(presetTitle);
             boolean addNew = true;
             for (int i = 0; i < presetComboBox.getItemCount(); i++) {
                 if (presetTitle.equals(presetComboBox.getItemAt(i).toString())) {
@@ -306,13 +310,13 @@ public class FlightPlot {
         }
     }
 
-    private Preset formatPreset() {
+    private Preset formatPreset(String title) {
         List<ProcessorPreset> processorPresets = new ArrayList<ProcessorPreset>();
         for (int i = 0; i < processorsListModel.size(); i++) {
             PlotProcessor processor = processorsListModel.elementAt(i);
             processorPresets.add(new ProcessorPreset(processor));
         }
-        return new Preset("PresetLast", processorPresets);
+        return new Preset(title, processorPresets);
     }
 
     private void loadWindowPreferences(Component window, Preferences windowPreferences, int defaultWidth,
@@ -406,13 +410,29 @@ public class FlightPlot {
     private void createMenuBar() {
         JMenu newMenu = new JMenu("File");
         JMenuItem fileOpenItem = new JMenuItem("Open Log...");
+        JMenuItem importPresetItem = new JMenuItem("Import Preset...");
+        JMenuItem exportPresetItem = new JMenuItem("Export Preset...");
         fileOpenItem.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
                 showOpenFileDialog();
             }
         });
+        importPresetItem.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                showImportPresetDialog();
+            }
+        });
+        exportPresetItem.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                showExportPresetDialog();
+            }
+        });
         newMenu.add(fileOpenItem);
+        newMenu.add(importPresetItem);
+        newMenu.add(exportPresetItem);
         JMenuBar menuBar = new JMenuBar();
         menuBar.add(newMenu);
         mainFrame.setJMenuBar(menuBar);
@@ -426,7 +446,7 @@ public class FlightPlot {
         JFileChooser fc = new JFileChooser();
         if (lastLogDirectory != null)
             fc.setCurrentDirectory(lastLogDirectory);
-        int returnVal = fc.showDialog(mainFrame, "Open");
+        int returnVal = fc.showDialog(mainFrame, "Open Log");
         if (returnVal == JFileChooser.APPROVE_OPTION) {
             lastLogDirectory = fc.getCurrentDirectory();
             File file = fc.getSelectedFile();
@@ -450,6 +470,57 @@ public class FlightPlot {
             fieldsList.setFieldsList(logReader.getFields());
             setAutoRange(true, true);
             processFile();
+        }
+    }
+
+    public void showImportPresetDialog() {
+        JFileChooser fc = new JFileChooser();
+        if (lastPresetDirectory != null)
+            fc.setCurrentDirectory(lastPresetDirectory);
+        fc.setFileFilter(presetExtensionFilter);
+        int returnVal = fc.showDialog(mainFrame, "Import Preset");
+        if (returnVal == JFileChooser.APPROVE_OPTION) {
+            lastPresetDirectory = fc.getCurrentDirectory();
+            File file = fc.getSelectedFile();
+            try {
+                byte[] b = new byte[(int) file.length()];
+                FileInputStream fileInputStream = new FileInputStream(file);
+                int n = 0;
+                while (n < b.length) {
+                    int r = fileInputStream.read(b, n, b.length - n);
+                    if (r <= 0)
+                        throw new Exception("Read error");
+                    n += r;
+                }
+                Preset preset = Preset.unpackJSONObject(new JSONObject(new String(b, Charset.forName("utf8"))));
+                loadPreset(preset);
+            } catch (Exception e) {
+                setStatus("Error: " + e);
+                e.printStackTrace();
+            }
+        }
+    }
+
+    public void showExportPresetDialog() {
+        JFileChooser fc = new JFileChooser();
+        if (lastPresetDirectory != null)
+            fc.setCurrentDirectory(lastPresetDirectory);
+        fc.setFileFilter(presetExtensionFilter);
+        int returnVal = fc.showDialog(mainFrame, "Export Preset");
+        if (returnVal == JFileChooser.APPROVE_OPTION) {
+            lastPresetDirectory = fc.getCurrentDirectory();
+            String fileName = fc.getSelectedFile().toString();
+            if (presetExtensionFilter == fc.getFileFilter() && !fileName.toLowerCase().endsWith(".fplot"))
+                fileName += ".fplot";
+            try {
+                Preset preset = formatPreset(presetComboBox.getSelectedItem().toString());
+                FileWriter fileWriter = new FileWriter(new File(fileName));
+                fileWriter.write(preset.packJSONObject().toString(1));
+                fileWriter.close();
+            } catch (Exception e) {
+                setStatus("Error: " + e);
+                e.printStackTrace();
+            }
         }
     }
 

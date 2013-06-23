@@ -1,7 +1,9 @@
 package me.drton.flightplot;
 
 import me.drton.flightplot.processors.PlotProcessor;
+import org.json.JSONObject;
 
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.prefs.BackingStoreException;
@@ -73,5 +75,23 @@ public class ProcessorPreset {
                 params.put(key, v);
         }
         return new ProcessorPreset(preferences.name(), processorType, params);
+    }
+
+    public JSONObject packJSONObject() throws IOException {
+        JSONObject json = new JSONObject();
+        json.put("Title", title);
+        json.put("ProcessorType", processorType);
+        json.put("Parameters", new JSONObject(parameters));
+        return json;
+    }
+
+    public static ProcessorPreset unpackJSONObject(JSONObject json) throws IOException {
+        JSONObject jsonParameters = json.getJSONObject("Parameters");
+        Map<String, Object> parameters = new HashMap<String, Object>();
+        for (Object key : jsonParameters.keySet()) {
+            String keyStr = (String) key;
+            parameters.put(keyStr, jsonParameters.get(keyStr));
+        }
+        return new ProcessorPreset(json.getString("Title"), json.getString("ProcessorType"), parameters);
     }
 }
