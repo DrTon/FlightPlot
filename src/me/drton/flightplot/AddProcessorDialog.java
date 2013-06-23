@@ -20,6 +20,7 @@ public class AddProcessorDialog extends JDialog {
         this.processorsTypes = processorsTypes;
         setContentPane(contentPane);
         setModal(true);
+        setTitle("Add Processor");
         getRootPane().setDefaultButton(buttonOK);
         buttonOK.addActionListener(new ActionListener() {
             public void actionPerformed(ActionEvent e) {
@@ -46,7 +47,7 @@ public class AddProcessorDialog extends JDialog {
         }, KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0), JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT);
     }
 
-    public String getTitle() {
+    public String getProcessorTitle() {
         return titleField.getText();
     }
 

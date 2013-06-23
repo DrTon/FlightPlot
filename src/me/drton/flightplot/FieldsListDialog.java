@@ -7,9 +7,9 @@ import java.util.*;
 
 public class FieldsListDialog extends JDialog {
     private JPanel contentPane;
-    private JButton addButton;
+    private JButton buttonAdd;
     private JTable fieldsTable;
-    private JButton closeButton;
+    private JButton buttonClose;
     private DefaultTableModel fieldsTableModel;
     private static Map<String, String> formatNames = new HashMap<String, String>();
 
@@ -27,14 +27,15 @@ public class FieldsListDialog extends JDialog {
     public FieldsListDialog(final Runnable callbackAdd) {
         setContentPane(contentPane);
         setModal(true);
-        getRootPane().setDefaultButton(addButton);
-        addButton.addActionListener(new ActionListener() {
+        setTitle("Fields List");
+        getRootPane().setDefaultButton(buttonAdd);
+        buttonAdd.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
                 callbackAdd.run();
             }
         });
-        closeButton.addActionListener(new ActionListener() {
+        buttonClose.addActionListener(new ActionListener() {
             public void actionPerformed(ActionEvent e) {
                 onClose();
             }

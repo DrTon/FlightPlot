@@ -57,7 +57,6 @@ public class FlightPlot {
     private File lastLogDirectory = null;
     private AddProcessorDialog addProcessorDialog;
     private FieldsListDialog fieldsList;
-    private Map<String, ProcessorPreset> presets = new HashMap<String, ProcessorPreset>();
 
     public static void main(String[] args)
             throws ClassNotFoundException, UnsupportedLookAndFeelException, InstantiationException,
@@ -275,6 +274,9 @@ public class FlightPlot {
 
     private void savePreferences() throws BackingStoreException {
         preferences.clear();
+        for (String child : preferences.childrenNames()) {
+            preferences.node(child).removeNode();
+        }
         saveWindowPreferences(mainFrame, preferences.node("MainWindow"));
         saveWindowPreferences(fieldsList, preferences.node("FieldsListDialog"));
         saveWindowPreferences(addProcessorDialog, preferences.node("AddProcessorDialog"));
@@ -472,30 +474,32 @@ public class FlightPlot {
     private void generateSeries() throws IOException, FormatErrorException {
         dataset.removeAllSeries();
         PlotProcessor[] processors = new PlotProcessor[processorsListModel.size()];
-        for (int i = 0; i < processorsListModel.size(); i++) {
-            processors[i] = processorsListModel.get(i);
-            processors[i].init();
-        }
-        logReader.seek(0);
-        Map<String, Object> data = new HashMap<String, Object>();
-        while (true) {
-            long t;
-            data.clear();
-            try {
-                t = logReader.readUpdate(data);
-            } catch (EOFException e) {
-                break;
-            } catch (Exception e) {
-                setStatus("Error: " + e);
-                break;
+        if (processors.length > 0) {
+            for (int i = 0; i < processorsListModel.size(); i++) {
+                processors[i] = processorsListModel.get(i);
+                processors[i].init();
+            }
+            logReader.seek(0);
+            Map<String, Object> data = new HashMap<String, Object>();
+            while (true) {
+                long t;
+                data.clear();
+                try {
+                    t = logReader.readUpdate(data);
+                } catch (EOFException e) {
+                    break;
+                } catch (Exception e) {
+                    setStatus("Error: " + e);
+                    break;
+                }
+                for (PlotProcessor processor : processors) {
+                    processor.process(t * 0.000001, data);
+                }
             }
             for (PlotProcessor processor : processors) {
-                processor.process(t * 0.000001, data);
-            }
-        }
-        for (PlotProcessor processor : processors) {
-            for (XYSeries series : (List<XYSeries>) processor.getSeriesCollection().getSeries()) {
-                dataset.addSeries(series);
+                for (XYSeries series : (List<XYSeries>) processor.getSeriesCollection().getSeries()) {
+                    dataset.addSeries(series);
+                }
             }
         }
         chartPanel.repaint();
@@ -521,7 +525,7 @@ public class FlightPlot {
     private void onAddProcessorDialogOK() {
         updatePresetEdited(true);
         PlotProcessor origProcessor = addProcessorDialog.getOrigProcessor();
-        String title = addProcessorDialog.getTitle();
+        String title = addProcessorDialog.getProcessorTitle();
         String processorType = addProcessorDialog.getProcessorType();
         if (origProcessor != null) {
             // Edit processor
