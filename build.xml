@@ -34,7 +34,7 @@
                 <attribute name="Main-Class" value="me.drton.flightplot.FlightPlot"/>
             </manifest>
             <fileset dir="out/production/FlightPlot">
-                <include name="me/drton/flightplot/**/*.class"/>
+                <include name="**/*.class"/>
             </fileset>
             <zipgroupfileset dir="lib" includes="jfreechart-*.jar"/>
             <zipgroupfileset dir="lib" includes="jcommon-*.jar"/>

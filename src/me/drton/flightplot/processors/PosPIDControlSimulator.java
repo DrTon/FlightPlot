@@ -10,19 +10,20 @@ import java.util.Map;
 /**
  * User: ton Date: 20.06.13 Time: 6:06
  */
-public class PIDControlSimulator extends PlotProcessor {
+public class PosPIDControlSimulator extends PlotProcessor {
     private double startTime;
     private double startSP;
+    private double startSPRate;
     private double thrustK;
     private double attAccScale;
+    private double drag;
+    private double awuRate;
 
-    private boolean started;
     private LowPassFilter propeller = new LowPassFilter();
     private PID pidPos = new PID();
-    private PID pidRate = new PID();
-    private double att;
-    private double attRate;
-    private double attSP;
+    private double pos;
+    private double rate;
+    private double posSP;
     private double timePrev;
     private XYSeriesCollection seriesCollection;
 
@@ -31,33 +32,37 @@ public class PIDControlSimulator extends PlotProcessor {
         Map<String, Object> params = new HashMap<String, Object>();
         params.put("Start Time", 100.0);
         params.put("Start SP", 1.0);
+        params.put("Start SP Rate", 1.0);
         params.put("Thrust T", 0.03);
-        params.put("Thrust K", 1000.0);
-        params.put("Ctrl P", 5.0);
-        params.put("Ctrl D", 0.0);
-        params.put("Ctrl Rate P", 0.2);
-        params.put("Ctrl Rate D", 0.01);
+        params.put("Thrust K", 40.0);
+        params.put("Ctrl P", 0.1);
+        params.put("Ctrl I", 0.05);
+        params.put("Ctrl D", 0.1);
+        params.put("Ctrl Limit", 0.2);
+        params.put("AWU Rate", 1.0);
         params.put("Att Acc Scale", 1.0);
+        params.put("Drag", 0.0);
         return params;
     }
 
     @Override
     public void init() {
-        started = false;
         propeller.reset();
-        att = 0.0;
-        attRate = 0.0;
-        attSP = 0.0;
+        pos = 0.0;
+        rate = 0.0;
+        posSP = 0.0;
         timePrev = Double.NaN;
         startTime = (Double) parameters.get("Start Time");
         startSP = (Double) parameters.get("Start SP");
+        startSPRate = (Double) parameters.get("Start SP Rate");
         thrustK = (Double) parameters.get("Thrust K");
         attAccScale = (Double) parameters.get("Att Acc Scale");
+        drag = (Double) parameters.get("Drag");
+        awuRate = (Double) parameters.get("AWU Rate");
         propeller.setT((Double) parameters.get("Thrust T"));
         pidPos.reset();
-        pidRate.reset();
-        pidPos.setK((Double) parameters.get("Ctrl P"), 0.0, (Double) parameters.get("Ctrl D"));
-        pidRate.setK((Double) parameters.get("Ctrl Rate P"), 0.0, (Double) parameters.get("Ctrl Rate D"));
+        pidPos.setK((Double) parameters.get("Ctrl P"), (Double) parameters.get("Ctrl I"),
+                (Double) parameters.get("Ctrl D"), (Double) parameters.get("Ctrl Limit"));
         seriesCollection = new XYSeriesCollection();
         seriesCollection.addSeries(createSeries("Pos"));
         seriesCollection.addSeries(createSeries("Rate"));
@@ -69,23 +74,27 @@ public class PIDControlSimulator extends PlotProcessor {
     public void process(double time, Map<String, Object> update) {
         if (update.containsKey("ATT.Roll")) {   // Act only on attitude updates
             if (!Double.isNaN(timePrev)) {
-                if (!started && time > startTime) {
-                    started = true;
-                    attSP = startSP;
-                }
                 double dt = time - timePrev;
+                double spRate = 0.0;
+                if (time < startTime - 10.0)
+                    pidPos.setIntegral(0.2);
+                if (time > startTime && posSP < startSP) {
+                    spRate = startSPRate;
+                    posSP += startSPRate * dt;
+                }
                 double force = propeller.getOutput(time, 0.0);
-                double attAcc = force * thrustK;
-                attRate += attAcc * dt;
-                att += attRate * dt;
-                double rateSP = pidPos.getOutput(attSP - att, -attRate, true, dt);
-                double thrustControl = pidRate.getOutputDNoSP(rateSP, attRate, dt);
+                double acc = force * thrustK - drag * rate;
+                rate += acc * dt;
+                pos += rate * dt;
+                double awuW =
+                        awuRate == 0.0 ? 1.0 : Math.exp(-(spRate * spRate + rate * rate) / 2.0 / awuRate / awuRate);
+                double thrustControl = pidPos.getOutput(posSP - pos, spRate - rate, true, dt, awuW);
                 propeller.setInput(thrustControl);
-                seriesCollection.getSeries(0).add(time, att);
-                seriesCollection.getSeries(1).add(time, attRate);
+                seriesCollection.getSeries(0).add(time, pos);
+                seriesCollection.getSeries(1).add(time, rate);
                 if (attAccScale != 0.0)
-                    seriesCollection.getSeries(2).add(time, attAcc * attAccScale);
-                seriesCollection.getSeries(3).add(time, thrustControl);
+                    seriesCollection.getSeries(2).add(time, acc * attAccScale);
+                seriesCollection.getSeries(3).add(time, pidPos.getIntegral() * 10);
             }
             timePrev = time;
         }

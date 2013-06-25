@@ -32,18 +32,25 @@ public abstract class PlotProcessor {
         return parameters;
     }
 
+    public void setParameter(String key, Object value) {
+        Object oldValue = parameters.get(key);
+        if (oldValue != null) {
+            parameters.put(key, castValue(oldValue, value));
+        }
+    }
+
     public void setParameters(Map<String, Object> params) {
         for (Map.Entry<String, Object> entry : params.entrySet()) {
             String key = entry.getKey();
             Object oldValue = parameters.get(key);
             Object newValue = params.get(key);
             if (oldValue != null) {
-                parameters.put(key, castStringValue(oldValue, newValue));
+                parameters.put(key, castValue(oldValue, newValue));
             }
         }
     }
 
-    private Object castStringValue(Object valueOld, Object valueNewObj) {
+    private static Object castValue(Object valueOld, Object valueNewObj) {
         String valueNewStr = valueNewObj.toString();
         Object valueNew = null;
         if (valueOld instanceof String) {

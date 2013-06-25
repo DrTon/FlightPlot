@@ -15,9 +15,12 @@ public class ProcessorsList {
     public ProcessorsList() throws InstantiationException, IllegalAccessException {
         addProcessorClass(Simple.class);
         addProcessorClass(LPF.class);
+        addProcessorClass(Derivative.class);
         addProcessorClass(Abs.class);
         addProcessorClass(ATan2.class);
-        addProcessorClass(PIDControlSimulator.class);
+        addProcessorClass(PosPIDControlSimulator.class);
+        addProcessorClass(PosRatePIDControlSimulator.class);
+        addProcessorClass(AltitudeEstimator.class);
     }
 
     private void addProcessorClass(Class<? extends PlotProcessor> processorClass) {

@@ -41,6 +41,7 @@ public class FlightPlot {
     private ChartPanel chartPanel;
     private JList<PlotProcessor> processorsList;
     private DefaultListModel<PlotProcessor> processorsListModel;
+    private TableModelListener parameterChangedListener;
     private JButton addProcessorButton;
     private JButton removeProcessorButton;
     private JButton openLogButton;
@@ -158,7 +159,7 @@ public class FlightPlot {
         processorsList.addListSelectionListener(new ListSelectionListener() {
             @Override
             public void valueChanged(ListSelectionEvent e) {
-                showPlotParameters();
+                showProcessorParameters();
             }
         });
         processorsList.addKeyListener(new KeyAdapter() {
@@ -176,13 +177,16 @@ public class FlightPlot {
                 }
             }
         });
-        parametersTableModel.addTableModelListener(new TableModelListener() {
+        parameterChangedListener = new TableModelListener() {
             @Override
             public void tableChanged(TableModelEvent e) {
-                if (e.getType() == TableModelEvent.UPDATE)
-                    onParameterChanged();
+                if (e.getType() == TableModelEvent.UPDATE) {
+                    int row = e.getFirstRow();
+                    onParameterChanged(row);
+                }
             }
-        });
+        };
+        parametersTableModel.addTableModelListener(parameterChangedListener);
         try {
             loadPreferences();
         } catch (BackingStoreException e) {
@@ -303,9 +307,11 @@ public class FlightPlot {
         for (ProcessorPreset pp : preset.getProcessorPresets()) {
             try {
                 PlotProcessor processor = processorsTypesList.getProcessorInstance(pp.getProcessorType());
-                processor.setTitle(pp.getTitle());
-                processor.setParameters(pp.getParameters());
-                processorsListModel.addElement(processor);
+                if (processor != null) {
+                    processor.setTitle(pp.getTitle());
+                    processor.setParameters(pp.getParameters());
+                    processorsListModel.addElement(processor);
+                }
             } catch (Exception e) {
                 e.printStackTrace();
             }
@@ -448,7 +454,9 @@ public class FlightPlot {
         JFileChooser fc = new JFileChooser();
         if (lastLogDirectory != null)
             fc.setCurrentDirectory(lastLogDirectory);
-        int returnVal = fc.showDialog(mainFrame, "Open Log");
+        fc.setFileFilter(logExtensionFilter);
+        fc.setDialogTitle("Open Log");
+        int returnVal = fc.showDialog(mainFrame, "Open");
         if (returnVal == JFileChooser.APPROVE_OPTION) {
             lastLogDirectory = fc.getCurrentDirectory();
             File file = fc.getSelectedFile();
@@ -480,7 +488,8 @@ public class FlightPlot {
         if (lastPresetDirectory != null)
             fc.setCurrentDirectory(lastPresetDirectory);
         fc.setFileFilter(presetExtensionFilter);
-        int returnVal = fc.showDialog(mainFrame, "Import Preset");
+        fc.setDialogTitle("Import Preset");
+        int returnVal = fc.showDialog(mainFrame, "Import");
         if (returnVal == JFileChooser.APPROVE_OPTION) {
             lastPresetDirectory = fc.getCurrentDirectory();
             File file = fc.getSelectedFile();
@@ -508,7 +517,8 @@ public class FlightPlot {
         if (lastPresetDirectory != null)
             fc.setCurrentDirectory(lastPresetDirectory);
         fc.setFileFilter(presetExtensionFilter);
-        int returnVal = fc.showDialog(mainFrame, "Export Preset");
+        fc.setDialogTitle("Export Preset");
+        int returnVal = fc.showDialog(mainFrame, "Export");
         if (returnVal == JFileChooser.APPROVE_OPTION) {
             lastPresetDirectory = fc.getCurrentDirectory();
             String fileName = fc.getSelectedFile().toString();
@@ -619,6 +629,7 @@ public class FlightPlot {
             int idx = processorsListModel.indexOf(origProcessor);
             processorsListModel.set(idx, processor);
             processorsList.setSelectedValue(processor, true);
+            showProcessorParameters();
         } else {
             try {
                 PlotProcessor processor = processorsTypesList.getProcessorInstance(processorType);
@@ -642,7 +653,7 @@ public class FlightPlot {
         }
     }
 
-    private void showPlotParameters() {
+    private void showProcessorParameters() {
         while (parametersTableModel.getRowCount() > 0) {
             parametersTableModel.removeRow(0);
         }
@@ -658,18 +669,17 @@ public class FlightPlot {
         }
     }
 
-    private void onParameterChanged() {
+    private void onParameterChanged(int row) {
         PlotProcessor selectedProcessor = processorsList.getSelectedValue();
         if (selectedProcessor != null) {
-            Map<String, Object> paramsUpdate = new HashMap<String, Object>();
-            for (int i = 0; i < parametersTableModel.getRowCount(); i++) {
-                String key = (String) parametersTableModel.getValueAt(i, 0);
-                String valueNew = parametersTableModel.getValueAt(i, 1).toString();
-                paramsUpdate.put(key, valueNew);
-            }
-            selectedProcessor.setParameters(paramsUpdate);
+            String key = parametersTableModel.getValueAt(row, 0).toString();
+            Object value = parametersTableModel.getValueAt(row, 1);
+            selectedProcessor.setParameter(key, value);
             updatePresetEdited(true);
+            parametersTableModel.removeTableModelListener(parameterChangedListener);
+            parametersTableModel.setValueAt(selectedProcessor.getParameters().get(key), row, 1);
+            parametersTableModel.addTableModelListener(parameterChangedListener);
+            processFile();
         }
-        processFile();
     }
 }
