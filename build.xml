@@ -39,6 +39,7 @@
             <zipgroupfileset dir="lib" includes="jfreechart-*.jar"/>
             <zipgroupfileset dir="lib" includes="jcommon-*.jar"/>
             <zipgroupfileset dir="lib" includes="forms_rt.jar"/>
+            <zipgroupfileset dir="lib" includes="ejml-*.jar"/>
         </jar>
     </target>
 

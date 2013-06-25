@@ -147,7 +147,7 @@ public class FlightPlot {
         });
         openLogButton.addActionListener(new ActionListener() {
             @Override public void actionPerformed(ActionEvent e) {
-                showOpenFileDialog();
+                showOpenLogDialog();
             }
         });
         fieldsListButton.addActionListener(new ActionListener() {
@@ -423,7 +423,7 @@ public class FlightPlot {
         fileOpenItem.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                showOpenFileDialog();
+                showOpenLogDialog();
             }
         });
         importPresetItem.addActionListener(new ActionListener() {
@@ -450,7 +450,7 @@ public class FlightPlot {
         statusLabel.setText(status);
     }
 
-    public void showOpenFileDialog() {
+    public void showOpenLogDialog() {
         JFileChooser fc = new JFileChooser();
         if (lastLogDirectory != null)
             fc.setCurrentDirectory(lastLogDirectory);
@@ -478,8 +478,8 @@ public class FlightPlot {
                 e.printStackTrace();
             }
             fieldsList.setFieldsList(logReader.getFields());
-            setAutoRange(true, true);
             processFile();
+            setAutoRange(true, true);
         }
     }
 
