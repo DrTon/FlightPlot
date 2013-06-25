@@ -51,7 +51,7 @@
                    name="FlightPlot"
                    displayname="FlightPlot"
                    identifier="me.drton.flightplot"
-                   shortversion="0.0.4"
+                   shortversion="0.0.5"
                    applicationCategory="public.app-category.developer-tools"
                    mainclassname="me.drton.flightplot.FlightPlot">
             <classpath file="out/production/flightplot.jar"/>
