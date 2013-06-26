@@ -107,7 +107,7 @@ public class AltitudeEstimator extends PlotProcessor {
     }
 
     private void predict(double dt) {
-        x[0] += x[1] * dt + x[2] * dt * dt;
+        x[0] += x[1] * dt + x[2] * dt * dt / 2.0;
         x[1] += x[2] * dt;
     }
 

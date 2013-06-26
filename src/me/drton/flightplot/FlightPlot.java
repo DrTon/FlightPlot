@@ -272,6 +272,9 @@ public class FlightPlot {
         String logDirectoryStr = preferences.get("LogDirectory", null);
         if (logDirectoryStr != null)
             lastLogDirectory = new File(logDirectoryStr);
+        String presetDirectoryStr = preferences.get("PresetDirectory", null);
+        if (presetDirectoryStr != null)
+            lastPresetDirectory = new File(presetDirectoryStr);
         Preferences presets = preferences.node("Presets");
         presetComboBox.addItem("");
         for (String p : presets.childrenNames()) {
@@ -292,6 +295,8 @@ public class FlightPlot {
         saveWindowPreferences(addProcessorDialog, preferences.node("AddProcessorDialog"));
         if (lastLogDirectory != null)
             preferences.put("LogDirectory", lastLogDirectory.getAbsolutePath());
+        if (lastPresetDirectory != null)
+            preferences.put("PresetDirectory", lastPresetDirectory.getAbsolutePath());
         Preferences presetsPref = preferences.node("Presets");
         for (int i = 0; i < presetComboBox.getItemCount(); i++) {
             Object object = presetComboBox.getItemAt(i);
@@ -505,6 +510,7 @@ public class FlightPlot {
                 }
                 Preset preset = Preset.unpackJSONObject(new JSONObject(new String(b, Charset.forName("utf8"))));
                 loadPreset(preset);
+                processFile();
             } catch (Exception e) {
                 setStatus("Error: " + e);
                 e.printStackTrace();
