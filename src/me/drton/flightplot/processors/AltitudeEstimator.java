@@ -120,7 +120,7 @@ public class AltitudeEstimator extends PlotProcessor {
                 correct(dt, 0, corrBaro - baroOffset, param_Weight_Baro);
                 correct(dt, 2, corrAcc, param_Weight_Acc);
                 seriesAlt.add(time, x[0]);
-                seriesAltV.add(time, corrSonar);
+                seriesAltV.add(time, x[1]);
             }
             timePrev = time;
         }
