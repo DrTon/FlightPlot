@@ -17,19 +17,22 @@ public class AltitudeEstimator extends PlotProcessor {
     private String param_Field_Baro;
     private String[] param_Fields_Acc;
     private String[] param_Fields_Att;
+    private String param_Field_Sonar;
     private double param_Weight_Acc;
     private double param_Weight_Baro;
-    private double param_Offset;
-    private int param_Baro_Latency;
+    private double param_Weight_Sonar;
+    private double baroOffset;
     private double timePrev;
     private double[] x = new double[]{0.0, 0.0, 0.0};   // Pos, Vel, Acc
     private double corrBaro;
     private double corrAcc;
+    private double corrSonar;
     private SimpleMatrix acc = new SimpleMatrix(3, 1);
     private SimpleMatrix r;
     private XYSeries seriesAlt;
     private XYSeries seriesAltV;
-    private List<Double> baroFIFO = new LinkedList<Double>();
+    private double sonarPrev = 0.0;
+    private double sonarTime = 0.0;
 
     @Override
     public Map<String, Object> getDefaultParameters() {
@@ -37,10 +40,11 @@ public class AltitudeEstimator extends PlotProcessor {
         params.put("Field Baro", "SENS.BaroAlt");
         params.put("Fields Acc", "IMU.AccX IMU.AccY IMU.AccZ");
         params.put("Fields Att", "ATT.Roll ATT.Pitch");
+        params.put("Field Sonar", "FLOW.Dist");
         params.put("Weight Baro", 1.0);
         params.put("Weight Acc", 50.0);
-        params.put("Baro Latency", 0);
-        params.put("Offset", 0.0);
+        params.put("Weight Sonar", 3.0);
+        params.put("Baro Offset", 0.0);
         return params;
     }
 
@@ -52,14 +56,17 @@ public class AltitudeEstimator extends PlotProcessor {
         x[2] = 0.0;
         corrBaro = 0.0;
         corrAcc = 0.0;
-        baroFIFO.clear();
+        corrSonar = 0.0;
+        sonarPrev = 0.0;
+        sonarTime = 0.0;
         param_Field_Baro = (String) parameters.get("Field Baro");
         param_Fields_Acc = ((String) parameters.get("Fields Acc")).split(WHITESPACE_RE);
         param_Fields_Att = ((String) parameters.get("Fields Att")).split(WHITESPACE_RE);
+        param_Field_Sonar = (String) parameters.get("Field Sonar");
         param_Weight_Baro = (Double) parameters.get("Weight Baro");
         param_Weight_Acc = (Double) parameters.get("Weight Acc");
-        param_Baro_Latency = (Integer) parameters.get("Baro Latency");
-        param_Offset = (Double) parameters.get("Offset");
+        param_Weight_Sonar = (Double) parameters.get("Weight Sonar");
+        baroOffset = (Double) parameters.get("Baro Offset");
         seriesAlt = createSeries("Alt");
         seriesAltV = createSeries("AltV");
     }
@@ -70,11 +77,8 @@ public class AltitudeEstimator extends PlotProcessor {
         Number baroNum = (Number) update.get(param_Field_Baro);
         if (baroNum != null) {
             double baro = baroNum.doubleValue();
-            baroFIFO.add(x[0]);
-            if (baroFIFO.size() > param_Baro_Latency) {
-                corrBaro = baro - baroFIFO.remove(0);
-                act = true;
-            }
+            corrBaro = baro - x[0];
+            act = true;
         }
         Number accX = (Number) update.get(param_Fields_Acc[0]);
         Number accY = (Number) update.get(param_Fields_Acc[1]);
@@ -91,16 +95,32 @@ public class AltitudeEstimator extends PlotProcessor {
             r = RotationConversion.rotationMatrixByEulerAngles(roll.doubleValue(), pitch.doubleValue(), 0.0);
             act = true;
         }
+        Number sonarNum = (Number) update.get(param_Field_Sonar);
+        if (sonarNum != null) {
+            double sonar = sonarNum.doubleValue();
+            if (sonar > 0.31 && sonar < 4.0 && (sonar != sonarPrev || time - sonarTime < 0.15)) {
+                if (sonar != sonarPrev) {
+                    sonarTime = time;
+                    sonarPrev = sonar;
+                    corrSonar = sonar - x[0];
+                }
+                act = true;
+            } else {
+                corrSonar = 0.0;
+            }
+        }
         if (act) {
             SimpleMatrix accNED = r.mult(acc);
             if (!Double.isNaN(timePrev)) {
                 double dt = time - timePrev;
                 corrAcc = -accNED.get(2) - 9.81 - x[2];
+                baroOffset -= corrSonar * param_Weight_Sonar * dt;
                 predict(dt);
-                correct(dt, 0, corrBaro, param_Weight_Baro);
+                correct(dt, 0, corrSonar, param_Weight_Sonar);
+                correct(dt, 0, corrBaro - baroOffset, param_Weight_Baro);
                 correct(dt, 2, corrAcc, param_Weight_Acc);
-                seriesAlt.add(time, x[0] + param_Offset);
-                seriesAltV.add(time, x[1]);
+                seriesAlt.add(time, x[0]);
+                seriesAltV.add(time, corrSonar);
             }
             timePrev = time;
         }
