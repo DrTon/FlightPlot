@@ -680,8 +680,12 @@ public class FlightPlot {
         if (selectedProcessor != null) {
             String key = parametersTableModel.getValueAt(row, 0).toString();
             Object value = parametersTableModel.getValueAt(row, 1);
-            selectedProcessor.setParameter(key, value);
-            updatePresetEdited(true);
+            try {
+                selectedProcessor.setParameter(key, value);
+                updatePresetEdited(true);
+            } catch (Exception e) {
+                setStatus("Error: " + e);
+            }
             parametersTableModel.removeTableModelListener(parameterChangedListener);
             parametersTableModel.setValueAt(selectedProcessor.getParameters().get(key), row, 1);
             parametersTableModel.addTableModelListener(parameterChangedListener);
