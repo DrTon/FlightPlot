@@ -21,6 +21,7 @@ public class ProcessorsList {
         addProcessorClass(PosPIDControlSimulator.class);
         addProcessorClass(PosRatePIDControlSimulator.class);
         addProcessorClass(AltitudeEstimator.class);
+        addProcessorClass(FlowPosEstimator.class);
     }
 
     private void addProcessorClass(Class<? extends PlotProcessor> processorClass) {
