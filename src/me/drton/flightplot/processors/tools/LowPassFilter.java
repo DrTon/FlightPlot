@@ -16,8 +16,13 @@ public class LowPassFilter {
     }
 
     public void setT(double t) {
-        this.f = 1 / t;
-        this.rc = f / 2 / Math.PI;
+        if (t == 0.0) {
+            this.f = 0.0;
+            this.rc = 0.0;
+        } else {
+            this.f = 1 / t;
+            this.rc = f / 2 / Math.PI;
+        }
     }
 
     public void reset() {
@@ -25,17 +30,22 @@ public class LowPassFilter {
     }
 
     public double getOutput(double t, double in) {
-        if (Double.isNaN(tLast)) {
-            this.tLast = t;
-            this.inLast = in;
+        if (rc == 0.0) {
             this.valueFiltered = in;
             return in;
         } else {
-            double dt = t - tLast;
-            this.valueFiltered += (1.0 - Math.exp(-dt * rc)) * (inLast - valueFiltered);
-            this.inLast = in;
-            this.tLast = t;
-            return valueFiltered;
+            if (Double.isNaN(tLast)) {
+                this.tLast = t;
+                this.inLast = in;
+                this.valueFiltered = in;
+                return in;
+            } else {
+                double dt = t - tLast;
+                this.valueFiltered += (1.0 - Math.exp(-dt * rc)) * (inLast - valueFiltered);
+                this.inLast = in;
+                this.tLast = t;
+                return valueFiltered;
+            }
         }
     }
 

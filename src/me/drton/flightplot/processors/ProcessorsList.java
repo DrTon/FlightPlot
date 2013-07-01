@@ -14,7 +14,6 @@ public class ProcessorsList {
 
     public ProcessorsList() throws InstantiationException, IllegalAccessException {
         addProcessorClass(Simple.class);
-        addProcessorClass(LPF.class);
         addProcessorClass(Derivative.class);
         addProcessorClass(Abs.class);
         addProcessorClass(ATan2.class);

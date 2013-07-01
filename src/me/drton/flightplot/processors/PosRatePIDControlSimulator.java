@@ -1,5 +1,6 @@
 package me.drton.flightplot.processors;
 
+import me.drton.flightplot.processors.tools.DelayLine;
 import me.drton.flightplot.processors.tools.LowPassFilter;
 import me.drton.flightplot.processors.tools.PID;
 import org.jfree.data.xy.XYSeriesCollection;
@@ -17,6 +18,7 @@ public class PosRatePIDControlSimulator extends PlotProcessor {
     private double attAccScale;
 
     private boolean started;
+    private DelayLine propellerDelay = new DelayLine();
     private LowPassFilter propeller = new LowPassFilter();
     private PID pidPos = new PID();
     private PID pidRate = new PID();
@@ -32,6 +34,7 @@ public class PosRatePIDControlSimulator extends PlotProcessor {
         params.put("Start Time", 100.0);
         params.put("Start SP", 1.0);
         params.put("Thrust T", 0.03);
+        params.put("Thrust Delay", 0.05);
         params.put("Thrust K", 1000.0);
         params.put("Ctrl P", 5.0);
         params.put("Ctrl D", 0.0);
@@ -43,20 +46,22 @@ public class PosRatePIDControlSimulator extends PlotProcessor {
 
     @Override
     public void init() {
-        started = false;
-        propeller.reset();
         pos = 0.0;
         rate = 0.0;
         posSP = 0.0;
         timePrev = Double.NaN;
+        started = false;
         startTime = (Double) parameters.get("Start Time");
         startSP = (Double) parameters.get("Start SP");
         thrustK = (Double) parameters.get("Thrust K");
         attAccScale = (Double) parameters.get("Att Acc Scale");
+        propellerDelay.reset();
+        propellerDelay.setDelay((Double) parameters.get("Thrust Delay"));
+        propeller.reset();
         propeller.setT((Double) parameters.get("Thrust T"));
         pidPos.reset();
-        pidRate.reset();
         pidPos.setK((Double) parameters.get("Ctrl P"), 0.0, (Double) parameters.get("Ctrl D"), 0.0);
+        pidRate.reset();
         pidRate.setK((Double) parameters.get("Ctrl Rate P"), 0.0, (Double) parameters.get("Ctrl Rate D"), 0.0);
         seriesCollection = new XYSeriesCollection();
         seriesCollection.addSeries(createSeries("Pos"));
@@ -74,7 +79,9 @@ public class PosRatePIDControlSimulator extends PlotProcessor {
                     posSP = startSP;
                 }
                 double dt = time - timePrev;
-                double force = propeller.getOutput(time, 0.0);
+                double force = propellerDelay.getOutput(time, propeller.getOutput(time, 0.0));
+                if (Double.isNaN(force))
+                    force = 0.0;
                 double attAcc = force * thrustK;
                 rate += attAcc * dt;
                 pos += rate * dt;

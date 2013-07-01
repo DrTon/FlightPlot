@@ -1,5 +1,7 @@
 package me.drton.flightplot.processors;
 
+import me.drton.flightplot.processors.tools.DelayLine;
+import me.drton.flightplot.processors.tools.LowPassFilter;
 import org.jfree.data.xy.XYSeriesCollection;
 
 import java.util.HashMap;
@@ -12,12 +14,16 @@ public class Simple extends PlotProcessor {
     protected String[] param_Fields;
     protected double param_Scale;
     protected double param_Offset;
+    protected DelayLine delayLine = new DelayLine();
+    protected LowPassFilter lowPassFilter = new LowPassFilter();
     protected XYSeriesCollection seriesCollection;
 
     @Override
     public Map<String, Object> getDefaultParameters() {
         Map<String, Object> params = new HashMap<String, Object>();
         params.put("Fields", "ATT.Pitch ATT.Roll");
+        params.put("Delay", 0.0);
+        params.put("LPF", 0.0);
         params.put("Scale", 1.0);
         params.put("Offset", 0.0);
         return params;
@@ -25,6 +31,10 @@ public class Simple extends PlotProcessor {
 
     @Override
     public void init() {
+        delayLine.reset();
+        delayLine.setDelay((Double) parameters.get("Delay"));
+        lowPassFilter.reset();
+        lowPassFilter.setF((Double) parameters.get("LPF"));
         param_Fields = ((String) parameters.get("Fields")).split(WHITESPACE_RE);
         param_Scale = (Double) parameters.get("Scale");
         param_Offset = (Double) parameters.get("Offset");
@@ -40,7 +50,10 @@ public class Simple extends PlotProcessor {
             String field = param_Fields[i];
             Object v = update.get(field);
             if (v != null && v instanceof Number) {
-                seriesCollection.getSeries(i).add(time, ((Number) v).doubleValue() * param_Scale + param_Offset);
+                double in = ((Number) v).doubleValue();
+                double filtered = lowPassFilter.getOutput(time, in);
+                double out = delayLine.getOutput(time, filtered);
+                seriesCollection.getSeries(i).add(time, out * param_Scale + param_Offset);
             }
         }
     }
