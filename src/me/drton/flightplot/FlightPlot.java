@@ -39,8 +39,8 @@ public class FlightPlot {
     private JTable parametersTable;
     private DefaultTableModel parametersTableModel;
     private ChartPanel chartPanel;
-    private JList<PlotProcessor> processorsList;
-    private DefaultListModel<PlotProcessor> processorsListModel;
+    private JList processorsList;
+    private DefaultListModel processorsListModel;
     private TableModelListener parameterChangedListener;
     private JButton addProcessorButton;
     private JButton removeProcessorButton;
@@ -50,7 +50,7 @@ public class FlightPlot {
     private JButton deletePresetButton;
 
     private static String appName = "FlightPlot";
-    private static String version = "0.0.5";
+    private static String version = "0.0.6";
     private static String appNameAndVersion = appName + " v." + version;
     private final Preferences preferences;
     private String fileName = null;
@@ -69,13 +69,18 @@ public class FlightPlot {
     public static void main(String[] args)
             throws ClassNotFoundException, UnsupportedLookAndFeelException, InstantiationException,
                    IllegalAccessException {
-        if (OSValidator.isMac()) {
-            System.setProperty("apple.laf.useScreenMenuBar", "true");
-        }
-        UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
         SwingUtilities.invokeLater(new Runnable() {
             @Override
             public void run() {
+                if (OSValidator.isMac()) {
+                    System.setProperty("apple.laf.useScreenMenuBar", "true");
+                }
+                try {
+                    UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    return;
+                }
                 new FlightPlot();
             }
         });
@@ -192,7 +197,6 @@ public class FlightPlot {
         } catch (BackingStoreException e) {
             e.printStackTrace();
         }
-        mainFrame.setVisible(true);
         presetComboBox.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
@@ -206,6 +210,7 @@ public class FlightPlot {
                 onDeletePreset();
             }
         });
+        mainFrame.setVisible(true);
     }
 
     private void onQuit() {
@@ -326,7 +331,7 @@ public class FlightPlot {
     private Preset formatPreset(String title) {
         List<ProcessorPreset> processorPresets = new ArrayList<ProcessorPreset>();
         for (int i = 0; i < processorsListModel.size(); i++) {
-            PlotProcessor processor = processorsListModel.elementAt(i);
+            PlotProcessor processor = (PlotProcessor) processorsListModel.elementAt(i);
             processorPresets.add(new ProcessorPreset(processor));
         }
         return new Preset(title, processorPresets);
@@ -370,8 +375,8 @@ public class FlightPlot {
         chartPanel.setMouseZoomable(true, false);
         chartPanel.setPopupMenu(null);
         // Processors list
-        processorsListModel = new DefaultListModel<PlotProcessor>();
-        processorsList = new JList<PlotProcessor>(processorsListModel);
+        processorsListModel = new DefaultListModel();
+        processorsList = new JList(processorsListModel);
         // Parameters table
         parametersTableModel = new DefaultTableModel() {
             @Override
@@ -565,7 +570,7 @@ public class FlightPlot {
         PlotProcessor[] processors = new PlotProcessor[processorsListModel.size()];
         if (processors.length > 0) {
             for (int i = 0; i < processorsListModel.size(); i++) {
-                processors[i] = processorsListModel.get(i);
+                processors[i] = (PlotProcessor) processorsListModel.get(i);
                 processors[i].init();
             }
             logReader.seek(0);
@@ -602,7 +607,7 @@ public class FlightPlot {
     }
 
     private void showAddProcessorDialog(boolean editMode) {
-        PlotProcessor selectedProcessor = editMode ? processorsList.getSelectedValue() : null;
+        PlotProcessor selectedProcessor = editMode ? (PlotProcessor) processorsList.getSelectedValue() : null;
         addProcessorDialog.display(new Runnable() {
             @Override
             public void run() {
@@ -651,7 +656,7 @@ public class FlightPlot {
     }
 
     private void removeSelectedProcessor() {
-        PlotProcessor selectedProcessor = processorsList.getSelectedValue();
+        PlotProcessor selectedProcessor = (PlotProcessor) processorsList.getSelectedValue();
         if (selectedProcessor != null) {
             processorsListModel.removeElement(selectedProcessor);
             updatePresetEdited(true);
@@ -663,7 +668,7 @@ public class FlightPlot {
         while (parametersTableModel.getRowCount() > 0) {
             parametersTableModel.removeRow(0);
         }
-        PlotProcessor selectedProcessor = processorsList.getSelectedValue();
+        PlotProcessor selectedProcessor = (PlotProcessor) processorsList.getSelectedValue();
         if (selectedProcessor != null) {
             Map<String, Object> params = selectedProcessor.getParameters();
             List<String> keys = new ArrayList<String>(params.keySet());
@@ -676,7 +681,7 @@ public class FlightPlot {
     }
 
     private void onParameterChanged(int row) {
-        PlotProcessor selectedProcessor = processorsList.getSelectedValue();
+        PlotProcessor selectedProcessor = (PlotProcessor) processorsList.getSelectedValue();
         if (selectedProcessor != null) {
             String key = parametersTableModel.getValueAt(row, 0).toString();
             Object value = parametersTableModel.getValueAt(row, 1);

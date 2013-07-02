@@ -1,25 +1,24 @@
 package me.drton.flightplot;
 
 import java.io.EOFException;
-import java.io.File;
+import java.io.RandomAccessFile;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
-import java.nio.channels.SeekableByteChannel;
-import java.nio.file.Files;
+import java.nio.channels.FileChannel;
 
 /**
  * User: ton Date: 03.06.13 Time: 14:51
  */
 public abstract class BinaryLogReader implements LogReader {
     protected ByteBuffer buffer;
-    protected SeekableByteChannel channel = null;
+    protected FileChannel channel = null;
 
     public BinaryLogReader(String fileName) throws IOException {
         buffer = ByteBuffer.allocate(8192);
         buffer.order(ByteOrder.LITTLE_ENDIAN);
         buffer.flip();
-        channel = Files.newByteChannel(new File(fileName).toPath());
+        channel = new RandomAccessFile(fileName, "r").getChannel();
     }
 
     @Override
