@@ -15,7 +15,7 @@ public class PosPIDControlSimulator extends PlotProcessor {
     private double startSP;
     private double startSPRate;
     private double thrustK;
-    private double attAccScale;
+    private double accScale;
     private double drag;
     private double awuRate;
 
@@ -40,7 +40,7 @@ public class PosPIDControlSimulator extends PlotProcessor {
         params.put("Ctrl D", 0.1);
         params.put("Ctrl Limit", 0.2);
         params.put("AWU Rate", 1.0);
-        params.put("Att Acc Scale", 1.0);
+        params.put("Acc Scale", 1.0);
         params.put("Drag", 0.0);
         return params;
     }
@@ -56,13 +56,13 @@ public class PosPIDControlSimulator extends PlotProcessor {
         startSP = (Double) parameters.get("Start SP");
         startSPRate = (Double) parameters.get("Start SP Rate");
         thrustK = (Double) parameters.get("Thrust K");
-        attAccScale = (Double) parameters.get("Att Acc Scale");
+        accScale = (Double) parameters.get("Acc Scale");
         drag = (Double) parameters.get("Drag");
         awuRate = (Double) parameters.get("AWU Rate");
         propeller.setT((Double) parameters.get("Thrust T"));
         pidPos.reset();
         pidPos.setK((Double) parameters.get("Ctrl P"), (Double) parameters.get("Ctrl I"),
-                (Double) parameters.get("Ctrl D"), (Double) parameters.get("Ctrl Limit"));
+                (Double) parameters.get("Ctrl D"), (Double) parameters.get("Ctrl Limit"), PID.MODE.DERIVATIVE_CALC);
         seriesCollection = new XYSeriesCollection();
         seriesCollection.addSeries(createSeries("Pos"));
         seriesCollection.addSeries(createSeries("Rate"));
@@ -76,8 +76,6 @@ public class PosPIDControlSimulator extends PlotProcessor {
             if (!Double.isNaN(timePrev)) {
                 double dt = time - timePrev;
                 double spRate = 0.0;
-                if (time < startTime - 10.0)
-                    pidPos.setIntegral(0.2);
                 if (time > startTime && posSP < startSP) {
                     spRate = startSPRate;
                     posSP += startSPRate * dt;
@@ -88,12 +86,12 @@ public class PosPIDControlSimulator extends PlotProcessor {
                 pos += rate * dt;
                 double awuW =
                         awuRate == 0.0 ? 1.0 : Math.exp(-(spRate * spRate + rate * rate) / 2.0 / awuRate / awuRate);
-                double thrustControl = pidPos.getOutput(posSP - pos, spRate - rate, true, dt, awuW);
+                double thrustControl = pidPos.getOutput(posSP, pos, spRate - rate, dt, awuW);
                 propeller.setInput(thrustControl);
                 seriesCollection.getSeries(0).add(time, pos);
                 seriesCollection.getSeries(1).add(time, rate);
-                if (attAccScale != 0.0)
-                    seriesCollection.getSeries(2).add(time, acc * attAccScale);
+                if (accScale != 0.0)
+                    seriesCollection.getSeries(2).add(time, acc * accScale);
                 seriesCollection.getSeries(3).add(time, pidPos.getIntegral() * 10);
             }
             timePrev = time;
