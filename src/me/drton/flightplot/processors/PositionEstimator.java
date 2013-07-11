@@ -1,5 +1,6 @@
 package me.drton.flightplot.processors;
 
+import me.drton.flightplot.processors.tools.GlobalPositionProjector;
 import me.drton.flightplot.processors.tools.RotationConversion;
 import org.ejml.simple.SimpleMatrix;
 import org.jfree.data.xy.XYSeries;
@@ -11,11 +12,14 @@ import java.util.Map;
 /**
  * User: ton Date: 28.06.13 Time: 13:40
  */
-public class FlowPosEstimator extends PlotProcessor {
+public class PositionEstimator extends PlotProcessor {
+    private String[] param_Fields_GPS;
     private String[] param_Fields_Flow;
     private String[] param_Fields_Acc;
     private String[] param_Fields_Att;
     private String[] param_Fields_Z;
+    private double param_Weight_GPS_Pos;
+    private double param_Weight_GPS_Vel;
     private double param_Weight_Flow;
     private double param_Weight_Acc;
     private double param_Flow_K;
@@ -25,6 +29,8 @@ public class FlowPosEstimator extends PlotProcessor {
     private double timePrev;
     private double[] estX;   // Pos, Vel, Acc
     private double[] estY;   // Pos, Vel, Acc
+    private double[] corrGPSPos;  // X, Y
+    private double[] corrGPSVel;  // VX, VY
     private double[] corrFlow;  // X, Y
     private double[] corrAcc;   // X, Y
     private double[] att;
@@ -33,6 +39,7 @@ public class FlowPosEstimator extends PlotProcessor {
     private double[] flowAng;
     private SimpleMatrix acc = new SimpleMatrix(3, 1);
     private SimpleMatrix R;
+    private GlobalPositionProjector positionProjector = new GlobalPositionProjector();
     private XYSeries seriesFlowAX;
     private XYSeries seriesFlowAY;
     private XYSeries seriesFlowX;
@@ -46,10 +53,13 @@ public class FlowPosEstimator extends PlotProcessor {
     @Override
     public Map<String, Object> getDefaultParameters() {
         Map<String, Object> params = new HashMap<String, Object>();
+        params.put("Fields GPS", "GPS.Lat GPS.Lon GPS.VelN GPS.VelE");
         params.put("Fields Flow", "FLOW.RawX FLOW.RawY");
         params.put("Fields Acc", "IMU.AccX IMU.AccY IMU.AccZ");
         params.put("Fields Att", "ATT.Roll ATT.Pitch ATT.Yaw");
         params.put("Fields Z", "LPOS.Z LPOS.VZ");
+        params.put("Weight GPS Pos", 3.0);
+        params.put("Weight GPS Vel", 3.0);
         params.put("Weight Flow", 5.0);
         params.put("Weight Acc", 10.0);
         params.put("Flow K", 0.0165);
@@ -63,16 +73,22 @@ public class FlowPosEstimator extends PlotProcessor {
         timePrev = Double.NaN;
         estX = new double[]{0.0, 0.0, 0.0};
         estY = new double[]{0.0, 0.0, 0.0};
+        corrGPSPos = new double[]{0.0, 0.0};
+        corrGPSVel = new double[]{0.0, 0.0};
         corrFlow = new double[]{0.0, 0.0};
         corrAcc = new double[]{0.0, 0.0};
         z = 0.0;
         vz = 0.0;
         att = new double[]{0.0, 0.0, 0.0};
         flowAng = new double[]{0.0, 0.0};
+        positionProjector.reset();
+        param_Fields_GPS = ((String) parameters.get("Fields GPS")).split(WHITESPACE_RE);
         param_Fields_Flow = ((String) parameters.get("Fields Flow")).split(WHITESPACE_RE);
         param_Fields_Acc = ((String) parameters.get("Fields Acc")).split(WHITESPACE_RE);
         param_Fields_Att = ((String) parameters.get("Fields Att")).split(WHITESPACE_RE);
         param_Fields_Z = ((String) parameters.get("Fields Z")).split(WHITESPACE_RE);
+        param_Weight_GPS_Pos = (Double) parameters.get("Weight GPS Pos");
+        param_Weight_GPS_Vel = (Double) parameters.get("Weight GPS Vel");
         param_Weight_Flow = (Double) parameters.get("Weight Flow");
         param_Weight_Acc = (Double) parameters.get("Weight Acc");
         param_Flow_K = (Double) parameters.get("Flow K");
@@ -109,6 +125,26 @@ public class FlowPosEstimator extends PlotProcessor {
         if (zNum != null) {
             z = zNum.doubleValue();
             vz = vzNum.doubleValue();
+        }
+        // GPS
+        Number latNum = (Number) update.get(param_Fields_GPS[0]);
+        Number lonNum = (Number) update.get(param_Fields_GPS[1]);
+        Number velNNum = (Number) update.get(param_Fields_GPS[2]);
+        Number velENum = (Number) update.get(param_Fields_GPS[3]);
+        if (latNum != null && lonNum != null && velNNum != null && velENum != null) {
+            double lat = latNum.doubleValue();
+            double lon = lonNum.doubleValue();
+            double velN = velNNum.doubleValue();
+            double velE = velENum.doubleValue();
+            if (!positionProjector.isInited()) {
+                positionProjector.init(lat, lon);
+            }
+            double[] gpsXY = positionProjector.project(lat, lon);
+            corrGPSPos[0] = gpsXY[0] - estX[0];
+            corrGPSPos[1] = gpsXY[1] - estY[0];
+            corrGPSVel[0] = velN - estX[1];
+            corrGPSVel[1] = velE - estY[1];
+            act = true;
         }
         // Flow
         Number flowX = (Number) update.get(param_Fields_Flow[0]);
@@ -154,6 +190,10 @@ public class FlowPosEstimator extends PlotProcessor {
                 corrAcc[1] = accNED.get(1) - estY[2];
                 predict(estX, dt);
                 predict(estY, dt);
+                correct(estX, dt, 0, corrGPSPos[0], param_Weight_GPS_Pos);
+                correct(estY, dt, 0, corrGPSPos[1], param_Weight_GPS_Pos);
+                correct(estX, dt, 1, corrGPSVel[0], param_Weight_GPS_Vel);
+                correct(estY, dt, 1, corrGPSVel[1], param_Weight_GPS_Vel);
                 correct(estX, dt, 1, corrFlow[0], param_Weight_Flow);
                 correct(estY, dt, 1, corrFlow[1], param_Weight_Flow);
                 correct(estX, dt, 2, corrAcc[0], param_Weight_Acc);
