@@ -6,8 +6,6 @@ import org.jfree.data.xy.XYSeries;
 import org.jfree.data.xy.XYSeriesCollection;
 
 import java.util.HashMap;
-import java.util.LinkedList;
-import java.util.List;
 import java.util.Map;
 
 /**
@@ -21,6 +19,7 @@ public class AltitudeEstimator extends PlotProcessor {
     private double param_Weight_Acc;
     private double param_Weight_Baro;
     private double param_Weight_Sonar;
+    private double param_Weight_Acc_Bias;
     private double baroOffset;
     private double timePrev;
     private double[] x = new double[]{0.0, 0.0, 0.0};   // Pos, Vel, Acc
@@ -33,6 +32,8 @@ public class AltitudeEstimator extends PlotProcessor {
     private XYSeries seriesAltV;
     private double sonarPrev = 0.0;
     private double sonarTime = 0.0;
+    private double accBias = 0.0;
+    private static final double G = 9.81;
 
     @Override
     public Map<String, Object> getDefaultParameters() {
@@ -44,6 +45,7 @@ public class AltitudeEstimator extends PlotProcessor {
         params.put("Weight Baro", 1.0);
         params.put("Weight Acc", 50.0);
         params.put("Weight Sonar", 3.0);
+        params.put("Weight Acc Bias", 0.0);
         params.put("Baro Offset", 0.0);
         return params;
     }
@@ -59,6 +61,7 @@ public class AltitudeEstimator extends PlotProcessor {
         corrSonar = 0.0;
         sonarPrev = 0.0;
         sonarTime = 0.0;
+        accBias = 0.0;
         param_Field_Baro = (String) parameters.get("Field Baro");
         param_Fields_Acc = ((String) parameters.get("Fields Acc")).split(WHITESPACE_RE);
         param_Fields_Att = ((String) parameters.get("Fields Att")).split(WHITESPACE_RE);
@@ -66,6 +69,7 @@ public class AltitudeEstimator extends PlotProcessor {
         param_Weight_Baro = (Double) parameters.get("Weight Baro");
         param_Weight_Acc = (Double) parameters.get("Weight Acc");
         param_Weight_Sonar = (Double) parameters.get("Weight Sonar");
+        param_Weight_Acc_Bias = (Double) parameters.get("Weight Acc Bias");
         baroOffset = (Double) parameters.get("Baro Offset");
         seriesAlt = createSeries("Alt");
         seriesAltV = createSeries("AltV");
@@ -86,7 +90,7 @@ public class AltitudeEstimator extends PlotProcessor {
         if (accX != null && accY != null && accZ != null) {
             acc.set(0, 0, accX.doubleValue());
             acc.set(1, 0, accY.doubleValue());
-            acc.set(2, 0, accZ.doubleValue());
+            acc.set(2, 0, accZ.doubleValue() - accBias);
             act = true;
         }
         Number roll = (Number) update.get(param_Fields_Att[0]);
@@ -113,7 +117,8 @@ public class AltitudeEstimator extends PlotProcessor {
             SimpleMatrix accNED = r.mult(acc);
             if (!Double.isNaN(timePrev)) {
                 double dt = time - timePrev;
-                corrAcc = -accNED.get(2) - 9.81 - x[2];
+                accBias += (accNED.get(2) + G) * param_Weight_Acc_Bias * dt;
+                corrAcc = -accNED.get(2) - G - x[2];
                 baroOffset -= corrSonar * param_Weight_Sonar * dt;
                 predict(dt);
                 correct(dt, 0, corrSonar, param_Weight_Sonar);
