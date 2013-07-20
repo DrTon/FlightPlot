@@ -14,8 +14,8 @@ public class Simple extends PlotProcessor {
     protected String[] param_Fields;
     protected double param_Scale;
     protected double param_Offset;
-    protected DelayLine delayLine = new DelayLine();
-    protected LowPassFilter lowPassFilter = new LowPassFilter();
+    protected DelayLine[] delayLines;
+    protected LowPassFilter[] lowPassFilters;
     protected XYSeriesCollection seriesCollection;
 
     @Override
@@ -31,14 +31,22 @@ public class Simple extends PlotProcessor {
 
     @Override
     public void init() {
-        delayLine.reset();
-        delayLine.setDelay((Double) parameters.get("Delay"));
-        lowPassFilter.reset();
-        lowPassFilter.setF((Double) parameters.get("LPF"));
         param_Fields = ((String) parameters.get("Fields")).split(WHITESPACE_RE);
         param_Scale = (Double) parameters.get("Scale");
         param_Offset = (Double) parameters.get("Offset");
         seriesCollection = new XYSeriesCollection();
+        delayLines = new DelayLine[param_Fields.length];
+        lowPassFilters = new LowPassFilter[param_Fields.length];
+        for (int i = 0; i < param_Fields.length; i++) {
+            DelayLine delayLine = new DelayLine();
+            delayLine.reset();
+            delayLine.setDelay((Double) parameters.get("Delay"));
+            delayLines[i] = delayLine;
+            LowPassFilter lowPassFilter = new LowPassFilter();
+            lowPassFilter.reset();
+            lowPassFilter.setF((Double) parameters.get("LPF"));
+            lowPassFilters[i] = lowPassFilter;
+        }
         for (String field : param_Fields) {
             seriesCollection.addSeries(createSeries(field));
         }
@@ -51,8 +59,8 @@ public class Simple extends PlotProcessor {
             Object v = update.get(field);
             if (v != null && v instanceof Number) {
                 double in = ((Number) v).doubleValue();
-                double filtered = lowPassFilter.getOutput(time, in);
-                double out = delayLine.getOutput(time, filtered);
+                double filtered = lowPassFilters[i].getOutput(time, in);
+                double out = delayLines[i].getOutput(time, filtered);
                 seriesCollection.getSeries(i).add(time, out * param_Scale + param_Offset);
             }
         }
