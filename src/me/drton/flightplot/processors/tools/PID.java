@@ -84,8 +84,9 @@ public class PID {
             errorLast = 0.0;
         }
         double pd = err * kP + d * kD;
-        integral += pd / kP * kI * dt * awuW;
-        integral = limitValue(integral);
+        double i = integral + pd / kP * kI * dt * awuW;
+        if (limit == 0.0 || (Math.abs(i) < limit && Math.abs(pd + i) < limit))
+            integral = limitValue(i);
         return limitValue(pd + integral);
     }
 }

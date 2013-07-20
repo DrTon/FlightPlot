@@ -214,6 +214,8 @@ public class PositionEstimator extends PlotProcessor {
 
     private void correct(double[] q, double dt, int i, double e, double w) {
         double ewdt = w * e * dt;
+        if (Double.isNaN(ewdt))
+            return;
         q[i] += ewdt;
         if (i == 0) {
             q[1] += w * ewdt;
