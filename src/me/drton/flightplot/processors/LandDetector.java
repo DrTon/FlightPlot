@@ -33,10 +33,10 @@ public class LandDetector extends PlotProcessor {
         Map<String, Object> params = new HashMap<String, Object>();
         params.put("Field Baro", "SENS.BaroAlt");
         params.put("Field Thrust", "ATTC.Thrust");
-        params.put("Baro LPF", 10.0);
-        params.put("Filter Time", 3.0);
-        params.put("Threshold Alt", 1.0);
-        params.put("Threshold Thrust", 0.2);
+        params.put("Baro LPF", 20.0);
+        params.put("Filter Time", 1.0);
+        params.put("Threshold Alt", 0.3);
+        params.put("Threshold Thrust", 0.25);
         return params;
     }
 
