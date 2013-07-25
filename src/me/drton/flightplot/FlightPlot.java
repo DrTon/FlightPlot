@@ -197,6 +197,7 @@ public class FlightPlot {
         } catch (BackingStoreException e) {
             e.printStackTrace();
         }
+        presetComboBox.setMaximumRowCount(20);
         presetComboBox.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {

@@ -3,7 +3,8 @@ package me.drton.flightplot;
 import java.io.EOFException;
 import java.io.IOException;
 import java.nio.BufferUnderflowException;
-import java.util.*;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * User: ton Date: 03.06.13 Time: 14:18
@@ -26,10 +27,12 @@ public class PX4LogReader extends BinaryLogReader {
     }
 
     @Override
-    public boolean seek(long time) throws IOException, FormatErrorException {
+    public boolean seek(long seekTime) throws IOException, FormatErrorException {
         position(dataStart);
-        if (time == 0)      // Seek to start of log
+        if (seekTime == 0) {      // Seek to start of log
+            time = 0;
             return true;
+        }
         try {
             while (true) {
                 buffer.mark();
@@ -47,8 +50,10 @@ public class PX4LogReader extends BinaryLogReader {
                 }
                 if ("TIME".equals(messageDescription.name)) {
                     PX4LogMessage msg = messageDescription.parseMessage(buffer);
-                    if (msg.getLong(0) > time) {
+                    long t = msg.getLong(0);
+                    if (t > seekTime) {
                         // Time found
+                        time = t;
                         buffer.reset();
                         return true;
                     }

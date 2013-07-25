@@ -22,6 +22,7 @@ public class ProcessorsList {
         addProcessorClass(AltitudeEstimator.class);
         addProcessorClass(PositionEstimator.class);
         addProcessorClass(GlobalPositionProjection.class);
+        addProcessorClass(LandDetector.class);
     }
 
     private void addProcessorClass(Class<? extends PlotProcessor> processorClass) {
