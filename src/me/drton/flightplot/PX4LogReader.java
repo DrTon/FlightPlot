@@ -128,14 +128,19 @@ public class PX4LogReader extends BinaryLogReader {
         return buffer.get() & 0xFF;
     }
 
-    private int readHeaderFillBuffer() throws IOException, FormatErrorException {
+    private int readHeaderFillBuffer() throws IOException {
         while (true) {
             if (buffer.remaining() < HEADER_LEN) {
                 if (fillBuffer() == 0)
                     throw new BufferUnderflowException();
                 continue;
             }
-            return readHeader();
+            int p = buffer.position();
+            try {
+                return readHeader();
+            } catch (FormatErrorException e) {
+                buffer.position(p + 1);
+            }
         }
     }
 
@@ -148,23 +153,17 @@ public class PX4LogReader extends BinaryLogReader {
      */
     public PX4LogMessage readMessage() throws IOException, FormatErrorException {
         PX4LogMessage message;
-        while (true) {
-            buffer.mark();
-            int msgType = readHeaderFillBuffer();
-            PX4LogMessageDescription messageDescription = messageDescriptions.get(msgType);
-            if (messageDescription == null) {
-                buffer.reset();
-                throw new RuntimeException("Unknown message type: " + msgType);
-            }
-            if (buffer.remaining() < messageDescription.length - HEADER_LEN) {
-                buffer.reset();
-                fillBuffer();
-                continue;
-            }
-            message = messageDescription.parseMessage(buffer);
-            break;
+        int msgType = readHeaderFillBuffer();
+        PX4LogMessageDescription messageDescription = messageDescriptions.get(msgType);
+        if (messageDescription == null) {
+            throw new FormatErrorException("Unknown message type: " + msgType);
         }
-        return message;
+        if (buffer.remaining() < messageDescription.length - HEADER_LEN) {
+            fillBuffer();
+            if (buffer.remaining() < messageDescription.length - HEADER_LEN)
+                throw new FormatErrorException("Unexpected end of file");
+        }
+        return messageDescription.parseMessage(buffer);
     }
 
     public static void main(String[] args) throws Exception {
