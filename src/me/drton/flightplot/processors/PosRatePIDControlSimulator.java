@@ -26,6 +26,7 @@ public class PosRatePIDControlSimulator extends PlotProcessor {
     private double rate;
     private double posSP;
     private boolean useRateSP;
+    private boolean spRateFF;
     private double timePrev;
     private XYSeriesCollection seriesCollection;
 
@@ -49,6 +50,7 @@ public class PosRatePIDControlSimulator extends PlotProcessor {
         params.put("Att Acc Scale", 1.0);
         params.put("Drag", 0.0);
         params.put("Use Rate SP", false);
+        params.put("SP Rate FF", true);
         return params;
     }
 
@@ -65,6 +67,7 @@ public class PosRatePIDControlSimulator extends PlotProcessor {
         accScale = (Double) parameters.get("Att Acc Scale");
         drag = (Double) parameters.get("Drag");
         useRateSP = (Boolean) parameters.get("Use Rate SP");
+        spRateFF = (Boolean) parameters.get("SP Rate FF");
         delayLine.reset();
         delayLine.setDelay((Double) parameters.get("Thrust Delay"));
         lpf.reset();
@@ -106,6 +109,8 @@ public class PosRatePIDControlSimulator extends PlotProcessor {
                     rateSP = posSP;
                 } else {
                     rateSP = pidPos.getOutput(posSP - pos, posSPRate - rate, dt);
+                    if (spRateFF)
+                        rateSP += posSPRate;
                 }
                 double control = pidRate.getOutput(rateSP, rate, 0.0, dt, 1.0);
                 lpf.setInput(control);
