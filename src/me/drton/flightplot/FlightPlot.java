@@ -583,9 +583,6 @@ public class FlightPlot {
                     t = logReader.readUpdate(data);
                 } catch (EOFException e) {
                     break;
-                } catch (Exception e) {
-                    setStatus("Error: " + e);
-                    break;
                 }
                 for (PlotProcessor processor : processors) {
                     processor.process(t * 0.000001, data);
