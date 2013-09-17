@@ -50,7 +50,7 @@ public class FlightPlot {
     private JButton deletePresetButton;
 
     private static String appName = "FlightPlot";
-    private static String version = "0.0.6";
+    private static String version = "0.0.7";
     private static String appNameAndVersion = appName + " v." + version;
     private final Preferences preferences;
     private String fileName = null;

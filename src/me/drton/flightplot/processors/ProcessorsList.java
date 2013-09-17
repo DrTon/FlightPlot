@@ -23,6 +23,7 @@ public class ProcessorsList {
         addProcessorClass(PositionEstimator.class);
         addProcessorClass(GlobalPositionProjection.class);
         addProcessorClass(LandDetector.class);
+        addProcessorClass(NEDFromBodyProjection.class);
     }
 
     private void addProcessorClass(Class<? extends PlotProcessor> processorClass) {

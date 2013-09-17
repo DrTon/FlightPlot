@@ -39,11 +39,9 @@ public class Simple extends PlotProcessor {
         lowPassFilters = new LowPassFilter[param_Fields.length];
         for (int i = 0; i < param_Fields.length; i++) {
             DelayLine delayLine = new DelayLine();
-            delayLine.reset();
             delayLine.setDelay((Double) parameters.get("Delay"));
             delayLines[i] = delayLine;
             LowPassFilter lowPassFilter = new LowPassFilter();
-            lowPassFilter.reset();
             lowPassFilter.setF((Double) parameters.get("LPF"));
             lowPassFilters[i] = lowPassFilter;
         }

@@ -32,7 +32,7 @@ public class AltitudeEstimator extends PlotProcessor {
     private XYSeries seriesAltV;
     private double sonarPrev = 0.0;
     private double sonarTime = 0.0;
-    private double accBias = 0.0;
+    private double[] accBias = new double[]{0.0, 0.0, 0.0};
     private static final double G = 9.81;
 
     @Override
@@ -61,7 +61,9 @@ public class AltitudeEstimator extends PlotProcessor {
         corrSonar = 0.0;
         sonarPrev = 0.0;
         sonarTime = 0.0;
-        accBias = 0.0;
+        accBias[0] = 0.0;
+        accBias[1] = 0.0;
+        accBias[2] = 0.0;
         param_Field_Baro = (String) parameters.get("Field Baro");
         param_Fields_Acc = ((String) parameters.get("Fields Acc")).split(WHITESPACE_RE);
         param_Fields_Att = ((String) parameters.get("Fields Att")).split(WHITESPACE_RE);
@@ -88,9 +90,9 @@ public class AltitudeEstimator extends PlotProcessor {
         Number accY = (Number) update.get(param_Fields_Acc[1]);
         Number accZ = (Number) update.get(param_Fields_Acc[2]);
         if (accX != null && accY != null && accZ != null) {
-            acc.set(0, 0, accX.doubleValue());
-            acc.set(1, 0, accY.doubleValue());
-            acc.set(2, 0, accZ.doubleValue() - accBias);
+            acc.set(0, 0, accX.doubleValue() - accBias[0]);
+            acc.set(1, 0, accY.doubleValue() - accBias[1]);
+            acc.set(2, 0, accZ.doubleValue() - accBias[2]);
             act = true;
         }
         Number roll = (Number) update.get(param_Fields_Att[0]);
@@ -117,8 +119,15 @@ public class AltitudeEstimator extends PlotProcessor {
             SimpleMatrix accNED = r.mult(acc);
             if (!Double.isNaN(timePrev)) {
                 double dt = time - timePrev;
-                accBias += (accNED.get(2) + G) * param_Weight_Acc_Bias * dt;
                 corrAcc = -accNED.get(2) - G - x[2];
+                SimpleMatrix corrAccV = new SimpleMatrix(3, 1);
+                corrAccV.set(0, 0.0);
+                corrAccV.set(1, 0.0);
+                corrAccV.set(2, corrBaro - baroOffset);
+                SimpleMatrix b = r.transpose().mult(corrAccV).scale(param_Weight_Acc_Bias * dt);
+                accBias[0] += b.get(0);
+                accBias[1] += b.get(1);
+                accBias[2] += b.get(2);
                 baroOffset -= corrSonar * param_Weight_Sonar * dt;
                 predict(dt);
                 correct(dt, 0, corrSonar, param_Weight_Sonar);
