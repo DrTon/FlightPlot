@@ -2,8 +2,6 @@ package me.drton.flightplot.processors;
 
 import me.drton.flightplot.processors.tools.RotationConversion;
 import org.ejml.simple.SimpleMatrix;
-import org.jfree.data.xy.XYSeries;
-import org.jfree.data.xy.XYSeriesCollection;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -28,8 +26,6 @@ public class AltitudeEstimator extends PlotProcessor {
     private double corrSonar;
     private SimpleMatrix acc = new SimpleMatrix(3, 1);
     private SimpleMatrix r;
-    private XYSeries seriesAlt;
-    private XYSeries seriesAltV;
     private double sonarPrev = 0.0;
     private double sonarTime = 0.0;
     private double[] accBias = new double[]{0.0, 0.0, 0.0};
@@ -52,6 +48,7 @@ public class AltitudeEstimator extends PlotProcessor {
 
     @Override
     public void init() {
+        super.init();
         timePrev = Double.NaN;
         x[0] = 0.0;
         x[1] = 0.0;
@@ -73,8 +70,8 @@ public class AltitudeEstimator extends PlotProcessor {
         param_Weight_Sonar = (Double) parameters.get("Weight Sonar");
         param_Weight_Acc_Bias = (Double) parameters.get("Weight Acc Bias");
         baroOffset = (Double) parameters.get("Baro Offset");
-        seriesAlt = createSeries("Alt");
-        seriesAltV = createSeries("AltV");
+        addSeries("Alt");
+        addSeries("AltV");
     }
 
     @Override
@@ -133,8 +130,8 @@ public class AltitudeEstimator extends PlotProcessor {
                 correct(dt, 0, corrSonar, param_Weight_Sonar);
                 correct(dt, 0, corrBaro - baroOffset, param_Weight_Baro);
                 correct(dt, 2, corrAcc, param_Weight_Acc);
-                seriesAlt.add(time, x[0]);
-                seriesAltV.add(time, x[1]);
+                addPoint(0, time, x[0]);
+                addPoint(1, time, x[1]);
             }
             timePrev = time;
         }
@@ -154,13 +151,5 @@ public class AltitudeEstimator extends PlotProcessor {
         } else if (i == 1) {
             x[2] += w * ewdt;
         }
-    }
-
-    @Override
-    public XYSeriesCollection getSeriesCollection() {
-        XYSeriesCollection seriesCollection = new XYSeriesCollection();
-        seriesCollection.addSeries(seriesAlt);
-        seriesCollection.addSeries(seriesAltV);
-        return seriesCollection;
     }
 }

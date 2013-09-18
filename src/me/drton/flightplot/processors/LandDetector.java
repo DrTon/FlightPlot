@@ -1,8 +1,6 @@
 package me.drton.flightplot.processors;
 
 import me.drton.flightplot.processors.tools.LowPassFilter;
-import org.jfree.data.xy.XYSeries;
-import org.jfree.data.xy.XYSeriesCollection;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -19,8 +17,6 @@ public class LandDetector extends PlotProcessor {
     private double timePrev;
     private double baro;
     private double thrust;
-    private XYSeries seriesLanded;
-    private XYSeries seriesAltDisp;
     private LowPassFilter baroLPF;
     private double landDetectedTime;
     private boolean landed;
@@ -42,6 +38,7 @@ public class LandDetector extends PlotProcessor {
 
     @Override
     public void init() {
+        super.init();
         timePrev = Double.NaN;
         landed = true;
         landDetectedTime = Double.NaN;
@@ -58,8 +55,8 @@ public class LandDetector extends PlotProcessor {
         param_Threshold_Alt2 = (Double) parameters.get("Threshold Alt");
         param_Threshold_Alt2 = param_Threshold_Alt2 * param_Threshold_Alt2;
         param_Threshold_Thrust = (Double) parameters.get("Threshold Thrust");
-        seriesLanded = createSeries("Landed");
-        seriesAltDisp = createSeries("AltDisp");
+        addSeries("Landed");
+        addSeries("AltDisp");
     }
 
     @Override
@@ -101,16 +98,8 @@ public class LandDetector extends PlotProcessor {
                 }
             }
         }
-        seriesLanded.add(time, landed ? 1.0 : 0.0);
-        seriesAltDisp.add(time, Math.sqrt(altDisp));
+        addPoint(0, time, landed ? 1.0 : 0.0);
+        addPoint(1, time, Math.sqrt(altDisp));
         timePrev = time;
-    }
-
-    @Override
-    public XYSeriesCollection getSeriesCollection() {
-        XYSeriesCollection xySeriesCollection = new XYSeriesCollection();
-        xySeriesCollection.addSeries(seriesLanded);
-        xySeriesCollection.addSeries(seriesAltDisp);
-        return xySeriesCollection;
     }
 }

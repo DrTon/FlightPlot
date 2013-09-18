@@ -2,7 +2,6 @@ package me.drton.flightplot.processors;
 
 import me.drton.flightplot.processors.tools.LowPassFilter;
 import me.drton.flightplot.processors.tools.PID;
-import org.jfree.data.xy.XYSeriesCollection;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -25,7 +24,6 @@ public class PosPIDControlSimulator extends PlotProcessor {
     private double rate;
     private double posSP;
     private double timePrev;
-    private XYSeriesCollection seriesCollection;
 
     @Override
     public Map<String, Object> getDefaultParameters() {
@@ -47,6 +45,7 @@ public class PosPIDControlSimulator extends PlotProcessor {
 
     @Override
     public void init() {
+        super.init();
         propeller.reset();
         pos = 0.0;
         rate = 0.0;
@@ -63,11 +62,10 @@ public class PosPIDControlSimulator extends PlotProcessor {
         pidPos.reset();
         pidPos.setK((Double) parameters.get("Ctrl P"), (Double) parameters.get("Ctrl I"),
                 (Double) parameters.get("Ctrl D"), (Double) parameters.get("Ctrl Limit"), PID.MODE.DERIVATIVE_CALC);
-        seriesCollection = new XYSeriesCollection();
-        seriesCollection.addSeries(createSeries("Pos"));
-        seriesCollection.addSeries(createSeries("Rate"));
-        seriesCollection.addSeries(createSeries("Acc"));
-        seriesCollection.addSeries(createSeries("Ctrl"));
+        addSeries("Pos");
+        addSeries("Rate");
+        addSeries("Acc");
+        addSeries("Ctrl");
     }
 
     @Override
@@ -88,18 +86,13 @@ public class PosPIDControlSimulator extends PlotProcessor {
                         awuRate == 0.0 ? 1.0 : Math.exp(-(spRate * spRate + rate * rate) / 2.0 / awuRate / awuRate);
                 double thrustControl = pidPos.getOutput(posSP, pos, spRate - rate, dt, awuW);
                 propeller.setInput(thrustControl);
-                seriesCollection.getSeries(0).add(time, pos);
-                seriesCollection.getSeries(1).add(time, rate);
+                addPoint(0, time, pos);
+                addPoint(1, time, rate);
                 if (accScale != 0.0)
-                    seriesCollection.getSeries(2).add(time, acc * accScale);
-                seriesCollection.getSeries(3).add(time, pidPos.getIntegral() * 10);
+                    addPoint(2, time, acc * accScale);
+                addPoint(3, time, pidPos.getIntegral() * 10);
             }
             timePrev = time;
         }
-    }
-
-    @Override
-    public XYSeriesCollection getSeriesCollection() {
-        return seriesCollection;
     }
 }

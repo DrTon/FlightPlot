@@ -3,7 +3,6 @@ package me.drton.flightplot.processors;
 import me.drton.flightplot.processors.tools.DelayLine;
 import me.drton.flightplot.processors.tools.LowPassFilter;
 import me.drton.flightplot.processors.tools.PID;
-import org.jfree.data.xy.XYSeriesCollection;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -28,7 +27,6 @@ public class PosRatePIDControlSimulator extends PlotProcessor {
     private boolean useRateSP;
     private boolean spRateFF;
     private double timePrev;
-    private XYSeriesCollection seriesCollection;
 
     @Override
     public Map<String, Object> getDefaultParameters() {
@@ -56,6 +54,7 @@ public class PosRatePIDControlSimulator extends PlotProcessor {
 
     @Override
     public void init() {
+        super.init();
         pos = 0.0;
         rate = 0.0;
         posSP = 0.0;
@@ -78,14 +77,13 @@ public class PosRatePIDControlSimulator extends PlotProcessor {
         pidRate.reset();
         PID.MODE pidRateMode = (Boolean) parameters.get(
                 "Ctrl Rate D SP") ? PID.MODE.DERIVATIVE_CALC : PID.MODE.DERIVATIVE_CALC_NO_SP;
-        pidRate.setK((Double) parameters.get("Ctrl Rate P"), (Double) parameters.get("Ctrl Rate I"), (Double) parameters.get("Ctrl Rate D"),
-                (Double) parameters.get("Ctrl Rate Limit"), pidRateMode);
-        seriesCollection = new XYSeriesCollection();
-        seriesCollection.addSeries(createSeries("Pos"));
-        seriesCollection.addSeries(createSeries("Rate"));
-        seriesCollection.addSeries(createSeries("Acc"));
-        seriesCollection.addSeries(createSeries("Ctrl"));
-        seriesCollection.addSeries(createSeries("Pos SP"));
+        pidRate.setK((Double) parameters.get("Ctrl Rate P"), (Double) parameters.get("Ctrl Rate I"),
+                (Double) parameters.get("Ctrl Rate D"), (Double) parameters.get("Ctrl Rate Limit"), pidRateMode);
+        addSeries("Pos");
+        addSeries("Rate");
+        addSeries("Acc");
+        addSeries("Ctrl");
+        addSeries("Pos SP");
     }
 
     @Override
@@ -114,19 +112,14 @@ public class PosRatePIDControlSimulator extends PlotProcessor {
                 }
                 double control = pidRate.getOutput(rateSP, rate, 0.0, dt, 1.0);
                 lpf.setInput(control);
-                seriesCollection.getSeries(0).add(time, pos);
-                seriesCollection.getSeries(1).add(time, rate);
+                addPoint(0, time, pos);
+                addPoint(1, time, rate);
                 if (accScale != 0.0)
-                    seriesCollection.getSeries(2).add(time, acc * accScale);
-                seriesCollection.getSeries(3).add(time, control);
-                seriesCollection.getSeries(4).add(time, posSP);
+                    addPoint(2, time, acc * accScale);
+                addPoint(3, time, control);
+                addPoint(4, time, posSP);
             }
             timePrev = time;
         }
-    }
-
-    @Override
-    public XYSeriesCollection getSeriesCollection() {
-        return seriesCollection;
     }
 }

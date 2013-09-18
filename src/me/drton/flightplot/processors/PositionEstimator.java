@@ -3,8 +3,6 @@ package me.drton.flightplot.processors;
 import me.drton.flightplot.processors.tools.GlobalPositionProjector;
 import me.drton.flightplot.processors.tools.RotationConversion;
 import org.ejml.simple.SimpleMatrix;
-import org.jfree.data.xy.XYSeries;
-import org.jfree.data.xy.XYSeriesCollection;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -40,15 +38,6 @@ public class PositionEstimator extends PlotProcessor {
     private SimpleMatrix acc = new SimpleMatrix(3, 1);
     private SimpleMatrix R;
     private GlobalPositionProjector positionProjector = new GlobalPositionProjector();
-    private XYSeries seriesFlowAX;
-    private XYSeries seriesFlowAY;
-    private XYSeries seriesFlowX;
-    private XYSeries seriesFlowY;
-    private XYSeries seriesX;
-    private XYSeries seriesVX;
-    private XYSeries seriesY;
-    private XYSeries seriesVY;
-    private XYSeries seriesDist;
 
     @Override
     public Map<String, Object> getDefaultParameters() {
@@ -70,6 +59,7 @@ public class PositionEstimator extends PlotProcessor {
 
     @Override
     public void init() {
+        super.init();
         timePrev = Double.NaN;
         estX = new double[]{0.0, 0.0, 0.0};
         estY = new double[]{0.0, 0.0, 0.0};
@@ -94,15 +84,15 @@ public class PositionEstimator extends PlotProcessor {
         param_Flow_K = (Double) parameters.get("Flow K");
         param_Flow_Offs_X = (Double) parameters.get("Flow Offs X");
         param_Flow_Offs_Y = (Double) parameters.get("Flow Offs Y");
-        seriesFlowAX = createSeries("FlowAX");
-        seriesFlowAY = createSeries("FlowAY");
-        seriesFlowX = createSeries("FlowX");
-        seriesFlowY = createSeries("FlowY");
-        seriesX = createSeries("X");
-        seriesVX = createSeries("VX");
-        seriesY = createSeries("Y");
-        seriesVY = createSeries("VY");
-        seriesDist = createSeries("Dist");
+        addSeries("FlowAX");
+        addSeries("FlowAY");
+        addSeries("FlowX");
+        addSeries("FlowY");
+        addSeries("X");
+        addSeries("VX");
+        addSeries("Y");
+        addSeries("VY");
+        addSeries("Dist");
     }
 
     @Override
@@ -155,7 +145,7 @@ public class PositionEstimator extends PlotProcessor {
             flowAng[1] = -(flowY.doubleValue() - param_Flow_Offs_Y) * param_Flow_K;
             // distance to surface
             double dist = -z / R.get(2, 2);
-            seriesDist.add(time, dist);
+            addPoint(8, time, dist);
             // calculate X and Y components of vector in body frame from angular flow
             double[] flow = new double[]{0.0, 0.0};
             flow[0] = flowAng[0] * dist;
@@ -164,10 +154,10 @@ public class PositionEstimator extends PlotProcessor {
             SimpleMatrix b = new SimpleMatrix(
                     new double[][]{{flow[0] - R.get(0, 2) * vz}, {flow[1] - R.get(1, 2) * vz}});
             SimpleMatrix x = A.invert().mult(b);
-            seriesFlowAX.add(time, flowAng[0]);
-            seriesFlowAY.add(time, flowAng[1]);
-            seriesFlowX.add(time, x.get(0));
-            seriesFlowY.add(time, x.get(1));
+            addPoint(0, time, flowAng[0]);
+            addPoint(1, time, flowAng[1]);
+            addPoint(2, time, x.get(0));
+            addPoint(3, time, x.get(1));
             corrFlow[0] = x.get(0) - estX[1];
             corrFlow[1] = x.get(1) - estY[1];
             act = true;
@@ -198,10 +188,10 @@ public class PositionEstimator extends PlotProcessor {
                 correct(estY, dt, 1, corrFlow[1], param_Weight_Flow);
                 correct(estX, dt, 2, corrAcc[0], param_Weight_Acc);
                 correct(estY, dt, 2, corrAcc[1], param_Weight_Acc);
-                seriesX.add(time, estX[0]);
-                seriesVX.add(time, estX[1]);
-                seriesY.add(time, estY[0]);
-                seriesVY.add(time, estY[1]);
+                addPoint(4, time, estX[0]);
+                addPoint(5, time, estX[1]);
+                addPoint(6, time, estY[0]);
+                addPoint(7, time, estY[1]);
             }
             timePrev = time;
         }
@@ -223,20 +213,5 @@ public class PositionEstimator extends PlotProcessor {
         } else if (i == 1) {
             q[2] += w * ewdt;
         }
-    }
-
-    @Override
-    public XYSeriesCollection getSeriesCollection() {
-        XYSeriesCollection seriesCollection = new XYSeriesCollection();
-        seriesCollection.addSeries(seriesFlowX);
-        seriesCollection.addSeries(seriesFlowY);
-        seriesCollection.addSeries(seriesFlowAX);
-        seriesCollection.addSeries(seriesFlowAY);
-        seriesCollection.addSeries(seriesX);
-        seriesCollection.addSeries(seriesVX);
-        seriesCollection.addSeries(seriesY);
-        seriesCollection.addSeries(seriesVY);
-        seriesCollection.addSeries(seriesDist);
-        return seriesCollection;
     }
 }

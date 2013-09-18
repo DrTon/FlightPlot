@@ -19,11 +19,62 @@ public class PX4LogReader extends BinaryLogReader {
             = new HashMap<Integer, PX4LogMessageDescription>();
     private Map<String, String> fieldsList = null;
     private long time = 0;
+    private long sizeUpdates = -1;
+    private long sizeMicroseconds = -1;
+    private long startMicroseconds = -1;
 
     public PX4LogReader(String fileName) throws IOException, FormatErrorException {
         super(fileName);
         messageDescriptions.clear();
         readFormats();
+    }
+
+    @Override
+    public long getSizeUpdates() throws IOException, FormatErrorException {
+        if (sizeUpdates < 0) {
+            updateStatistics();
+        }
+        return sizeUpdates;
+    }
+
+    @Override
+    public long getStartMicroseconds() throws IOException, FormatErrorException {
+        return startMicroseconds;
+    }
+
+    @Override
+    public long getSizeMicroseconds() throws IOException, FormatErrorException {
+        if (sizeMicroseconds < 0) {
+            updateStatistics();
+        }
+        return sizeMicroseconds;
+    }
+
+    @Override
+    public void updateStatistics() throws IOException, FormatErrorException {
+        seek(0);
+        long packetsNum = 0;
+        long timeStart = -1;
+        long timeEnd = -1;
+        while (true) {
+            PX4LogMessage msg;
+            try {
+                msg = readMessage();
+            } catch (EOFException e) {
+                break;
+            }
+            if ("TIME".equals(msg.description.name)) {
+                long t = msg.getLong(0);
+                if (timeStart < 0)
+                    timeStart = t;
+                timeEnd = t;
+                packetsNum++;
+            }
+        }
+        startMicroseconds = timeStart;
+        sizeUpdates = packetsNum;
+        sizeMicroseconds = timeEnd - timeStart;
+        seek(0);
     }
 
     @Override

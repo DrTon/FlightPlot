@@ -7,8 +7,12 @@ import org.jfree.chart.ChartFactory;
 import org.jfree.chart.ChartPanel;
 import org.jfree.chart.JFreeChart;
 import org.jfree.chart.axis.NumberAxis;
+import org.jfree.chart.event.ChartChangeEvent;
+import org.jfree.chart.event.ChartChangeEventType;
+import org.jfree.chart.event.ChartChangeListener;
 import org.jfree.chart.plot.PlotOrientation;
 import org.jfree.chart.plot.XYPlot;
+import org.jfree.data.Range;
 import org.jfree.data.xy.XYSeries;
 import org.jfree.data.xy.XYSeriesCollection;
 import org.json.JSONObject;
@@ -26,6 +30,7 @@ import java.io.*;
 import java.nio.charset.Charset;
 import java.util.*;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.prefs.BackingStoreException;
 import java.util.prefs.Preferences;
 
@@ -50,7 +55,7 @@ public class FlightPlot {
     private JButton deletePresetButton;
 
     private static String appName = "FlightPlot";
-    private static String version = "0.0.7";
+    private static String version = "0.1.0";
     private static String appNameAndVersion = appName + " v." + version;
     private final Preferences preferences;
     private String fileName = null;
@@ -65,6 +70,7 @@ public class FlightPlot {
     private FileNameExtensionFilter logExtensionFilter = new FileNameExtensionFilter("PX4 Logs (*.bin)", "bin");
     private FileNameExtensionFilter presetExtensionFilter = new FileNameExtensionFilter("FlightPlot Presets (*.fplot)",
             "fplot");
+    private AtomicBoolean invokeProcessFile = new AtomicBoolean(false);
 
     public static void main(String[] args)
             throws ClassNotFoundException, UnsupportedLookAndFeelException, InstantiationException,
@@ -375,6 +381,14 @@ public class FlightPlot {
         chartPanel.setMouseWheelEnabled(true);
         chartPanel.setMouseZoomable(true, false);
         chartPanel.setPopupMenu(null);
+        jFreeChart.addChangeListener(new ChartChangeListener() {
+            @Override
+            public void chartChanged(ChartChangeEvent chartChangeEvent) {
+                if (chartChangeEvent.getType() == ChartChangeEventType.GENERAL) {
+                    processFile();
+                }
+            }
+        });
         // Processors list
         processorsListModel = new DefaultListModel();
         processorsList = new JList(processorsListModel);
@@ -481,16 +495,24 @@ public class FlightPlot {
                 }
                 logReader = null;
             }
+            long logStart = 0;
+            long logSize = 1000000;
             try {
                 logReader = new PX4LogReader(fileName);
+                logReader.updateStatistics();
+                logStart = logReader.getStartMicroseconds();
+                logSize = logReader.getSizeMicroseconds();
             } catch (Exception e) {
                 logReader = null;
                 setStatus("Error: " + e);
                 e.printStackTrace();
             }
             fieldsList.setFieldsList(logReader.getFields());
+            Range timeRange = new Range(logStart / 1000000.0, (logStart + logSize) / 1000000.0);
+            jFreeChart.getXYPlot().getDomainAxis().setDefaultAutoRange(timeRange);
+            jFreeChart.getXYPlot().getDomainAxis().setAutoRange(true);
+            jFreeChart.getXYPlot().getRangeAxis().setAutoRange(true);
             processFile();
-            setAutoRange(true, true);
         }
     }
 
@@ -550,31 +572,43 @@ public class FlightPlot {
 
     private void processFile() {
         if (logReader != null) {
-            setStatus("Processing...");
-            SwingUtilities.invokeLater(new Runnable() {
-                @Override
-                public void run() {
-                    try {
-                        generateSeries();
-                        setStatus(" ");
-                    } catch (Exception e) {
-                        setStatus("Error: " + e);
-                        e.printStackTrace();
+            if (invokeProcessFile.compareAndSet(false, true)) {
+                setStatus("Processing...");
+                SwingUtilities.invokeLater(new Runnable() {
+                    @Override
+                    public void run() {
+                        try {
+                            generateSeries();
+                            setStatus(" ");
+                        } catch (Exception e) {
+                            setStatus("Error: " + e);
+                            e.printStackTrace();
+                        }
+                        invokeProcessFile.lazySet(false);
                     }
-                }
-            });
+                });
+            }
         }
     }
 
     private void generateSeries() throws IOException, FormatErrorException {
         dataset.removeAllSeries();
         PlotProcessor[] processors = new PlotProcessor[processorsListModel.size()];
+        Range timeAxisRange = jFreeChart.getXYPlot().getDomainAxis().getRange();
+        // Process some extra data in hidden areas
+        long timeStart = (long) ((timeAxisRange.getLowerBound() - timeAxisRange.getLength()) * 1000000);
+        long timeStop = (long) ((timeAxisRange.getUpperBound() + timeAxisRange.getLength()) * 1000000);
+        timeStart = Math.max(logReader.getStartMicroseconds(), timeStart);
+        timeStop = Math.min(logReader.getStartMicroseconds() + logReader.getSizeMicroseconds(), timeStop);
+        int displayPixels = 2000;
+        double skip = timeAxisRange.getLength() / displayPixels;
         if (processors.length > 0) {
             for (int i = 0; i < processorsListModel.size(); i++) {
                 processors[i] = (PlotProcessor) processorsListModel.get(i);
                 processors[i].init();
+                processors[i].setSkipOut(skip);
             }
-            logReader.seek(0);
+            logReader.seek(timeStart);
             Map<String, Object> data = new HashMap<String, Object>();
             while (true) {
                 long t;
@@ -584,6 +618,8 @@ public class FlightPlot {
                 } catch (EOFException e) {
                     break;
                 }
+                if (t > timeStop)
+                    break;
                 for (PlotProcessor processor : processors) {
                     processor.process(t * 0.000001, data);
                 }
@@ -595,13 +631,6 @@ public class FlightPlot {
             }
         }
         chartPanel.repaint();
-    }
-
-    private void setAutoRange(boolean horizontal, boolean vertical) {
-        if (horizontal)
-            jFreeChart.getXYPlot().getDomainAxis().setAutoRange(true);
-        if (vertical)
-            jFreeChart.getXYPlot().getRangeAxis().setAutoRange(true);
     }
 
     private void showAddProcessorDialog(boolean editMode) {

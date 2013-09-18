@@ -16,7 +16,6 @@ public class Simple extends PlotProcessor {
     protected double param_Offset;
     protected DelayLine[] delayLines;
     protected LowPassFilter[] lowPassFilters;
-    protected XYSeriesCollection seriesCollection;
 
     @Override
     public Map<String, Object> getDefaultParameters() {
@@ -31,10 +30,10 @@ public class Simple extends PlotProcessor {
 
     @Override
     public void init() {
+        super.init();
         param_Fields = ((String) parameters.get("Fields")).split(WHITESPACE_RE);
         param_Scale = (Double) parameters.get("Scale");
         param_Offset = (Double) parameters.get("Offset");
-        seriesCollection = new XYSeriesCollection();
         delayLines = new DelayLine[param_Fields.length];
         lowPassFilters = new LowPassFilter[param_Fields.length];
         for (int i = 0; i < param_Fields.length; i++) {
@@ -46,7 +45,7 @@ public class Simple extends PlotProcessor {
             lowPassFilters[i] = lowPassFilter;
         }
         for (String field : param_Fields) {
-            seriesCollection.addSeries(createSeries(field));
+            addSeries(field);
         }
     }
 
@@ -59,13 +58,8 @@ public class Simple extends PlotProcessor {
                 double in = ((Number) v).doubleValue();
                 double filtered = lowPassFilters[i].getOutput(time, in);
                 double out = delayLines[i].getOutput(time, filtered);
-                seriesCollection.getSeries(i).add(time, out * param_Scale + param_Offset);
+                addPoint(i, time, out * param_Scale + param_Offset);
             }
         }
-    }
-
-    @Override
-    public XYSeriesCollection getSeriesCollection() {
-        return seriesCollection;
     }
 }

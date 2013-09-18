@@ -1,8 +1,6 @@
 package me.drton.flightplot.processors;
 
 import me.drton.flightplot.processors.tools.GlobalPositionProjector;
-import org.jfree.data.xy.XYSeries;
-import org.jfree.data.xy.XYSeriesCollection;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -13,8 +11,6 @@ import java.util.Map;
 public class GlobalPositionProjection extends PlotProcessor {
     private GlobalPositionProjector positionProjector = new GlobalPositionProjector();
     private String[] param_Fields;
-    private XYSeries seriesX;
-    private XYSeries seriesY;
 
     @Override
     public Map<String, Object> getDefaultParameters() {
@@ -25,10 +21,11 @@ public class GlobalPositionProjection extends PlotProcessor {
 
     @Override
     public void init() {
+        super.init();
         positionProjector.reset();
         param_Fields = ((String) parameters.get("Fields")).split(WHITESPACE_RE);
-        seriesX = createSeries("X");
-        seriesY = createSeries("Y");
+        addSeries("X");
+        addSeries("Y");
     }
 
     @Override
@@ -43,16 +40,8 @@ public class GlobalPositionProjection extends PlotProcessor {
                 positionProjector.init(lat, lon);
             }
             double[] xy = positionProjector.project(lat, lon);
-            seriesX.add(time, xy[0]);
-            seriesY.add(time, xy[1]);
+            addPoint(0, time, xy[0]);
+            addPoint(1, time, xy[1]);
         }
-    }
-
-    @Override
-    public XYSeriesCollection getSeriesCollection() {
-        XYSeriesCollection seriesCollection = new XYSeriesCollection();
-        seriesCollection.addSeries(seriesX);
-        seriesCollection.addSeries(seriesY);
-        return seriesCollection;
     }
 }

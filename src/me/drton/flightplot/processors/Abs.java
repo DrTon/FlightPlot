@@ -1,8 +1,5 @@
 package me.drton.flightplot.processors;
 
-import org.jfree.data.xy.XYSeries;
-import org.jfree.data.xy.XYSeriesCollection;
-
 import java.util.HashMap;
 import java.util.Map;
 
@@ -12,7 +9,6 @@ import java.util.Map;
 public class Abs extends PlotProcessor {
     protected String[] param_Fields;
     protected double param_Scale;
-    protected XYSeries series;
 
     @Override
     public Map<String, Object> getDefaultParameters() {
@@ -24,9 +20,10 @@ public class Abs extends PlotProcessor {
 
     @Override
     public void init() {
+        super.init();
         param_Fields = ((String) parameters.get("Fields")).split(WHITESPACE_RE);
         param_Scale = (Double) parameters.get("Scale");
-        series = createSeries();
+        addSeries();
     }
 
     @Override
@@ -41,11 +38,6 @@ public class Abs extends PlotProcessor {
                 return;
             }
         }
-        series.add(time, Math.sqrt(s) * param_Scale);
-    }
-
-    @Override
-    public XYSeriesCollection getSeriesCollection() {
-        return new XYSeriesCollection(series);
+        addPoint(0, time, Math.sqrt(s) * param_Scale);
     }
 }

@@ -18,7 +18,6 @@ public class NEDFromBodyProjection extends PlotProcessor {
     private double param_Offset;
     private boolean[] show;
     private LowPassFilter[] lowPassFilters;
-    private XYSeriesCollection seriesCollection;
     private SimpleMatrix r;
     private SimpleMatrix v;
 
@@ -36,6 +35,7 @@ public class NEDFromBodyProjection extends PlotProcessor {
 
     @Override
     public void init() {
+        super.init();
         param_Fields = ((String) parameters.get("Fields")).split(WHITESPACE_RE);
         param_Fields_Att = ((String) parameters.get("Fields Att")).split(WHITESPACE_RE);
         param_Scale = (Double) parameters.get("Scale");
@@ -43,7 +43,6 @@ public class NEDFromBodyProjection extends PlotProcessor {
         String showStr = ((String) parameters.get("Show")).toUpperCase();
         show = new boolean[]{false, false, false};
         lowPassFilters = new LowPassFilter[3];
-        seriesCollection = new XYSeriesCollection();
         v = new SimpleMatrix(3, 1);
         r = new SimpleMatrix(3, 3);
         for (int i = 0; i < 3; i++) {
@@ -53,7 +52,7 @@ public class NEDFromBodyProjection extends PlotProcessor {
                 LowPassFilter lowPassFilter = new LowPassFilter();
                 lowPassFilter.setF((Double) parameters.get("LPF"));
                 lowPassFilters[i] = lowPassFilter;
-                seriesCollection.addSeries(createSeries(axisName));
+                addSeries(axisName);
             }
         }
     }
@@ -84,15 +83,10 @@ public class NEDFromBodyProjection extends PlotProcessor {
             for (int i = 0; i < 3; i++) {
                 if (show[i]) {
                     double out = lowPassFilters[i].getOutput(time, vNED.get(i));
-                    seriesCollection.getSeries(seriesIdx).add(time, out * param_Scale + param_Offset);
+                    addPoint(seriesIdx, time, out * param_Scale + param_Offset);
                     seriesIdx++;
                 }
             }
         }
-    }
-
-    @Override
-    public XYSeriesCollection getSeriesCollection() {
-        return seriesCollection;
     }
 }

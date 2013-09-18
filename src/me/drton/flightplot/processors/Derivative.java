@@ -1,8 +1,5 @@
 package me.drton.flightplot.processors;
 
-import org.jfree.data.xy.XYSeries;
-import org.jfree.data.xy.XYSeriesCollection;
-
 import java.util.HashMap;
 import java.util.Map;
 
@@ -12,7 +9,6 @@ import java.util.Map;
 public class Derivative extends PlotProcessor {
     protected String param_Field;
     protected double param_Scale;
-    protected XYSeries series;
     private double valuePrev;
     private double timePrev;
 
@@ -26,32 +22,27 @@ public class Derivative extends PlotProcessor {
 
     @Override
     public void init() {
+        super.init();
         valuePrev = Double.NaN;
         timePrev = Double.NaN;
         param_Field = (String) parameters.get("Field");
         param_Scale = (Double) parameters.get("Scale");
-        series = createSeries();
+        addSeries();
     }
 
     @Override
     public void process(double time, Map<String, Object> update) {
-        double s = 0.0;
         Object v = update.get(param_Field);
         if (v != null && v instanceof Number) {
             double value = ((Number) v).doubleValue();
             if (!Double.isNaN(timePrev)) {
                 double dt = time - timePrev;
                 if (dt > 0.0) {
-                    series.add(time, (value - valuePrev) / dt * param_Scale);
+                    addPoint(0, time, (value - valuePrev) / dt * param_Scale);
                 }
             }
             timePrev = time;
             valuePrev = value;
         }
-    }
-
-    @Override
-    public XYSeriesCollection getSeriesCollection() {
-        return new XYSeriesCollection(series);
     }
 }

@@ -1,8 +1,5 @@
 package me.drton.flightplot.processors;
 
-import org.jfree.data.xy.XYSeries;
-import org.jfree.data.xy.XYSeriesCollection;
-
 import java.util.HashMap;
 import java.util.Map;
 
@@ -13,7 +10,6 @@ public class ATan2 extends PlotProcessor {
     protected String param_Field_X;
     protected String param_Field_Y;
     protected double param_Angle_Offset;
-    protected XYSeries series;
 
     @Override
     public Map<String, Object> getDefaultParameters() {
@@ -26,10 +22,11 @@ public class ATan2 extends PlotProcessor {
 
     @Override
     public void init() {
+        super.init();
         param_Field_X = (String) parameters.get("Field_X");
         param_Field_Y = (String) parameters.get("Field_Y");
         param_Angle_Offset = (Double) parameters.get("Angle Offset");
-        series = createSeries();
+        addSeries();
     }
 
     @Override
@@ -41,12 +38,7 @@ public class ATan2 extends PlotProcessor {
             a += param_Angle_Offset + Math.PI;
             int a_2pi = (int) Math.round(a / 2.0 / Math.PI - 0.5);
             a -= (a_2pi * 2.0 + 1.0) * Math.PI;
-            series.add(time, a);
+            addPoint(0, time, a);
         }
-    }
-
-    @Override
-    public XYSeriesCollection getSeriesCollection() {
-        return new XYSeriesCollection(series);
     }
 }

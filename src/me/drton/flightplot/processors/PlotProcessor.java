@@ -3,19 +3,35 @@ package me.drton.flightplot.processors;
 import org.jfree.data.xy.XYSeries;
 import org.jfree.data.xy.XYSeriesCollection;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 
 /**
  * User: ton Date: 12.06.13 Time: 18:25
  */
 public abstract class PlotProcessor {
-    protected static String WHITESPACE_RE = "[ \t]+";
+    protected static final String WHITESPACE_RE = "[ \t]+";
+    private double skipOut = 0.0;
+    private XYSeriesCollection seriesCollection;
+    private List<Double> lastUpdates;
+    private List<Double> lastValues;
 
     private String title;
     protected Map<String, Object> parameters;
 
     protected PlotProcessor() {
         this.parameters = getDefaultParameters();
+    }
+
+    public void init() {
+        seriesCollection = new XYSeriesCollection();
+        lastUpdates = new ArrayList<Double>();
+        lastValues = new ArrayList<Double>();
+    }
+
+    public void setSkipOut(double skipOut) {
+        this.skipOut = skipOut;
     }
 
     public String getTitle() {
@@ -69,19 +85,42 @@ public abstract class PlotProcessor {
         return valueNew;
     }
 
-    protected XYSeries createSeries() {
-        return new XYSeries(getTitle(), false);
+    protected int addSeries() {
+        int idx = seriesCollection.getSeriesCount();
+        seriesCollection.addSeries(new XYSeries(getTitle(), false));
+        lastUpdates.add(null);
+        lastValues.add(null);
+        return idx;
     }
 
-    protected XYSeries createSeries(String label) {
-        return new XYSeries(title + ":" + label, false);
+    protected int addSeries(String label) {
+        int idx = seriesCollection.getSeriesCount();
+        seriesCollection.addSeries(new XYSeries(title + ":" + label, false));
+        lastUpdates.add(null);
+        lastValues.add(null);
+        return idx;
     }
 
-    public abstract void init();
+    protected void addPoint(int seriesIdx, double time, double value) {
+        Double lastUpdate = lastUpdates.get(seriesIdx);
+        if (lastUpdate != null && time - lastUpdate < skipOut) {
+            lastValues.set(seriesIdx, value);
+            return;
+        }
+        Double lastValue = lastValues.get(seriesIdx);
+        if (lastValue != null && lastUpdate != null && time - lastUpdate > skipOut * 2) {
+            seriesCollection.getSeries(seriesIdx).add(lastUpdate, lastValue);
+        }
+        lastValues.set(seriesIdx, null);
+        lastUpdates.set(seriesIdx, time);
+        seriesCollection.getSeries(seriesIdx).add(time, value);
+    }
 
     public abstract void process(double time, Map<String, Object> update);
 
-    public abstract XYSeriesCollection getSeriesCollection();
+    public XYSeriesCollection getSeriesCollection() {
+        return seriesCollection;
+    }
 
     public String getProcessorType() {
         return getClass().getSimpleName();
