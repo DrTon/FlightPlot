@@ -72,6 +72,7 @@ public class AltitudeEstimator extends PlotProcessor {
         baroOffset = (Double) parameters.get("Baro Offset");
         addSeries("Alt");
         addSeries("AltV");
+        addSeries("AccBias");
     }
 
     @Override
@@ -117,11 +118,12 @@ public class AltitudeEstimator extends PlotProcessor {
             if (!Double.isNaN(timePrev)) {
                 double dt = time - timePrev;
                 corrAcc = -accNED.get(2) - G - x[2];
-                SimpleMatrix corrAccV = new SimpleMatrix(3, 1);
-                corrAccV.set(0, 0.0);
-                corrAccV.set(1, 0.0);
-                corrAccV.set(2, corrBaro - baroOffset);
-                SimpleMatrix b = r.transpose().mult(corrAccV).scale(param_Weight_Acc_Bias * dt);
+                SimpleMatrix accBiasCorr = new SimpleMatrix(3, 1);
+                accBiasCorr.set(0, 0.0);
+                accBiasCorr.set(1, 0.0);
+                accBiasCorr.set(2, corrBaro - baroOffset);
+                double k = param_Weight_Acc_Bias * param_Weight_Baro * param_Weight_Baro;
+                SimpleMatrix b = r.transpose().mult(accBiasCorr).scale(k * dt);
                 accBias[0] += b.get(0);
                 accBias[1] += b.get(1);
                 accBias[2] += b.get(2);
@@ -132,6 +134,7 @@ public class AltitudeEstimator extends PlotProcessor {
                 correct(dt, 2, corrAcc, param_Weight_Acc);
                 addPoint(0, time, x[0]);
                 addPoint(1, time, x[1]);
+                addPoint(2, time, accBias[2]);
             }
             timePrev = time;
         }
