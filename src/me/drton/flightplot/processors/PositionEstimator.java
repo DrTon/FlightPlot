@@ -30,6 +30,7 @@ public class PositionEstimator extends PlotProcessor {
     private double[] corrGPSPos;  // X, Y
     private double[] corrGPSVel;  // VX, VY
     private double[] corrFlow;  // X, Y
+    private double corrFlowW;
     private double[] corrAcc;   // X, Y
     private double[] att;
     private double z;
@@ -38,6 +39,7 @@ public class PositionEstimator extends PlotProcessor {
     private SimpleMatrix acc = new SimpleMatrix(3, 1);
     private SimpleMatrix R;
     private GlobalPositionProjector positionProjector = new GlobalPositionProjector();
+    private static final double saturationDist = 1.0;
 
     @Override
     public Map<String, Object> getDefaultParameters() {
@@ -66,6 +68,7 @@ public class PositionEstimator extends PlotProcessor {
         corrGPSPos = new double[]{0.0, 0.0};
         corrGPSVel = new double[]{0.0, 0.0};
         corrFlow = new double[]{0.0, 0.0};
+        corrFlowW = 0.0;
         corrAcc = new double[]{0.0, 0.0};
         z = 0.0;
         vz = 0.0;
@@ -84,10 +87,8 @@ public class PositionEstimator extends PlotProcessor {
         param_Flow_K = (Double) parameters.get("Flow K");
         param_Flow_Offs_X = (Double) parameters.get("Flow Offs X");
         param_Flow_Offs_Y = (Double) parameters.get("Flow Offs Y");
-        addSeries("FlowAX");
-        addSeries("FlowAY");
-        addSeries("FlowX");
-        addSeries("FlowY");
+        addSeries("FlowVX");
+        addSeries("FlowVY");
         addSeries("X");
         addSeries("VX");
         addSeries("Y");
@@ -145,21 +146,26 @@ public class PositionEstimator extends PlotProcessor {
             flowAng[1] = -(flowY.doubleValue() - param_Flow_Offs_Y) * param_Flow_K;
             // distance to surface
             double dist = -z / R.get(2, 2);
-            addPoint(8, time, dist);
-            // calculate X and Y components of vector in body frame from angular flow
-            double[] flow = new double[]{0.0, 0.0};
-            flow[0] = flowAng[0] * dist;
-            flow[1] = flowAng[1] * dist;
-            SimpleMatrix A = R.extractMatrix(0, 2, 0, 2);
-            SimpleMatrix b = new SimpleMatrix(
-                    new double[][]{{flow[0] - R.get(0, 2) * vz}, {flow[1] - R.get(1, 2) * vz}});
-            SimpleMatrix x = A.invert().mult(b);
-            addPoint(0, time, flowAng[0]);
-            addPoint(1, time, flowAng[1]);
-            addPoint(2, time, x.get(0));
-            addPoint(3, time, x.get(1));
-            corrFlow[0] = x.get(0) - estX[1];
-            corrFlow[1] = x.get(1) - estY[1];
+            addPoint(6, time, dist);
+            // measurements vector { flow_x, flow_y, vz }
+            // in non-orthogonal basis { body_front, body_right, global_downside }
+            SimpleMatrix m = new SimpleMatrix(3, 1);
+            m.set(0, flowAng[0] * dist);
+            m.set(1, flowAng[1] * dist);
+            m.set(2, vz);
+            // transform matrix from non-orthogonal measurements vector basis to NED
+            SimpleMatrix C = new SimpleMatrix(R);
+            C.set(2, 0, 0.0);
+            C.set(2, 1, 0.0);
+            C.set(2, 2, 1.0);
+            // velocity in NED
+            SimpleMatrix v = C.mult(m);
+            addPoint(0, time, v.get(0));
+            addPoint(1, time, v.get(1));
+            corrFlow[0] = v.get(0) - estX[1];
+            corrFlow[1] = v.get(1) - estY[1];
+            // adjust correction weight depending on distance to surface and tilt
+            corrFlowW = 1.0 / (dist + saturationDist) / R.get(2, 2);
             act = true;
         }
         // Acceleration
@@ -188,10 +194,10 @@ public class PositionEstimator extends PlotProcessor {
                 correct(estY, dt, 1, corrFlow[1], param_Weight_Flow);
                 correct(estX, dt, 2, corrAcc[0], param_Weight_Acc);
                 correct(estY, dt, 2, corrAcc[1], param_Weight_Acc);
-                addPoint(4, time, estX[0]);
-                addPoint(5, time, estX[1]);
-                addPoint(6, time, estY[0]);
-                addPoint(7, time, estY[1]);
+                addPoint(2, time, estX[0]);
+                addPoint(3, time, estX[1]);
+                addPoint(4, time, estY[0]);
+                addPoint(5, time, estY[1]);
             }
             timePrev = time;
         }
