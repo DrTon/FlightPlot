@@ -20,6 +20,7 @@ public class PositionEstimator extends PlotProcessor {
     private double param_Weight_GPS_Vel;
     private double param_Weight_Flow;
     private double param_Weight_Acc;
+    private double param_Weight_Acc_Bias;
     private double param_Flow_K;
     private double param_Flow_Offs_X;
     private double param_Flow_Offs_Y;
@@ -38,9 +39,9 @@ public class PositionEstimator extends PlotProcessor {
     private double vz;
     private double[] flowAng;
     private SimpleMatrix acc = new SimpleMatrix(3, 1);
-    private SimpleMatrix R;
+    private SimpleMatrix rot;
     private GlobalPositionProjector positionProjector = new GlobalPositionProjector();
-    private static final double saturationDist = 1.0;
+    private double[] accBias;
 
     @Override
     public Map<String, Object> getDefaultParameters() {
@@ -54,6 +55,7 @@ public class PositionEstimator extends PlotProcessor {
         params.put("Weight GPS Vel", 2.0);
         params.put("Weight Flow", 5.0);
         params.put("Weight Acc", 10.0);
+        params.put("Weight Acc Bias", 0.05);
         params.put("Flow K", 0.0165);
         params.put("Flow Offs X", 0.0);
         params.put("Flow Offs Y", 0.0);
@@ -72,6 +74,7 @@ public class PositionEstimator extends PlotProcessor {
         corrFlow = new double[]{0.0, 0.0};
         corrFlowW = 0.0;
         corrAcc = new double[]{0.0, 0.0};
+        accBias = new double[]{0.0, 0.0, 0.0};
         z = 0.0;
         vz = 0.0;
         att = new double[]{0.0, 0.0, 0.0};
@@ -86,6 +89,7 @@ public class PositionEstimator extends PlotProcessor {
         param_Weight_GPS_Vel = (Double) parameters.get("Weight GPS Vel");
         param_Weight_Flow = (Double) parameters.get("Weight Flow");
         param_Weight_Acc = (Double) parameters.get("Weight Acc");
+        param_Weight_Acc_Bias = (Double) parameters.get("Weight Acc Bias");
         param_Flow_K = (Double) parameters.get("Flow K");
         param_Flow_Offs_X = (Double) parameters.get("Flow Offs X");
         param_Flow_Offs_Y = (Double) parameters.get("Flow Offs Y");
@@ -110,7 +114,7 @@ public class PositionEstimator extends PlotProcessor {
             att[0] = roll.doubleValue();
             att[1] = pitch.doubleValue();
             att[2] = yaw.doubleValue();
-            R = RotationConversion.rotationMatrixByEulerAngles(att[0], att[1], att[2]);
+            rot = RotationConversion.rotationMatrixByEulerAngles(att[0], att[1], att[2]);
             act = true;
         }
         // Altitude
@@ -146,12 +150,12 @@ public class PositionEstimator extends PlotProcessor {
         Number flowQ = (Number) update.get(param_Fields_Flow[2]);
         if (flowX != null && flowY != null && flowQ != null) {
             double flowQuality = flowQ.doubleValue() / 255.0;
-            if (z < -0.31 && flowQuality > param_Flow_Q_Min && R.get(2, 2) > 0.7) {
+            if (z < -0.31 && flowQuality > param_Flow_Q_Min && rot.get(2, 2) > 0.7) {
                 // rotation-compensated flow, in radians, body frame
                 flowAng[0] = -(flowX.doubleValue() - param_Flow_Offs_X) * param_Flow_K;
                 flowAng[1] = -(flowY.doubleValue() - param_Flow_Offs_Y) * param_Flow_K;
                 // distance to surface
-                double dist = -z / R.get(2, 2);
+                double dist = -z / rot.get(2, 2);
                 addPoint(6, time, dist);
                 // measurements vector { flow_x, flow_y, vz }
                 // in non-orthogonal basis { body_front, body_right, global_downside }
@@ -160,7 +164,7 @@ public class PositionEstimator extends PlotProcessor {
                 m.set(1, flowAng[1] * dist);
                 m.set(2, vz);
                 // transform matrix from non-orthogonal measurements vector basis to NED
-                SimpleMatrix C = new SimpleMatrix(R);
+                SimpleMatrix C = new SimpleMatrix(rot);
                 C.set(2, 0, 0.0);
                 C.set(2, 1, 0.0);
                 C.set(2, 2, 1.0);
@@ -172,7 +176,7 @@ public class PositionEstimator extends PlotProcessor {
                 corrFlow[1] = v.get(1) - estY[1];
                 // adjust correction weight depending on distance to surface and tilt
                 double flowQWeight = (flowQuality - param_Flow_Q_Min) / (1.0 - param_Flow_Q_Min);
-                corrFlowW = R.get(2, 2) * flowQWeight;
+                corrFlowW = rot.get(2, 2) * flowQWeight;
                 act = true;
             } else {
                 corrFlow[0] = 0.0;
@@ -184,15 +188,25 @@ public class PositionEstimator extends PlotProcessor {
         Number accY = (Number) update.get(param_Fields_Acc[1]);
         Number accZ = (Number) update.get(param_Fields_Acc[2]);
         if (accX != null && accY != null && accZ != null) {
-            acc.set(0, 0, accX.doubleValue());
-            acc.set(1, 0, accY.doubleValue());
-            acc.set(2, 0, accZ.doubleValue());
+            acc.set(0, 0, accX.doubleValue() - accBias[0]);
+            acc.set(1, 0, accY.doubleValue() - accBias[1]);
+            acc.set(2, 0, accZ.doubleValue() - accBias[2]);
             act = true;
         }
         if (act) {
-            SimpleMatrix accNED = R.mult(acc);
+            SimpleMatrix accNED = rot.mult(acc);
             if (!Double.isNaN(timePrev)) {
                 double dt = time - timePrev;
+                SimpleMatrix accBiasCorrV = new SimpleMatrix(3, 1);
+                accBiasCorrV.set(0, (corrGPSPos[0] * param_Weight_GPS_Pos * param_Weight_GPS_Pos +
+                        corrGPSVel[0] * param_Weight_GPS_Vel + corrFlow[0] * param_Weight_Flow * corrFlowW));
+                accBiasCorrV.set(1, (corrGPSPos[1] * param_Weight_GPS_Pos * param_Weight_GPS_Pos +
+                        corrGPSVel[1] * param_Weight_GPS_Vel + corrFlow[1] * param_Weight_Flow * corrFlowW));
+                accBiasCorrV.set(2, 0.0);
+                SimpleMatrix b = rot.transpose().mult(accBiasCorrV).scale(param_Weight_Acc_Bias * dt);
+                accBias[0] -= b.get(0);
+                accBias[1] -= b.get(1);
+                accBias[2] -= b.get(2);
                 corrAcc[0] = accNED.get(0) - estX[2];
                 corrAcc[1] = accNED.get(1) - estY[2];
                 predict(estX, dt);
