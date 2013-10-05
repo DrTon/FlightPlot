@@ -23,6 +23,7 @@ public class PositionEstimator extends PlotProcessor {
     private double param_Flow_K;
     private double param_Flow_Offs_X;
     private double param_Flow_Offs_Y;
+    private double param_Flow_Q_Min;
 
     private double timePrev;
     private double[] estX;   // Pos, Vel, Acc
@@ -45,17 +46,18 @@ public class PositionEstimator extends PlotProcessor {
     public Map<String, Object> getDefaultParameters() {
         Map<String, Object> params = new HashMap<String, Object>();
         params.put("Fields GPS", "GPS.Lat GPS.Lon GPS.VelN GPS.VelE");
-        params.put("Fields Flow", "FLOW.RawX FLOW.RawY");
+        params.put("Fields Flow", "FLOW.RawX FLOW.RawY FLOW.Q");
         params.put("Fields Acc", "IMU.AccX IMU.AccY IMU.AccZ");
         params.put("Fields Att", "ATT.Roll ATT.Pitch ATT.Yaw");
         params.put("Fields Z", "LPOS.Z LPOS.VZ");
-        params.put("Weight GPS Pos", 3.0);
-        params.put("Weight GPS Vel", 3.0);
+        params.put("Weight GPS Pos", 1.0);
+        params.put("Weight GPS Vel", 2.0);
         params.put("Weight Flow", 5.0);
         params.put("Weight Acc", 10.0);
         params.put("Flow K", 0.0165);
         params.put("Flow Offs X", 0.0);
         params.put("Flow Offs Y", 0.0);
+        params.put("Flow Q Min", 0.5);
         return params;
     }
 
@@ -87,6 +89,7 @@ public class PositionEstimator extends PlotProcessor {
         param_Flow_K = (Double) parameters.get("Flow K");
         param_Flow_Offs_X = (Double) parameters.get("Flow Offs X");
         param_Flow_Offs_Y = (Double) parameters.get("Flow Offs Y");
+        param_Flow_Q_Min = (Double) parameters.get("Flow Q Min");
         addSeries("FlowVX");
         addSeries("FlowVY");
         addSeries("X");
@@ -140,33 +143,41 @@ public class PositionEstimator extends PlotProcessor {
         // Flow
         Number flowX = (Number) update.get(param_Fields_Flow[0]);
         Number flowY = (Number) update.get(param_Fields_Flow[1]);
-        if (flowX != null && flowY != null) {
-            // rotation-compensated flow, in radians, body frame
-            flowAng[0] = -(flowX.doubleValue() - param_Flow_Offs_X) * param_Flow_K;
-            flowAng[1] = -(flowY.doubleValue() - param_Flow_Offs_Y) * param_Flow_K;
-            // distance to surface
-            double dist = -z / R.get(2, 2);
-            addPoint(6, time, dist);
-            // measurements vector { flow_x, flow_y, vz }
-            // in non-orthogonal basis { body_front, body_right, global_downside }
-            SimpleMatrix m = new SimpleMatrix(3, 1);
-            m.set(0, flowAng[0] * dist);
-            m.set(1, flowAng[1] * dist);
-            m.set(2, vz);
-            // transform matrix from non-orthogonal measurements vector basis to NED
-            SimpleMatrix C = new SimpleMatrix(R);
-            C.set(2, 0, 0.0);
-            C.set(2, 1, 0.0);
-            C.set(2, 2, 1.0);
-            // velocity in NED
-            SimpleMatrix v = C.mult(m);
-            addPoint(0, time, v.get(0));
-            addPoint(1, time, v.get(1));
-            corrFlow[0] = v.get(0) - estX[1];
-            corrFlow[1] = v.get(1) - estY[1];
-            // adjust correction weight depending on distance to surface and tilt
-            corrFlowW = 1.0 / (dist + saturationDist) / R.get(2, 2);
-            act = true;
+        Number flowQ = (Number) update.get(param_Fields_Flow[2]);
+        if (flowX != null && flowY != null && flowQ != null) {
+            double flowQuality = flowQ.doubleValue() / 255.0;
+            if (z < -0.31 && flowQuality > param_Flow_Q_Min && R.get(2, 2) > 0.7) {
+                // rotation-compensated flow, in radians, body frame
+                flowAng[0] = -(flowX.doubleValue() - param_Flow_Offs_X) * param_Flow_K;
+                flowAng[1] = -(flowY.doubleValue() - param_Flow_Offs_Y) * param_Flow_K;
+                // distance to surface
+                double dist = -z / R.get(2, 2);
+                addPoint(6, time, dist);
+                // measurements vector { flow_x, flow_y, vz }
+                // in non-orthogonal basis { body_front, body_right, global_downside }
+                SimpleMatrix m = new SimpleMatrix(3, 1);
+                m.set(0, flowAng[0] * dist);
+                m.set(1, flowAng[1] * dist);
+                m.set(2, vz);
+                // transform matrix from non-orthogonal measurements vector basis to NED
+                SimpleMatrix C = new SimpleMatrix(R);
+                C.set(2, 0, 0.0);
+                C.set(2, 1, 0.0);
+                C.set(2, 2, 1.0);
+                // velocity in NED
+                SimpleMatrix v = C.mult(m);
+                addPoint(0, time, v.get(0));
+                addPoint(1, time, v.get(1));
+                corrFlow[0] = v.get(0) - estX[1];
+                corrFlow[1] = v.get(1) - estY[1];
+                // adjust correction weight depending on distance to surface and tilt
+                double flowQWeight = (flowQuality - param_Flow_Q_Min) / (1.0 - param_Flow_Q_Min);
+                corrFlowW = R.get(2, 2) * flowQWeight;
+                act = true;
+            } else {
+                corrFlow[0] = 0.0;
+                corrFlow[1] = 0.0;
+            }
         }
         // Acceleration
         Number accX = (Number) update.get(param_Fields_Acc[0]);
@@ -190,8 +201,8 @@ public class PositionEstimator extends PlotProcessor {
                 correct(estY, dt, 0, corrGPSPos[1], param_Weight_GPS_Pos);
                 correct(estX, dt, 1, corrGPSVel[0], param_Weight_GPS_Vel);
                 correct(estY, dt, 1, corrGPSVel[1], param_Weight_GPS_Vel);
-                correct(estX, dt, 1, corrFlow[0], param_Weight_Flow);
-                correct(estY, dt, 1, corrFlow[1], param_Weight_Flow);
+                correct(estX, dt, 1, corrFlow[0], param_Weight_Flow * corrFlowW);
+                correct(estY, dt, 1, corrFlow[1], param_Weight_Flow * corrFlowW);
                 correct(estX, dt, 2, corrAcc[0], param_Weight_Acc);
                 correct(estY, dt, 2, corrAcc[1], param_Weight_Acc);
                 addPoint(2, time, estX[0]);
