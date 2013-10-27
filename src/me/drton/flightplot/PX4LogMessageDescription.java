@@ -33,6 +33,7 @@ public class PX4LogMessageDescription {
         buffer.get(strBuf);
         return new String(strBuf, charset).split("\0")[0];
     }
+
     public PX4LogMessageDescription(ByteBuffer buffer) {
         type = buffer.get() & 0xFF;
         length = buffer.get() & 0xFF;
@@ -50,43 +51,43 @@ public class PX4LogMessageDescription {
     public PX4LogMessage parseMessage(ByteBuffer buffer) {
         List<Object> data = new ArrayList<Object>(format.length());
         for (char f : format.toCharArray()) {
-            if (f == 'b') {
-                data.add((int) buffer.get());
-            } else if (f == 'B') {
-                data.add(buffer.get() & 0xFF);
-            } else if (f == 'h') {
-                data.add((int) buffer.getShort());
-            } else if (f == 'H') {
-                data.add(buffer.getShort() & 0xFFFF);
-            } else if (f == 'i') {
-                data.add(buffer.getInt());
-            } else if (f == 'I') {
-                data.add(buffer.getInt() & 0xFFFFFFFFl);
-            } else if (f == 'f') {
-                data.add(buffer.getFloat());
-            } else if (f == 'n') {
-                data.add(getString(buffer, 4));
-            } else if (f == 'N') {
-                data.add(getString(buffer, 16));
-            } else if (f == 'Z') {
-                data.add(getString(buffer, 64));
-            } else if (f == 'L') {
-                data.add(buffer.getInt() * 1e-7);
-            } else if (f == 'c') {
-                data.add((int) buffer.getShort() * 1e-2);
-            } else if (f == 'C') {
-                data.add((buffer.getShort() & 0xFFFF) * 1e-2);
-            } else if (f == 'e') {
-                data.add(buffer.getInt() * 1e-2);
-            } else if (f == 'E') {
-                data.add((buffer.getInt() & 0xFFFFFFFFl) * 1e-2);
-            } else if (f == 'M') {
-                data.add(buffer.get() & 0xFF);
+            Object v;
+            if (f == 'f') {
+                v = buffer.getFloat();
             } else if (f == 'q' || f == 'Q') {
-                data.add(buffer.getLong());
+                v = buffer.getLong();
+            } else if (f == 'i') {
+                v = buffer.getInt();
+            } else if (f == 'I') {
+                v = buffer.getInt() & 0xFFFFFFFFl;
+            } else if (f == 'b') {
+                v = (int) buffer.get();
+            } else if (f == 'B' || f == 'M') {
+                v = buffer.get() & 0xFF;
+            } else if (f == 'L') {
+                v = buffer.getInt() * 1e-7;
+            } else if (f == 'h') {
+                v = (int) buffer.getShort();
+            } else if (f == 'H') {
+                v = buffer.getShort() & 0xFFFF;
+            } else if (f == 'n') {
+                v = getString(buffer, 4);
+            } else if (f == 'N') {
+                v = getString(buffer, 16);
+            } else if (f == 'Z') {
+                v = getString(buffer, 64);
+            } else if (f == 'c') {
+                v = (int) buffer.getShort() * 1e-2;
+            } else if (f == 'C') {
+                v = (buffer.getShort() & 0xFFFF) * 1e-2;
+            } else if (f == 'e') {
+                v = buffer.getInt() * 1e-2;
+            } else if (f == 'E') {
+                v = (buffer.getInt() & 0xFFFFFFFFl) * 1e-2;
             } else {
                 throw new RuntimeException("Invalid format char in message " + name + ": " + f);
             }
+            data.add(v);
         }
         return new PX4LogMessage(this, data);
     }
