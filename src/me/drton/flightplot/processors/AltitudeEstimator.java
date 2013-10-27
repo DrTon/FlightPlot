@@ -10,39 +10,44 @@ import java.util.Map;
  * User: ton Date: 24.06.13 Time: 13:10
  */
 public class AltitudeEstimator extends PlotProcessor {
+    private String[] param_Fields_GPS;
     private String param_Field_Baro;
     private String[] param_Fields_Acc;
     private String[] param_Fields_Att;
-    private String param_Field_Sonar;
-    private double param_Weight_Acc;
+    private double param_Weight_GPS_Pos;
+    private double param_Weight_GPS_Vel;
     private double param_Weight_Baro;
-    private double param_Weight_Sonar;
+    private double param_Weight_Acc;
     private double param_Weight_Acc_Bias;
     private double param_Baro_Offset;
     private double baroOffset;
     private double timePrev;
     private double[] x;   // Pos, Vel, Acc
+    private boolean gpsValid;
+    private double altGPS;
+    private double altBaro;
+    private double corrGPSPos;
+    private double corrGPSVel;
     private double corrBaro;
     private double corrAcc;
-    private double corrSonar;
+    private double wGPS;
     private SimpleMatrix acc = new SimpleMatrix(3, 1);
     private SimpleMatrix rot;
-    private double sonarPrev;
-    private double sonarTime;
-    private boolean sonarValid;
     private double[] accBias = new double[]{0.0, 0.0, 0.0};
+    private boolean inited = false;
     private static final double G = 9.81;
 
     @Override
     public Map<String, Object> getDefaultParameters() {
         Map<String, Object> params = new HashMap<String, Object>();
+        params.put("Fields GPS", "GPS.Alt GPS.VelD GPS.EPV");
         params.put("Field Baro", "SENS.BaroAlt");
         params.put("Fields Acc", "IMU.AccX IMU.AccY IMU.AccZ");
         params.put("Fields Att", "ATT.Roll ATT.Pitch");
-        params.put("Field Sonar", "FLOW.Dist");
+        params.put("Weight GPS Pos", 0.5);
+        params.put("Weight GPS Vel", 1.0);
         params.put("Weight Baro", 1.0);
         params.put("Weight Acc", 20.0);
-        params.put("Weight Sonar", 3.0);
         params.put("Weight Acc Bias", 0.05);
         params.put("Baro Offset", 0.0);
         return params;
@@ -54,19 +59,22 @@ public class AltitudeEstimator extends PlotProcessor {
         timePrev = Double.NaN;
         x = new double[]{0.0, 0.0, 0.0};
         accBias = new double[]{0.0, 0.0, 0.0};
+        gpsValid = false;
+        altGPS = Double.NaN;
+        altBaro = Double.NaN;
+        corrGPSPos = 0.0;
         corrBaro = 0.0;
         corrAcc = 0.0;
-        corrSonar = 0.0;
-        sonarPrev = 0.0;
-        sonarTime = 0.0;
-        sonarValid = false;
+        wGPS = 0.0;
+        inited = false;
+        param_Fields_GPS = ((String) parameters.get("Fields GPS")).split(WHITESPACE_RE);
         param_Field_Baro = (String) parameters.get("Field Baro");
         param_Fields_Acc = ((String) parameters.get("Fields Acc")).split(WHITESPACE_RE);
         param_Fields_Att = ((String) parameters.get("Fields Att")).split(WHITESPACE_RE);
-        param_Field_Sonar = (String) parameters.get("Field Sonar");
+        param_Weight_GPS_Pos = (Double) parameters.get("Weight GPS Pos");
+        param_Weight_GPS_Vel = (Double) parameters.get("Weight GPS Vel");
         param_Weight_Baro = (Double) parameters.get("Weight Baro");
         param_Weight_Acc = (Double) parameters.get("Weight Acc");
-        param_Weight_Sonar = (Double) parameters.get("Weight Sonar");
         param_Weight_Acc_Bias = (Double) parameters.get("Weight Acc Bias");
         param_Baro_Offset = (Double) parameters.get("Baro Offset");
         baroOffset = -param_Baro_Offset;
@@ -79,10 +87,22 @@ public class AltitudeEstimator extends PlotProcessor {
     @Override
     public void process(double time, Map<String, Object> update) {
         boolean act = false;
+        Number gpsPosNum = (Number) update.get(param_Fields_GPS[0]);
+        Number gpsVelNum = (Number) update.get(param_Fields_GPS[1]);
+        Number gpsEPVNum = (Number) update.get(param_Fields_GPS[2]);
+        if (gpsVelNum != null && gpsVelNum != null && gpsEPVNum != null) {
+            double epv = gpsEPVNum.doubleValue();
+            gpsValid = epv < 10.0;
+            altGPS = gpsPosNum.doubleValue();
+            corrGPSPos = altGPS - x[0];
+            corrGPSVel = -gpsVelNum.doubleValue() - x[1];
+            wGPS = Math.min(1.0, 1.0 / gpsEPVNum.doubleValue());
+            act = true;
+        }
         Number baroNum = (Number) update.get(param_Field_Baro);
         if (baroNum != null) {
-            double baro = baroNum.doubleValue();
-            corrBaro = baro - x[0];
+            altBaro = baroNum.doubleValue();
+            corrBaro = altBaro - x[0];
             act = true;
         }
         Number accX = (Number) update.get(param_Fields_Acc[0]);
@@ -100,56 +120,55 @@ public class AltitudeEstimator extends PlotProcessor {
             rot = RotationConversion.rotationMatrixByEulerAngles(roll.doubleValue(), pitch.doubleValue(), 0.0);
             act = true;
         }
-        Number sonarNum = (Number) update.get(param_Field_Sonar);
-        if (sonarNum != null) {
-            double sonar = sonarNum.doubleValue();
-            if (sonar > 0.31 && sonar < 4.0 && (sonar != sonarPrev || time - sonarTime < 0.15)) {
-                if (sonar != sonarPrev) {
-                    sonarTime = time;
-                    sonarPrev = sonar;
-                    corrSonar = sonar - x[0];
-                }
-                sonarValid = true;
-                act = true;
-            } else {
-                corrSonar = 0.0;
-                sonarValid = false;
-            }
-        }
         if (act) {
-            SimpleMatrix accNED = rot.mult(acc);
-            if (!Double.isNaN(timePrev)) {
-                double dt = time - timePrev;
-                corrAcc = -accNED.get(2) - G - x[2];
-                // Baro offset correction
-                if (sonarValid) {
-                    baroOffset += (corrBaro - baroOffset) * param_Weight_Sonar * dt;
+            if (!inited) {
+                if (param_Weight_GPS_Pos == 0.0) {
+                    // no GPS
+                    baroOffset = altBaro;
+                    inited = true;
+                } else if (!Double.isNaN(altBaro) && !Double.isNaN(altGPS)) {
+                    baroOffset = altBaro - altGPS;
+                    x[0] = altGPS;
+                    corrGPSPos = 0.0;
+                    corrGPSVel = 0.0;
+                    inited = true;
                 }
-                // Accelerometer bias correction
-                double accBiasCorr = (corrBaro - baroOffset) * param_Weight_Baro * param_Weight_Baro;
-                if (sonarValid) {
-                    accBiasCorr += corrSonar * param_Weight_Sonar * param_Weight_Sonar;
+            } else {
+                SimpleMatrix accNED = rot.mult(acc);
+                if (!Double.isNaN(timePrev)) {
+                    double dt = time - timePrev;
+                    corrAcc = -accNED.get(2) - G - x[2];
+                    // Baro offset correction
+                    if (gpsValid)
+                        baroOffset -= corrGPSPos * param_Weight_GPS_Pos * wGPS * dt;
+                    // Accelerometer bias correction
+                    double accBiasCorr = (corrBaro - baroOffset) * param_Weight_Baro * param_Weight_Baro;
+                    if (gpsValid) {
+                        accBiasCorr += corrGPSPos * param_Weight_GPS_Pos * param_Weight_GPS_Pos * wGPS * wGPS;
+                        accBiasCorr += corrGPSVel * param_Weight_GPS_Vel * wGPS;
+                    }
+                    SimpleMatrix accBiasCorrV = new SimpleMatrix(3, 1);
+                    accBiasCorrV.set(0, 0.0);
+                    accBiasCorrV.set(1, 0.0);
+                    accBiasCorrV.set(2, accBiasCorr);
+                    SimpleMatrix b = rot.transpose().mult(accBiasCorrV).scale(param_Weight_Acc_Bias * dt);
+                    accBias[0] += b.get(0);
+                    accBias[1] += b.get(1);
+                    accBias[2] += b.get(2);
+                    // Inertial filter prediction
+                    predict(dt);
+                    // Inertial filter correction
+                    if (gpsValid) {
+                        correct(dt, 0, corrGPSPos, param_Weight_GPS_Pos * wGPS);
+                        correct(dt, 1, corrGPSVel, param_Weight_GPS_Vel * wGPS);
+                    }
+                    correct(dt, 0, corrBaro - baroOffset, param_Weight_Baro);
+                    correct(dt, 2, corrAcc, param_Weight_Acc);
+                    addPoint(0, time, x[0]);
+                    addPoint(1, time, x[1]);
+                    addPoint(2, time, accBias[2]);
+                    addPoint(3, time, baroOffset + param_Baro_Offset);
                 }
-                SimpleMatrix accBiasCorrV = new SimpleMatrix(3, 1);
-                accBiasCorrV.set(0, 0.0);
-                accBiasCorrV.set(1, 0.0);
-                accBiasCorrV.set(2, accBiasCorr);
-                SimpleMatrix b = rot.transpose().mult(accBiasCorrV).scale(param_Weight_Acc_Bias * dt);
-                accBias[0] += b.get(0);
-                accBias[1] += b.get(1);
-                accBias[2] += b.get(2);
-                // Inertial filter prediction
-                predict(dt);
-                // Inertial filter correction
-                if (sonarValid) {
-                    correct(dt, 0, corrSonar, param_Weight_Sonar);
-                }
-                correct(dt, 0, corrBaro - baroOffset, param_Weight_Baro);
-                correct(dt, 2, corrAcc, param_Weight_Acc);
-                addPoint(0, time, x[0]);
-                addPoint(1, time, x[1]);
-                addPoint(2, time, accBias[2]);
-                addPoint(3, time, baroOffset + param_Baro_Offset);
             }
             timePrev = time;
         }
