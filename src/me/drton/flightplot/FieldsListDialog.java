@@ -22,6 +22,14 @@ public class FieldsListDialog extends JDialog {
         formatNames.put("q", "int64");
         formatNames.put("Q", "uint64");
         formatNames.put("f", "float");
+        formatNames.put("c", "int16 * 1e-2");
+        formatNames.put("C", "uint16 * 1e-2");
+        formatNames.put("e", "int32 * 1e-2");
+        formatNames.put("E", "uint32 * 1e-2");
+        formatNames.put("n", "char[4]");
+        formatNames.put("N", "char[16]");
+        formatNames.put("Z", "char[64]");
+        formatNames.put("M", "uint8 (mode)");
     }
 
     public FieldsListDialog(final Runnable callbackAdd) {

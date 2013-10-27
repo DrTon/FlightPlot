@@ -16,11 +16,15 @@ public interface LogReader {
 
     Map<String, String> getFields();
 
-    long getSizeUpdates() throws IOException, FormatErrorException;
+    String getFormat();
 
-    long getStartMicroseconds() throws IOException, FormatErrorException;
+    long getSizeUpdates();
 
-    long getSizeMicroseconds() throws IOException, FormatErrorException;
+    long getStartMicroseconds();
 
-    void updateStatistics() throws IOException, FormatErrorException;
+    long getSizeMicroseconds();
+
+    Map<String, Object> getVersion();
+
+    Map<String, Object> getParameters();
 }

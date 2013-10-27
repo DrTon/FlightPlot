@@ -22,36 +22,46 @@ public class PX4LogReader extends BinaryLogReader {
     private long sizeUpdates = -1;
     private long sizeMicroseconds = -1;
     private long startMicroseconds = -1;
+    private Map<String, Object> version = new HashMap<String, Object>();
+    private Map<String, Object> parameters = new HashMap<String, Object>();
 
     public PX4LogReader(String fileName) throws IOException, FormatErrorException {
         super(fileName);
-        messageDescriptions.clear();
         readFormats();
+        updateStatistics();
     }
 
     @Override
-    public long getSizeUpdates() throws IOException, FormatErrorException {
-        if (sizeUpdates < 0) {
-            updateStatistics();
-        }
+    public String getFormat() {
+        return "PX4";
+    }
+
+    @Override
+    public long getSizeUpdates() {
         return sizeUpdates;
     }
 
     @Override
-    public long getStartMicroseconds() throws IOException, FormatErrorException {
+    public long getStartMicroseconds() {
         return startMicroseconds;
     }
 
     @Override
-    public long getSizeMicroseconds() throws IOException, FormatErrorException {
-        if (sizeMicroseconds < 0) {
-            updateStatistics();
-        }
+    public long getSizeMicroseconds() {
         return sizeMicroseconds;
     }
 
     @Override
-    public void updateStatistics() throws IOException, FormatErrorException {
+    public Map<String, Object> getVersion() {
+        return version;
+    }
+
+    @Override
+    public Map<String, Object> getParameters() {
+        return parameters;
+    }
+
+    private void updateStatistics() throws IOException, FormatErrorException {
         seek(0);
         long packetsNum = 0;
         long timeStart = -1;
@@ -69,6 +79,10 @@ public class PX4LogReader extends BinaryLogReader {
                     timeStart = t;
                 timeEnd = t;
                 packetsNum++;
+            } else if ("VER".equals(msg.description.name)) {
+                version = msg.toMap();
+            } else if ("PARM".equals(msg.description.name)) {
+                parameters.put((String) msg.get("Name"), msg.get("Value"));
             }
         }
         startMicroseconds = timeStart;

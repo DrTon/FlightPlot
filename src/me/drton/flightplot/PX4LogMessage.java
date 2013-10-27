@@ -1,6 +1,8 @@
 package me.drton.flightplot;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * User: ton Date: 03.06.13 Time: 16:18
@@ -25,6 +27,14 @@ public class PX4LogMessage {
     public Object get(String field) {
         int idx = description.getFieldIdx(field);
         return data.get(idx);
+    }
+
+    public Map<String, Object> toMap() {
+        Map<String, Object> m = new HashMap<String, Object>();
+        for (int i = 0; i < data.size(); i++) {
+            m.put(description.fields[i], data.get(i));
+        }
+        return m;
     }
 
     @Override

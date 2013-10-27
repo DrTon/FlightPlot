@@ -53,6 +53,7 @@ public class FlightPlot {
     private JButton fieldsListButton;
     private JComboBox presetComboBox;
     private JButton deletePresetButton;
+    private JButton logInfoButton;
 
     private static String appName = "FlightPlot";
     private static String version = "0.1.0";
@@ -66,7 +67,8 @@ public class FlightPlot {
     private File lastLogDirectory = null;
     private File lastPresetDirectory = null;
     private AddProcessorDialog addProcessorDialog;
-    private FieldsListDialog fieldsList;
+    private FieldsListDialog fieldsListDialog;
+    private LogInfo logInfo;
     private FileNameExtensionFilter logExtensionFilter = new FileNameExtensionFilter("PX4 Logs (*.bin)", "bin");
     private FileNameExtensionFilter presetExtensionFilter = new FileNameExtensionFilter("FlightPlot Presets (*.fplot)",
             "fplot");
@@ -125,11 +127,11 @@ public class FlightPlot {
         Collections.sort(processors);
         addProcessorDialog = new AddProcessorDialog(processors.toArray(new String[processors.size()]));
         addProcessorDialog.pack();
-        fieldsList = new FieldsListDialog(new Runnable() {
+        fieldsListDialog = new FieldsListDialog(new Runnable() {
             @Override
             public void run() {
                 StringBuilder fieldsValue = new StringBuilder();
-                for (String field : fieldsList.getSelectedFields()) {
+                for (String field : fieldsListDialog.getSelectedFields()) {
                     if (fieldsValue.length() > 0)
                         fieldsValue.append(" ");
                     fieldsValue.append(field);
@@ -144,6 +146,7 @@ public class FlightPlot {
                 processFile();
             }
         });
+        logInfo = new LogInfo();
         addProcessorButton.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
@@ -164,7 +167,13 @@ public class FlightPlot {
         fieldsListButton.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                fieldsList.setVisible(true);
+                fieldsListDialog.setVisible(true);
+            }
+        });
+        logInfoButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                logInfo.setVisible(true);
             }
         });
         processorsList.addListSelectionListener(new ListSelectionListener() {
@@ -279,8 +288,9 @@ public class FlightPlot {
 
     private void loadPreferences() throws BackingStoreException {
         loadWindowPreferences(mainFrame, preferences.node("MainWindow"), 800, 600);
-        loadWindowPreferences(fieldsList, preferences.node("FieldsListDialog"), 300, 600);
+        loadWindowPreferences(fieldsListDialog, preferences.node("FieldsListDialog"), 300, 600);
         loadWindowPreferences(addProcessorDialog, preferences.node("AddProcessorDialog"), -1, -1);
+        loadWindowPreferences(logInfo.getFrame(), preferences.node("LogInfoFrame"), 600, 600);
         String logDirectoryStr = preferences.get("LogDirectory", null);
         if (logDirectoryStr != null)
             lastLogDirectory = new File(logDirectoryStr);
@@ -303,8 +313,9 @@ public class FlightPlot {
             preferences.node(child).removeNode();
         }
         saveWindowPreferences(mainFrame, preferences.node("MainWindow"));
-        saveWindowPreferences(fieldsList, preferences.node("FieldsListDialog"));
+        saveWindowPreferences(fieldsListDialog, preferences.node("FieldsListDialog"));
         saveWindowPreferences(addProcessorDialog, preferences.node("AddProcessorDialog"));
+        saveWindowPreferences(logInfo.getFrame(), preferences.node("LogInfoFrame"));
         if (lastLogDirectory != null)
             preferences.put("LogDirectory", lastLogDirectory.getAbsolutePath());
         if (lastPresetDirectory != null)
@@ -499,7 +510,7 @@ public class FlightPlot {
             long logSize = 1000000;
             try {
                 logReader = new PX4LogReader(fileName);
-                logReader.updateStatistics();
+                logInfo.updateInfo(logReader);
                 logStart = logReader.getStartMicroseconds();
                 logSize = logReader.getSizeMicroseconds();
             } catch (Exception e) {
@@ -507,7 +518,7 @@ public class FlightPlot {
                 setStatus("Error: " + e);
                 e.printStackTrace();
             }
-            fieldsList.setFieldsList(logReader.getFields());
+            fieldsListDialog.setFieldsList(logReader.getFields());
             Range timeRange = new Range(logStart / 1000000.0, (logStart + logSize) / 1000000.0);
             jFreeChart.getXYPlot().getDomainAxis().setDefaultAutoRange(timeRange);
             jFreeChart.getXYPlot().getDomainAxis().setAutoRange(true);

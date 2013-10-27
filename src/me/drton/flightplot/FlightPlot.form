@@ -188,6 +188,12 @@
               <text value="Fields List"/>
             </properties>
           </component>
+          <component id="98cb0" class="javax.swing.JButton" binding="logInfoButton">
+            <constraints/>
+            <properties>
+              <text value="Log Info"/>
+            </properties>
+          </component>
           <component id="d93f2" class="javax.swing.JLabel">
             <constraints/>
             <properties>
