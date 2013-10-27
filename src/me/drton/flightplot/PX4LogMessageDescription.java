@@ -28,19 +28,17 @@ public class PX4LogMessageDescription {
         this.fields = fields;
     }
 
+    private static String getString(ByteBuffer buffer, int len) {
+        byte[] strBuf = new byte[len];
+        buffer.get(strBuf);
+        return new String(strBuf, charset).split("\0")[0];
+    }
     public PX4LogMessageDescription(ByteBuffer buffer) {
         type = buffer.get() & 0xFF;
         length = buffer.get() & 0xFF;
-        byte[] strBuf;
-        strBuf = new byte[4];
-        buffer.get(strBuf);
-        name = new String(strBuf, charset).split("\0")[0];
-        strBuf = new byte[16];
-        buffer.get(strBuf);
-        format = new String(strBuf, charset).split("\0")[0];
-        strBuf = new byte[64];
-        buffer.get(strBuf);
-        fields = new String(strBuf, charset).split("\0")[0].split(",");
+        name = getString(buffer, 4);
+        format = getString(buffer, 16);
+        fields = getString(buffer, 64).split(",");
         if (fields.length != format.length())
             throw new RuntimeException(String.format("Labels count != format length: fields = \"%s\", format = \"%s\"",
                     Arrays.asList(fields), format));
@@ -66,10 +64,26 @@ public class PX4LogMessageDescription {
                 data.add(buffer.getInt() & 0xFFFFFFFFl);
             } else if (f == 'f') {
                 data.add(buffer.getFloat());
-            } else if (f == 'q' || f == 'Q') {
-                data.add(buffer.getLong());
+            } else if (f == 'n') {
+                data.add(getString(buffer, 4));
+            } else if (f == 'N') {
+                data.add(getString(buffer, 16));
+            } else if (f == 'Z') {
+                data.add(getString(buffer, 64));
             } else if (f == 'L') {
                 data.add(buffer.getInt() * 1e-7);
+            } else if (f == 'c') {
+                data.add((int) buffer.getShort() * 1e-2);
+            } else if (f == 'C') {
+                data.add((buffer.getShort() & 0xFFFF) * 1e-2);
+            } else if (f == 'e') {
+                data.add(buffer.getInt() * 1e-2);
+            } else if (f == 'E') {
+                data.add((buffer.getInt() & 0xFFFFFFFFl) * 1e-2);
+            } else if (f == 'M') {
+                data.add(buffer.get() & 0xFF);
+            } else if (f == 'q' || f == 'Q') {
+                data.add(buffer.getLong());
             } else {
                 throw new RuntimeException("Invalid format char in message " + name + ": " + f);
             }
