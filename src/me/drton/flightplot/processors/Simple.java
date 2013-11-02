@@ -2,7 +2,6 @@ package me.drton.flightplot.processors;
 
 import me.drton.flightplot.processors.tools.DelayLine;
 import me.drton.flightplot.processors.tools.LowPassFilter;
-import org.jfree.data.xy.XYSeriesCollection;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -49,16 +48,24 @@ public class Simple extends PlotProcessor {
         }
     }
 
+    protected double processValue(int idx, double time, double in) {
+        return in;
+    }
+
     @Override
     public void process(double time, Map<String, Object> update) {
         for (int i = 0; i < param_Fields.length; i++) {
             String field = param_Fields[i];
             Object v = update.get(field);
             if (v != null && v instanceof Number) {
-                double in = ((Number) v).doubleValue();
-                double filtered = lowPassFilters[i].getOutput(time, in);
-                double out = delayLines[i].getOutput(time, filtered);
-                addPoint(i, time, out * param_Scale + param_Offset);
+                double in = processValue(i, time, ((Number) v).doubleValue());
+                if (Double.isNaN(in)) {
+                    addPoint(i, time, Double.NaN);
+                } else {
+                    double filtered = lowPassFilters[i].getOutput(time, in);
+                    double out = delayLines[i].getOutput(time, filtered);
+                    addPoint(i, time, out * param_Scale + param_Offset);
+                }
             }
         }
     }
