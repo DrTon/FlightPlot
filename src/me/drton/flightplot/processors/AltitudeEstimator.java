@@ -19,7 +19,7 @@ public class AltitudeEstimator extends PlotProcessor {
     private double param_Weight_Baro;
     private double param_Weight_Acc;
     private double param_Weight_Acc_Bias;
-    private double param_Baro_Offset;
+    private double param_Offset;
     private double baroOffset;
     private double timePrev;
     private double[] x;   // Pos, Vel, Acc
@@ -49,7 +49,7 @@ public class AltitudeEstimator extends PlotProcessor {
         params.put("Weight Baro", 1.0);
         params.put("Weight Acc", 20.0);
         params.put("Weight Acc Bias", 0.05);
-        params.put("Baro Offset", 0.0);
+        params.put("Offset", 0.0);
         return params;
     }
 
@@ -62,6 +62,7 @@ public class AltitudeEstimator extends PlotProcessor {
         gpsValid = false;
         altGPS = Double.NaN;
         altBaro = Double.NaN;
+        baroOffset = 0.0;
         corrGPSPos = 0.0;
         corrBaro = 0.0;
         corrAcc = 0.0;
@@ -76,12 +77,12 @@ public class AltitudeEstimator extends PlotProcessor {
         param_Weight_Baro = (Double) parameters.get("Weight Baro");
         param_Weight_Acc = (Double) parameters.get("Weight Acc");
         param_Weight_Acc_Bias = (Double) parameters.get("Weight Acc Bias");
-        param_Baro_Offset = (Double) parameters.get("Baro Offset");
-        baroOffset = -param_Baro_Offset;
+        param_Offset = (Double) parameters.get("Offset");
         addSeries("Alt");
         addSeries("AltV");
         addSeries("AccBiasZ");
-        addSeries("BaroOffset");
+        if (param_Weight_GPS_Pos != 0.0)
+            addSeries("BaroOffset");
     }
 
     @Override
@@ -124,14 +125,19 @@ public class AltitudeEstimator extends PlotProcessor {
             if (!inited) {
                 if (param_Weight_GPS_Pos == 0.0) {
                     // no GPS
-                    baroOffset = altBaro;
-                    inited = true;
+                    if (!Double.isNaN(altBaro)) {
+                        x[0] = altBaro;
+                        inited = true;
+                    }
                 } else if (!Double.isNaN(altBaro) && !Double.isNaN(altGPS)) {
-                    baroOffset = altBaro - altGPS;
-                    x[0] = altGPS;
-                    corrGPSPos = 0.0;
-                    corrGPSVel = 0.0;
-                    inited = true;
+                    // use GPS
+                    if (!Double.isNaN(altBaro) && !Double.isNaN(altGPS)) {
+                        baroOffset = altBaro - altGPS;
+                        x[0] = altGPS;
+                        corrGPSPos = 0.0;
+                        corrGPSVel = 0.0;
+                        inited = true;
+                    }
                 }
             } else {
                 SimpleMatrix accNED = rot.mult(acc);
@@ -164,10 +170,11 @@ public class AltitudeEstimator extends PlotProcessor {
                     }
                     correct(dt, 0, corrBaro - baroOffset, param_Weight_Baro);
                     correct(dt, 2, corrAcc, param_Weight_Acc);
-                    addPoint(0, time, x[0]);
+                    addPoint(0, time, x[0] + param_Offset);
                     addPoint(1, time, x[1]);
                     addPoint(2, time, accBias[2]);
-                    addPoint(3, time, baroOffset + param_Baro_Offset);
+                    if (param_Weight_GPS_Pos != 0.0)
+                        addPoint(3, time, baroOffset);
                 }
             }
             timePrev = time;
