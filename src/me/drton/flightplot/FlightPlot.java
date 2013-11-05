@@ -28,6 +28,7 @@ import java.awt.*;
 import java.awt.event.*;
 import java.io.*;
 import java.nio.charset.Charset;
+import java.text.NumberFormat;
 import java.util.*;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -73,6 +74,14 @@ public class FlightPlot {
     private FileNameExtensionFilter presetExtensionFilter = new FileNameExtensionFilter("FlightPlot Presets (*.fplot)",
             "fplot");
     private AtomicBoolean invokeProcessFile = new AtomicBoolean(false);
+
+    private static final NumberFormat doubleNumberFormat = NumberFormat.getInstance(Locale.ROOT);
+
+    static {
+        doubleNumberFormat.setGroupingUsed(false);
+        doubleNumberFormat.setMinimumFractionDigits(1);
+        doubleNumberFormat.setMaximumFractionDigits(10);
+    }
 
     public static void main(String[] args)
             throws ClassNotFoundException, UnsupportedLookAndFeelException, InstantiationException,
@@ -702,6 +711,15 @@ public class FlightPlot {
         }
     }
 
+    private static String formatParameterValue(Object value) {
+        String valueStr;
+        if (value instanceof Double)
+            valueStr = doubleNumberFormat.format(value);
+        else
+            valueStr = value.toString();
+        return valueStr;
+    }
+
     private void showProcessorParameters() {
         while (parametersTableModel.getRowCount() > 0) {
             parametersTableModel.removeRow(0);
@@ -712,8 +730,7 @@ public class FlightPlot {
             List<String> keys = new ArrayList<String>(params.keySet());
             Collections.sort(keys);
             for (String key : keys) {
-                String value = params.get(key).toString();
-                parametersTableModel.addRow(new Object[]{key, value});
+                parametersTableModel.addRow(new Object[]{key, formatParameterValue(params.get(key))});
             }
         }
     }
@@ -730,7 +747,7 @@ public class FlightPlot {
                 setStatus("Error: " + e);
             }
             parametersTableModel.removeTableModelListener(parameterChangedListener);
-            parametersTableModel.setValueAt(selectedProcessor.getParameters().get(key), row, 1);
+            parametersTableModel.setValueAt(formatParameterValue(selectedProcessor.getParameters().get(key)), row, 1);
             parametersTableModel.addTableModelListener(parameterChangedListener);
             processFile();
         }

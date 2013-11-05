@@ -80,7 +80,11 @@ public abstract class PlotProcessor {
         } else if (valueOld instanceof Long) {
             valueNew = Long.parseLong(valueNewStr);
         } else if (valueOld instanceof Boolean) {
-            valueNew = Boolean.parseBoolean(valueNewStr);
+            char firstChar = valueNewStr.toLowerCase().charAt(0);
+            if (firstChar == 'f' || firstChar == 'n' || "0".equals(valueNewStr))
+                valueNew = false;
+            else
+                valueNew = true;
         }
         return valueNew;
     }

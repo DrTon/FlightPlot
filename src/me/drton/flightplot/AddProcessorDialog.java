@@ -84,5 +84,6 @@ public class AddProcessorDialog extends JDialog {
 
     private void createUIComponents() {
         processorTypeComboBox = new JComboBox(processorsTypes);
+        processorTypeComboBox.setMaximumRowCount(20);
     }
 }
