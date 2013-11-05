@@ -3,7 +3,6 @@ package me.drton.flightplot.processors;
 import me.drton.flightplot.processors.tools.LowPassFilter;
 import me.drton.flightplot.processors.tools.RotationConversion;
 import org.ejml.simple.SimpleMatrix;
-import org.jfree.data.xy.XYSeriesCollection;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -16,6 +15,7 @@ public class NEDFromBodyProjection extends PlotProcessor {
     private String[] param_Fields_Att;
     private double param_Scale;
     private double param_Offset;
+    private boolean param_Backward;
     private boolean[] show;
     private LowPassFilter[] lowPassFilters;
     private SimpleMatrix r;
@@ -30,6 +30,7 @@ public class NEDFromBodyProjection extends PlotProcessor {
         params.put("LPF", 0.0);
         params.put("Scale", 1.0);
         params.put("Offset", 0.0);
+        params.put("Backward", false);
         return params;
     }
 
@@ -40,6 +41,7 @@ public class NEDFromBodyProjection extends PlotProcessor {
         param_Fields_Att = ((String) parameters.get("Fields Att")).split(WHITESPACE_RE);
         param_Scale = (Double) parameters.get("Scale");
         param_Offset = (Double) parameters.get("Offset");
+        param_Backward = (Boolean) parameters.get("Backward");
         String showStr = ((String) parameters.get("Show")).toUpperCase();
         show = new boolean[]{false, false, false};
         lowPassFilters = new LowPassFilter[3];
@@ -68,6 +70,8 @@ public class NEDFromBodyProjection extends PlotProcessor {
             // Update rotation matrix
             r = RotationConversion.rotationMatrixByEulerAngles(roll.doubleValue(), pitch.doubleValue(),
                     yaw.doubleValue());
+            if (param_Backward)
+                r = r.transpose();
             act = true;
         }
         for (int i = 0; i < 3; i++) {

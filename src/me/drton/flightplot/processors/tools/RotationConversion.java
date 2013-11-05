@@ -2,8 +2,6 @@ package me.drton.flightplot.processors.tools;
 
 import org.ejml.simple.SimpleMatrix;
 
-import java.io.IOException;
-
 import static java.lang.Math.cos;
 import static java.lang.Math.sin;
 
