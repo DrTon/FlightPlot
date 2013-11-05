@@ -1,6 +1,5 @@
 package me.drton.flightplot.processors;
 
-import me.drton.flightplot.processors.tools.DelayLine;
 import me.drton.flightplot.processors.tools.LowPassFilter;
 
 import java.util.HashMap;
@@ -13,7 +12,7 @@ public class Simple extends PlotProcessor {
     protected String[] param_Fields;
     protected double param_Scale;
     protected double param_Offset;
-    protected DelayLine[] delayLines;
+    protected double param_Delay;
     protected LowPassFilter[] lowPassFilters;
 
     @Override
@@ -33,12 +32,9 @@ public class Simple extends PlotProcessor {
         param_Fields = ((String) parameters.get("Fields")).split(WHITESPACE_RE);
         param_Scale = (Double) parameters.get("Scale");
         param_Offset = (Double) parameters.get("Offset");
-        delayLines = new DelayLine[param_Fields.length];
+        param_Delay = (Double) parameters.get("Delay");
         lowPassFilters = new LowPassFilter[param_Fields.length];
         for (int i = 0; i < param_Fields.length; i++) {
-            DelayLine delayLine = new DelayLine();
-            delayLine.setDelay((Double) parameters.get("Delay"));
-            delayLines[i] = delayLine;
             LowPassFilter lowPassFilter = new LowPassFilter();
             lowPassFilter.setF((Double) parameters.get("LPF"));
             lowPassFilters[i] = lowPassFilter;
@@ -48,7 +44,11 @@ public class Simple extends PlotProcessor {
         }
     }
 
-    protected double processValue(int idx, double time, double in) {
+    protected double preProcessValue(int idx, double time, double in) {
+        return in;
+    }
+
+    protected double postProcessValue(int idx, double time, double in) {
         return in;
     }
 
@@ -58,13 +58,13 @@ public class Simple extends PlotProcessor {
             String field = param_Fields[i];
             Object v = update.get(field);
             if (v != null && v instanceof Number) {
-                double in = processValue(i, time, ((Number) v).doubleValue());
-                if (Double.isNaN(in)) {
+                double out = preProcessValue(i, time, ((Number) v).doubleValue());
+                if (Double.isNaN(out)) {
                     addPoint(i, time, Double.NaN);
                 } else {
-                    double filtered = lowPassFilters[i].getOutput(time, in);
-                    double out = delayLines[i].getOutput(time, filtered);
-                    addPoint(i, time, out * param_Scale + param_Offset);
+                    out = lowPassFilters[i].getOutput(time, out);
+                    out = postProcessValue(i, time, out);
+                    addPoint(i, time + param_Delay, out * param_Scale + param_Offset);
                 }
             }
         }

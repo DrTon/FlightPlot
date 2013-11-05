@@ -24,7 +24,7 @@ public class Derivative extends Simple {
     }
 
     @Override
-    protected double processValue(int idx, double time, double in) {
+    protected double postProcessValue(int idx, double time, double in) {
         double out;
         if (!Double.isNaN(timesPrev[idx])) {
             out = (in - valuesPrev[idx]) / (time - timesPrev[idx]);
