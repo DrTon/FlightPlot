@@ -110,6 +110,7 @@
                             <constraints/>
                             <properties/>
                             <clientProperties>
+                              <JTable.autoStartsEdit class="java.lang.Boolean" value="false"/>
                               <terminateEditOnFocusLost class="java.lang.Boolean" value="true"/>
                             </clientProperties>
                           </component>
