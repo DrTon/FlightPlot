@@ -29,6 +29,7 @@ import java.awt.event.*;
 import java.io.*;
 import java.nio.charset.Charset;
 import java.text.NumberFormat;
+import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -39,6 +40,9 @@ import java.util.prefs.Preferences;
  * User: ton Date: 03.06.13 Time: 23:24
  */
 public class FlightPlot {
+    public static final String GPS_LON = "GPS.Lon";
+    public static final String GPS_LAT = "GPS.Lat";
+    public static final String GPS_ALT = "GPS.Alt";
     private JFrame mainFrame;
     private JLabel statusLabel;
     private JPanel mainPanel;
@@ -465,6 +469,7 @@ public class FlightPlot {
         JMenuItem fileOpenItem = new JMenuItem("Open Log...");
         JMenuItem importPresetItem = new JMenuItem("Import Preset...");
         JMenuItem exportPresetItem = new JMenuItem("Export Preset...");
+        JMenuItem exportTrack = new JMenuItem("Export track as KML...");
         fileOpenItem.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
@@ -483,9 +488,16 @@ public class FlightPlot {
                 showExportPresetDialog();
             }
         });
+        exportTrack.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                showExportTrackDialog();
+            }
+        });
         newMenu.add(fileOpenItem);
         newMenu.add(importPresetItem);
         newMenu.add(exportPresetItem);
+        newMenu.add(exportTrack);
         JMenuBar menuBar = new JMenuBar();
         menuBar.add(newMenu);
         mainFrame.setJMenuBar(menuBar);
@@ -582,6 +594,85 @@ public class FlightPlot {
                 Preset preset = formatPreset(presetComboBox.getSelectedItem().toString());
                 FileWriter fileWriter = new FileWriter(new File(fileName));
                 fileWriter.write(preset.packJSONObject().toString(1));
+                fileWriter.close();
+            } catch (Exception e) {
+                setStatus("Error: " + e);
+                e.printStackTrace();
+            }
+        }
+    }
+
+    public void showExportTrackDialog() {
+        JFileChooser fc = new JFileChooser();
+        FileNameExtensionFilter kmlFilter = new FileNameExtensionFilter("KML", ".kml");
+        if (lastPresetDirectory != null)
+            fc.setCurrentDirectory(lastPresetDirectory);
+        fc.setFileFilter(kmlFilter);
+        fc.setDialogTitle("Export Track");
+        int returnVal = fc.showDialog(mainFrame, "Export");
+        if (returnVal == JFileChooser.APPROVE_OPTION) {
+            lastPresetDirectory = fc.getCurrentDirectory();
+            String fileName = fc.getSelectedFile().toString();
+            String fileExtension = kmlFilter.getExtensions()[0];
+            if (kmlFilter == fc.getFileFilter() && !fileName.toLowerCase().endsWith(fileExtension))
+                fileName += fileExtension;
+            try {
+                // TODO: export track to KML
+                // maybe use de.micromata.jak.JavaAPIforKml
+                FileWriter fileWriter = new FileWriter(new File(fileName));
+                fileWriter.write("<?xml version=\"1.0\" encoding=\"UTF-8\"?>");
+                fileWriter.write("<kml xmlns=\"http://www.opengis.net/kml/2.2\" xmlns:gx=\"http://www.google.com/kml/ext/2.2\">");
+                fileWriter.write("<Document>");
+                fileWriter.write("<name>Tracks</name>");
+                fileWriter.write("<description></description>");
+                fileWriter.write("<Style id=\"default\">\n" +
+                        "<LineStyle>\n" +
+                        "<color>7f00ffff</color>\n" +
+                        "<width>4</width>\n" +
+                        "</LineStyle>\n" +
+                        "<PolyStyle>\n" +
+                        "<color>7f00ff00</color>\n" +
+                        "</PolyStyle>\n" +
+                        "</Style>");
+                fileWriter.write("<Placemark>");
+                fileWriter.write("<name>Absolute</name>");
+                fileWriter.write("<description></description>");
+                fileWriter.write("<styleUrl>#default</styleUrl>");
+                fileWriter.write("<gx:Track id=\"ID\">");
+                fileWriter.write("<altitudeMode>absolute</altitudeMode>");
+
+
+                long start = logReader.getStartMicroseconds();
+                long end = logReader.getSizeMicroseconds();
+                Map<String, Object> data = new HashMap<String, Object>();
+                logReader.seek(start);
+                long current = start;
+                int lastSecond = 0;
+                int currentSecond = 0;
+                SimpleDateFormat dateFormatter = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSXXX");
+
+                // TODO: How do we know we're at EOF?
+                while(current < end){
+                    current = logReader.readUpdate(data);
+                    currentSecond = (int)current/1000000;
+                    if(data.containsKey(GPS_LON) && data.containsKey(GPS_LAT) && data.containsKey(GPS_ALT)){
+                        Float alt = (Float)data.get(GPS_ALT);
+                        Double lon = (Double)data.get(GPS_LON);
+                        Double lat = (Double)data.get(GPS_LAT);
+                        if(null != alt && null != lon && null != lat){
+                            if(alt < 10000 && lon < 12 && lat < 52 && lastSecond < currentSecond){
+                                fileWriter.write(String.format("<when>%s</when>\n", dateFormatter.format(new Date(currentSecond * 1000))));
+                                fileWriter.write(String.format("<gx:coord>%.10f,%.10f,%.0f</gx:coord>\n", lon, lat, alt));
+                                lastSecond = currentSecond;
+                            }
+                        }
+                    }
+                }
+
+                fileWriter.write("</gx:Track>");
+                fileWriter.write("</Placemark>");
+                fileWriter.write("</Document>");
+                fileWriter.write("</kml>");
                 fileWriter.close();
             } catch (Exception e) {
                 setStatus("Error: " + e);
