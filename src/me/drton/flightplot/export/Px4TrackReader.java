@@ -29,7 +29,6 @@ public class Px4TrackReader implements TrackReader {
     private long current;
     private int lastSecond;
     private int currentSecond;
-    private SimpleDateFormat dateFormatter = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSXXX");
 
     public Px4TrackReader(PX4LogReader reader) throws IOException, FormatErrorException{
         this.reader = reader;

@@ -12,7 +12,10 @@ public class KmlTrackExportWriter {
 
     private final Writer writer;
 
-    private final SimpleDateFormat dateFormatter = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSXXX");
+    // TODO: fix timezone
+    // Timezone for KML needs to be in the format "-01:00", SimpleDateFormat would support this since Java 7
+    // Using 'Z' instead, specifies UTC.
+    private final SimpleDateFormat dateFormatter = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'");
 
     KmlTrackExportWriter(Writer writer){
         this.writer = writer;
