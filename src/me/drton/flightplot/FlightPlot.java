@@ -603,6 +603,11 @@ public class FlightPlot {
     }
 
     public void showExportTrackDialog() {
+        if(null == this.logReader){
+            showExportTrackStatusMessage("Log file must be opened first.");
+            return;
+        }
+
         JFileChooser fc = new JFileChooser();
         if (lastPresetDirectory != null)
             fc.setCurrentDirectory(lastPresetDirectory);
