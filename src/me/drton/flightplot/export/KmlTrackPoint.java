@@ -10,6 +10,10 @@ public class KmlTrackPoint {
     private Double lat = null;
     private long timeInSeconds = 0;
 
+    public boolean has3dPosition(){
+        return null != alt && null != lon && null != lat;
+    }
+
     public Float getAlt() {
         return alt;
     }

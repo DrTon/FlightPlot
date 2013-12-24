@@ -44,7 +44,13 @@ public class KmlTrackExportWriter {
 
     public void writePoint(KmlTrackPoint point) throws IOException{
         writer.write(String.format("<when>%s</when>\n", dateFormatter.format(new Date(point.getTimeInSeconds() * 1000))));
-        writer.write(String.format("<gx:coord>%.10f,%.10f,%.0f</gx:coord>\n", point.getLon(), point.getLat(), point.getAlt()));
+
+        if(point.has3dPosition()){
+            writer.write(String.format("<gx:coord>%.10f %.10f %.0f</gx:coord>\n", point.getLon(), point.getLat(), point.getAlt()));
+        }
+        else {
+            writer.write("<gx:coord></gx:coord>\n");
+        }
     }
 
     public void writeEnd() throws IOException{
