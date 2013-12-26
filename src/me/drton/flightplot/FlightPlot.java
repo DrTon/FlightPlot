@@ -1,7 +1,9 @@
 package me.drton.flightplot;
 
 import me.drton.flightplot.export.KmlTrackExporter;
-import me.drton.flightplot.export.KmlTrackExporterFactory;
+import me.drton.flightplot.export.TrackPoint;
+import me.drton.flightplot.export.TrackReader;
+import me.drton.flightplot.export.TrackReaderFactory;
 import me.drton.flightplot.processors.PlotProcessor;
 import me.drton.flightplot.processors.ProcessorsList;
 import me.drton.flightplot.processors.Simple;
@@ -30,6 +32,7 @@ import java.awt.*;
 import java.awt.event.*;
 import java.io.*;
 import java.nio.charset.Charset;
+import java.text.DateFormat;
 import java.text.NumberFormat;
 import java.text.SimpleDateFormat;
 import java.util.*;
@@ -63,7 +66,7 @@ public class FlightPlot {
     private static String version = "0.2.1";
     private static String appNameAndVersion = appName + " v." + version;
     private final Preferences preferences;
-    private String fileName = null;
+    private String logFileName = null;
     private LogReader logReader = null;
     private XYSeriesCollection dataset;
     private JFreeChart jFreeChart;
@@ -517,8 +520,8 @@ public class FlightPlot {
         if (returnVal == JFileChooser.APPROVE_OPTION) {
             lastLogDirectory = fc.getCurrentDirectory();
             File file = fc.getSelectedFile();
-            fileName = file.getPath();
-            mainFrame.setTitle(appNameAndVersion + " - " + fileName);
+            logFileName = file.getPath();
+            mainFrame.setTitle(appNameAndVersion + " - " + logFileName);
             if (logReader != null) {
                 try {
                     logReader.close();
@@ -530,7 +533,7 @@ public class FlightPlot {
             long logStart = 0;
             long logSize = 1000000;
             try {
-                logReader = new PX4LogReader(fileName);
+                logReader = new PX4LogReader(logFileName);
                 logInfo.updateInfo(logReader);
                 logStart = logReader.getStartMicroseconds();
                 logSize = logReader.getSizeMicroseconds();
@@ -603,11 +606,10 @@ public class FlightPlot {
     }
 
     public void showExportTrackDialog() {
-        if(null == this.logReader){
+        if (null == this.logReader) {
             showExportTrackStatusMessage("Log file must be opened first.");
             return;
         }
-
         JFileChooser fc = new JFileChooser();
         if (lastPresetDirectory != null)
             fc.setCurrentDirectory(lastPresetDirectory);
@@ -616,19 +618,25 @@ public class FlightPlot {
         int returnVal = fc.showDialog(mainFrame, "Export");
         if (returnVal == JFileChooser.APPROVE_OPTION) {
             lastPresetDirectory = fc.getCurrentDirectory();
-            String fileName = fc.getSelectedFile().toString();
-            String fileExtension = kmlExtensionFilter.getExtensions()[0];
-            if (kmlExtensionFilter == fc.getFileFilter() && !fileName.toLowerCase().endsWith(fileExtension))
-                fileName += fileExtension;
+            String exportFileName = fc.getSelectedFile().toString();
+            String exportFileExtension = kmlExtensionFilter.getExtensions()[0];
+            if (kmlExtensionFilter == fc.getFileFilter() && !exportFileName.toLowerCase().endsWith(exportFileExtension))
+                exportFileName += exportFileExtension;
             try {
-                File exportFile = new File(fileName);
-                if(!exportFile.exists()){
-                    KmlTrackExporter exporter = KmlTrackExporterFactory.getKmlTrackExporter(this.logReader);
+                File exportFile = new File(exportFileName);
+                if (!exportFile.exists()) {
+                    TrackReader trackReader = TrackReaderFactory.getTrackReader(logReader);
+                    KmlTrackExporter exporter = new KmlTrackExporter(trackReader);
                     // TODO: start export in separate thread
-                    exporter.exportToFile(exportFile);
-                    showExportTrackStatusMessage(String.format("Successfully exported track to %s", fileName));
-                }
-                else {
+                    // get time of first point to use it as track title
+                    TrackPoint point = trackReader.readNextPoint();
+                    trackReader.reset();
+                    DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+                    String trackTitle = dateFormat.format(point.time) + " UTC";
+                    exporter.exportToFile(exportFile, trackTitle);
+                    showExportTrackStatusMessage(
+                            String.format("Successfully exported track %s to %s", trackTitle, exportFileName));
+                } else {
                     // TODO: ask for user approval to overwrite file
                     showExportTrackStatusMessage("File already exists, export aborted.");
                 }
@@ -639,7 +647,7 @@ public class FlightPlot {
         }
     }
 
-    private void showExportTrackStatusMessage(String message){
+    private void showExportTrackStatusMessage(String message) {
         setStatus(String.format("Track export: %s", message));
     }
 

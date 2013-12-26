@@ -11,9 +11,14 @@ public interface TrackReader {
 
     /**
      * Reads next track point from LogReader.
-     * @return returns KmlTrackPoint or null no more points can be read.
+     * @return returns TrackPoint or null no more points can be read.
      * @throws IOException
      * @throws FormatErrorException
      */
-    KmlTrackPoint readNextPoint() throws IOException, FormatErrorException;
+    TrackPoint readNextPoint() throws IOException, FormatErrorException;
+
+    /**
+     * Reset reader to start of log.
+     */
+    void reset() throws IOException, FormatErrorException;
 }
