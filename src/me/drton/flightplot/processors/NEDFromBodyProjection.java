@@ -16,6 +16,7 @@ public class NEDFromBodyProjection extends PlotProcessor {
     private double param_Scale;
     private double param_Offset;
     private boolean param_Backward;
+    private double[] param_Att_Offsets;
     private boolean[] show;
     private LowPassFilter[] lowPassFilters;
     private SimpleMatrix r;
@@ -26,6 +27,7 @@ public class NEDFromBodyProjection extends PlotProcessor {
         Map<String, Object> params = new HashMap<String, Object>();
         params.put("Fields", "IMU.AccX IMU.AccY IMU.AccZ");
         params.put("Fields Att", "ATT.Roll ATT.Pitch ATT.Yaw");
+        params.put("Att Offsets", "0.0 0.0 0.0");
         params.put("Show", "XYZ");
         params.put("LPF", 0.0);
         params.put("Scale", 1.0);
@@ -39,6 +41,7 @@ public class NEDFromBodyProjection extends PlotProcessor {
         super.init();
         param_Fields = ((String) parameters.get("Fields")).split(WHITESPACE_RE);
         param_Fields_Att = ((String) parameters.get("Fields Att")).split(WHITESPACE_RE);
+        String[] attOffsStr = ((String) parameters.get("Att Offsets")).split(WHITESPACE_RE);
         param_Scale = (Double) parameters.get("Scale");
         param_Offset = (Double) parameters.get("Offset");
         param_Backward = (Boolean) parameters.get("Backward");
@@ -47,7 +50,13 @@ public class NEDFromBodyProjection extends PlotProcessor {
         lowPassFilters = new LowPassFilter[3];
         v = new SimpleMatrix(3, 1);
         r = new SimpleMatrix(3, 3);
+        param_Att_Offsets = new double[3];
         for (int i = 0; i < 3; i++) {
+            if (attOffsStr.length > i) {
+                param_Att_Offsets[i] = Double.parseDouble(attOffsStr[i]);
+            } else {
+                param_Att_Offsets[i] = 0.0;
+            }
             String axisName = "XYZ".substring(i, i + 1);
             show[i] = showStr.contains(axisName);
             if (show[i]) {
@@ -68,8 +77,8 @@ public class NEDFromBodyProjection extends PlotProcessor {
         boolean act = false;
         if (roll != null && pitch != null && yaw != null) {
             // Update rotation matrix
-            r = RotationConversion.rotationMatrixByEulerAngles(roll.doubleValue(), pitch.doubleValue(),
-                    yaw.doubleValue());
+            r = RotationConversion.rotationMatrixByEulerAngles(roll.doubleValue() + param_Att_Offsets[0],
+                    pitch.doubleValue() + param_Att_Offsets[1], yaw.doubleValue() + param_Att_Offsets[2]);
             if (param_Backward)
                 r = r.transpose();
             act = true;
