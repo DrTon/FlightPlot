@@ -629,6 +629,7 @@ public class FlightPlot {
                     KmlTrackExporter exporter = new KmlTrackExporter(trackReader);
                     // TODO: start export in separate thread
                     // get time of first point to use it as track title
+                    // TODO: < does this work if there was no GPS fix in the beginning?
                     TrackPoint point = trackReader.readNextPoint();
                     trackReader.reset();
                     DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
