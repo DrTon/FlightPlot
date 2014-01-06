@@ -19,13 +19,23 @@ public class KmlTrackExporter {
         Writer fileWriter = new FileWriter(file);
         KmlTrackExportWriter writer = new KmlTrackExportWriter(fileWriter, title);
         try {
+            int count = 0;
             writer.writeStart();
+            writer.startTrackPart();
             while (true) {
+                count ++;
                 TrackPoint point = trackReader.readNextPoint();
                 if (point == null)
                     break;
                 writer.writePoint(point);
+
+                if(count > 500){
+                    writer.endTrackPart();
+                    writer.startTrackPart("red");
+                    count = 0;
+                }
             }
+            writer.endTrackPart();
             writer.writeEnd();
         } catch (Exception e) {
             e.printStackTrace();
