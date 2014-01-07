@@ -8,6 +8,7 @@ public class TrackPoint {
     public final double lon;    /// longitude
     public final double alt;    /// altitude AMLS
     public final long time;     /// unix time in milliseconds
+    public FlightMode flightMode = FlightMode.MANUAL;  /// flight mode
 
     public TrackPoint(double lat, double lon, float alt, long time) {
         this.lat = lat;
@@ -15,4 +16,5 @@ public class TrackPoint {
         this.alt = alt;
         this.time = time;
     }
+
 }

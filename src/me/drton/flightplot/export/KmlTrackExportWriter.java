@@ -9,12 +9,13 @@ import java.util.Locale;
  * Created by ada on 23.12.13.
  */
 public class KmlTrackExportWriter {
+    public static final String LINE_STYLE_YELLOW = "yellow";
+    public static final String LINE_STYLE_BLUE = "blue";
+    public static final String LINE_STYLE_RED = "red";
+
     private final Writer writer;
-
     private final String title;
-
     private int nextTrackNumber = 1;
-
     private final SimpleDateFormat dateFormatter = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'");
 
     public KmlTrackExportWriter(Writer writer, String title) {
@@ -29,34 +30,28 @@ public class KmlTrackExportWriter {
         writer.write("<Document>\n");
         writer.write("<name>" + this.title + "</name>\n");
         writer.write("<description></description>\n");
-        writer.write("<Style id=\"default\">\n");
+        writer.write("<Style id=\"" + LINE_STYLE_YELLOW + "\">\n");
         writer.write("<LineStyle>\n");
         writer.write("<color>7f00ffff</color>\n");
         writer.write("<width>4</width>\n");
         writer.write("</LineStyle>\n");
         writer.write("</Style>\n");
-        writer.write("<Style id=\"blue\">\n");
+        writer.write("<Style id=\"" + LINE_STYLE_BLUE + "\">\n");
         writer.write("<LineStyle>\n");
         writer.write("<color>7fff0000</color>\n");
         writer.write("<width>4</width>\n");
         writer.write("</LineStyle>\n");
         writer.write("</Style>\n");
-        writer.write("<Style id=\"red\">\n");
+        writer.write("<Style id=\"" + LINE_STYLE_RED + "\">\n");
         writer.write("<LineStyle>\n");
         writer.write("<color>7f0000ff</color>\n");
-        writer.write("<width>4</width>\n");
-        writer.write("</LineStyle>\n");
-        writer.write("</Style>\n");
-        writer.write("<Style id=\"green\">\n");
-        writer.write("<LineStyle>\n");
-        writer.write("<color>7f00ff00</color>\n");
         writer.write("<width>4</width>\n");
         writer.write("</LineStyle>\n");
         writer.write("</Style>\n");
     }
 
     public void startTrackPart() throws IOException {
-        startTrackPart("default");
+        startTrackPart(LINE_STYLE_YELLOW);
     }
 
     public void startTrackPart(String style) throws IOException {

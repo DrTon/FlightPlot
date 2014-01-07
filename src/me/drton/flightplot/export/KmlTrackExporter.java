@@ -20,19 +20,39 @@ public class KmlTrackExporter {
         KmlTrackExportWriter writer = new KmlTrackExportWriter(fileWriter, title);
         try {
             writer.writeStart();
-            writer.startTrackPart();
-            while (true) {
-                TrackPoint point = trackReader.readNextPoint();
-                if (point == null)
-                    break;
+
+            TrackPoint point = trackReader.readNextPoint();
+            FlightMode currentFlightMode = point.flightMode;
+            writer.startTrackPart(determineStyleByFlightMode(currentFlightMode));
+
+            while (null != point) {
+                if(point.flightMode != currentFlightMode){
+                    writer.endTrackPart();
+                    currentFlightMode = point.flightMode;
+                    writer.startTrackPart(determineStyleByFlightMode(currentFlightMode));
+                }
+
                 writer.writePoint(point);
+                point = trackReader.readNextPoint();
             }
+
             writer.endTrackPart();
             writer.writeEnd();
         } catch (Exception e) {
             e.printStackTrace();
         } finally {
             fileWriter.close();
+        }
+    }
+
+    protected String determineStyleByFlightMode(FlightMode flightMode){
+        switch(flightMode){
+            case AUTO:
+                return KmlTrackExportWriter.LINE_STYLE_RED;
+            case STABILIZED:
+                return KmlTrackExportWriter.LINE_STYLE_BLUE;
+            default:
+                return KmlTrackExportWriter.LINE_STYLE_YELLOW;
         }
     }
 }
