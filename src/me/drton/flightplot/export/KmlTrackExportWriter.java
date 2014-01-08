@@ -16,7 +16,7 @@ public class KmlTrackExportWriter {
     private final Writer writer;
     private final String title;
     private int nextTrackNumber = 1;
-    private final SimpleDateFormat dateFormatter = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'");
+    private final SimpleDateFormat dateFormatter = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'");
 
     public KmlTrackExportWriter(Writer writer, String title) {
         this.writer = writer;

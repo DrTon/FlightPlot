@@ -46,11 +46,16 @@ public class KmlTrackExporter {
     }
 
     protected String determineStyleByFlightMode(FlightMode flightMode){
+        if(null == flightMode) {
+            return KmlTrackExportWriter.LINE_STYLE_YELLOW;
+        }
+
         switch(flightMode){
             case AUTO:
                 return KmlTrackExportWriter.LINE_STYLE_RED;
             case STABILIZED:
                 return KmlTrackExportWriter.LINE_STYLE_BLUE;
+            case MANUAL:
             default:
                 return KmlTrackExportWriter.LINE_STYLE_YELLOW;
         }

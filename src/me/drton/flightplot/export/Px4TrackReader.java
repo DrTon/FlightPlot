@@ -22,6 +22,7 @@ public class PX4TrackReader implements TrackReader {
 
     private final PX4LogReader reader;
     private long timeLast = 0;
+    FlightMode lastFlightMode = null;
 
     public PX4TrackReader(PX4LogReader reader) throws IOException, FormatErrorException {
         this.reader = reader;
@@ -42,8 +43,12 @@ public class PX4TrackReader implements TrackReader {
                 break;  // End of file
             }
             Long timeGPS = (Long) data.get(GPS_TIME);
+            FlightMode currentFlightMode = extractFlightMode(data);
+            if(null != currentFlightMode){
+                lastFlightMode = currentFlightMode;
+            }
             if (timeGPS != null) {
-                long time = timeGPS / 1000000;
+                long time = timeGPS / 1000;
                 Integer fixType = (Integer) data.get(GPS_FIXTYPE);
                 Double lat = (Double) data.get(GPS_LAT);
                 Double lon = (Double) data.get(GPS_LON);
@@ -51,12 +56,8 @@ public class PX4TrackReader implements TrackReader {
                 if (time > timeLast && fixType != null && fixType >= REQUIRED_FIXTYPE &&
                         lat != null && lon != null && alt != null) {
                     timeLast = time;
-                    TrackPoint point = new TrackPoint(lat, lon, alt, time * 1000);
-
-                    FlightMode flightMode = extractFlightMode(data);
-                    if(null != flightMode){
-                        point.flightMode = flightMode;
-                    }
+                    TrackPoint point = new TrackPoint(lat, lon, alt, time);
+                    point.flightMode = lastFlightMode;
                     return point;
                 }
             }
