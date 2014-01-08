@@ -25,7 +25,7 @@ public class PosRatePIDControlSimulator extends PlotProcessor {
     private double rate;
     private double posSP;
     private boolean useRateSP;
-    private boolean spRateFF;
+    private double spRateFF;
     private double timePrev;
 
     @Override
@@ -48,7 +48,7 @@ public class PosRatePIDControlSimulator extends PlotProcessor {
         params.put("Att Acc Scale", 1.0);
         params.put("Drag", 0.0);
         params.put("Use Rate SP", false);
-        params.put("SP Rate FF", true);
+        params.put("SP Rate FF", 1.0);
         return params;
     }
 
@@ -66,7 +66,7 @@ public class PosRatePIDControlSimulator extends PlotProcessor {
         accScale = (Double) parameters.get("Att Acc Scale");
         drag = (Double) parameters.get("Drag");
         useRateSP = (Boolean) parameters.get("Use Rate SP");
-        spRateFF = (Boolean) parameters.get("SP Rate FF");
+        spRateFF = (Double) parameters.get("SP Rate FF");
         delayLine.reset();
         delayLine.setDelay((Double) parameters.get("Thrust Delay"));
         lpf.reset();
@@ -94,7 +94,7 @@ public class PosRatePIDControlSimulator extends PlotProcessor {
                 double force = delayLine.getOutput(time, lpf.getOutput(time, 0.0));
                 if (Double.isNaN(force))
                     force = 0.0;
-                double acc = force * thrustK - drag * rate;
+                double acc = force * thrustK - drag * rate * rate;
                 rate += acc * dt;
                 pos += rate * dt;
                 double posSPRate = 0.0;
@@ -106,9 +106,7 @@ public class PosRatePIDControlSimulator extends PlotProcessor {
                 if (useRateSP) {
                     rateSP = posSP;
                 } else {
-                    rateSP = pidPos.getOutput(posSP - pos, posSPRate - rate, dt);
-                    if (spRateFF)
-                        rateSP += posSPRate;
+                    rateSP = pidPos.getOutput(posSP - pos, posSPRate - rate, dt) + posSPRate * spRateFF;
                 }
                 double control = pidRate.getOutput(rateSP, rate, 0.0, dt, 1.0);
                 lpf.setInput(control);
