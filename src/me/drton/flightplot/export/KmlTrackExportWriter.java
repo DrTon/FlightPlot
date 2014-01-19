@@ -81,7 +81,6 @@ public class KmlTrackExportWriter {
     }
 
     public void writeEnd() throws IOException{
-
         writer.write("</Document>\n");
         writer.write("</kml>");
     }
