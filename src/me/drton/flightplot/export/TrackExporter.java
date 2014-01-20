@@ -16,4 +16,10 @@ public interface TrackExporter {
      */
     public void exportToFile(File file, String title) throws IOException;
 
+    /**
+     * Configures exporter, usually through user input by showing a dialog.
+     * @return true if process should continue, false otherwise
+     */
+    boolean configureExporter();
+
 }

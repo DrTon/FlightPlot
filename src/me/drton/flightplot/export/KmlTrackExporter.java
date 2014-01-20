@@ -17,7 +17,6 @@ public class KmlTrackExporter extends AbstractTrackExporter implements TrackExpo
     public KmlTrackExporter(TrackReader trackReader) {
         super(trackReader);
         this.config = new KmlExportConfiguration();
-        this.config.setSplitTracksByFlightMode(true);
     }
 
     public void exportToFile(File file, String title) throws IOException {
@@ -89,6 +88,20 @@ public class KmlTrackExporter extends AbstractTrackExporter implements TrackExpo
             case MANUAL:
             default:
                 return KmlTrackExportWriter.LINE_STYLE_YELLOW;
+        }
+    }
+
+    @Override
+    public boolean configureExporter() {
+        KmlExportConfigurationDialog dialog = new KmlExportConfigurationDialog();
+        dialog.pack();
+        dialog.setVisible(true);
+        if(dialog.isCanceled()){
+            return false;
+        }
+        else {
+            this.config = dialog.getConfiguration();
+            return true;
         }
     }
 }

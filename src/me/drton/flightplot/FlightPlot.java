@@ -1,9 +1,6 @@
 package me.drton.flightplot;
 
-import me.drton.flightplot.export.KmlTrackExporter;
-import me.drton.flightplot.export.TrackPoint;
-import me.drton.flightplot.export.TrackReader;
-import me.drton.flightplot.export.TrackReaderFactory;
+import me.drton.flightplot.export.*;
 import me.drton.flightplot.processors.PlotProcessor;
 import me.drton.flightplot.processors.ProcessorsList;
 import me.drton.flightplot.processors.Simple;
@@ -79,7 +76,6 @@ public class FlightPlot {
     private FileNameExtensionFilter logExtensionFilter = new FileNameExtensionFilter("PX4 Logs (*.bin)", "bin");
     private FileNameExtensionFilter presetExtensionFilter = new FileNameExtensionFilter("FlightPlot Presets (*.fplot)",
             "fplot");
-    private FileNameExtensionFilter kmlExtensionFilter = new FileNameExtensionFilter("KML", ".kml");
     private AtomicBoolean invokeProcessFile = new AtomicBoolean(false);
 
     private static final NumberFormat doubleNumberFormat = NumberFormat.getInstance(Locale.ROOT);
@@ -494,7 +490,7 @@ public class FlightPlot {
         exportTrack.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                showExportTrackDialog();
+                exportToKml();
             }
         });
         newMenu.add(fileOpenItem);
@@ -605,46 +601,29 @@ public class FlightPlot {
         }
     }
 
-    public void showExportTrackDialog() {
+    public void exportToKml() {
         if (null == this.logReader) {
             showExportTrackStatusMessage("Log file must be opened first.");
             return;
         }
-        JFileChooser fc = new JFileChooser();
-        if (lastPresetDirectory != null)
-            fc.setCurrentDirectory(lastPresetDirectory);
-        fc.setFileFilter(kmlExtensionFilter);
-        fc.setDialogTitle("Export Track");
-        int returnVal = fc.showDialog(mainFrame, "Export");
-        if (returnVal == JFileChooser.APPROVE_OPTION) {
-            lastPresetDirectory = fc.getCurrentDirectory();
-            String exportFileName = fc.getSelectedFile().toString();
-            String exportFileExtension = kmlExtensionFilter.getExtensions()[0];
-            if (kmlExtensionFilter == fc.getFileFilter() && !exportFileName.toLowerCase().endsWith(exportFileExtension))
-                exportFileName += exportFileExtension;
-            try {
-                File exportFile = new File(exportFileName);
-                if (!exportFile.exists()) {
-                    TrackReader trackReader = TrackReaderFactory.getTrackReader(logReader);
-                    KmlTrackExporter exporter = new KmlTrackExporter(trackReader);
-                    // TODO: start export in separate thread
-                    // get time of first point to use it as track title
-                    // TODO: < does this work if there was no GPS fix in the beginning?
-                    TrackPoint point = trackReader.readNextPoint();
-                    trackReader.reset();
-                    DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-                    String trackTitle = dateFormat.format(point.time) + " UTC";
-                    exporter.exportToFile(exportFile, trackTitle);
-                    showExportTrackStatusMessage(
-                            String.format("Successfully exported track %s to %s", trackTitle, exportFileName));
-                } else {
-                    // TODO: ask for user approval to overwrite file
-                    showExportTrackStatusMessage("File already exists, export aborted.");
+
+        try{
+            TrackReader trackReader = TrackReaderFactory.getTrackReader(logReader);
+            KmlTrackExporter exporter = new KmlTrackExporter(trackReader);
+            final ExportRunner exportRunner = new ExportRunner(trackReader, exporter);
+            exportRunner.setFinishedCallback(new Runnable() {
+                @Override
+                public void run() {
+                    showExportTrackStatusMessage(exportRunner.getStatusMessage());
+                    FlightPlot.this.lastPresetDirectory = exportRunner.getLastPresetDirectory();
                 }
-            } catch (Exception e) {
-                setStatus("Error: " + e);
-                e.printStackTrace();
-            }
+            });
+            new Thread(exportRunner).start();
+            showExportTrackStatusMessage("Exporting...");
+        }
+        catch (Exception e){
+            e.printStackTrace();
+            showExportTrackStatusMessage("Track reader could not be opened.");
         }
     }
 

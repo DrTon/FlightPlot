@@ -80,4 +80,9 @@ public class PX4TrackReader implements TrackReader {
         }
         return null;
     }
+
+    @Override
+    public boolean configureReader() {
+        return true;
+    }
 }

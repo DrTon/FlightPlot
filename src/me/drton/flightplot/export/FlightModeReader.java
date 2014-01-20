@@ -1,13 +1,11 @@
 package me.drton.flightplot.export;
 
-import java.util.List;
-
 /**
  * Created by ada on 14.01.14.
  */
 public class FlightModeReader implements TrackAnalyzer{
 
-    private FlightMode currentFlighMode = null;
+    private FlightMode currentFlightMode = null;
 
     private FlightModeChangeListener listener;
 
@@ -16,12 +14,12 @@ public class FlightModeReader implements TrackAnalyzer{
     }
 
     public void inputTrackPoint(TrackPoint point){
-        if(null != point.flightMode && null == this.currentFlighMode){
-            this.currentFlighMode = point.flightMode;
+        if(null != point.flightMode && null == this.currentFlightMode){
+            this.currentFlightMode = point.flightMode;
         }
-        else if(null != point.flightMode && this.currentFlighMode != point.flightMode){
-            this.currentFlighMode = point.flightMode;
-            listener.flightModeChanged(this.currentFlighMode);
+        else if(null != point.flightMode && this.currentFlightMode != point.flightMode){
+            this.currentFlightMode = point.flightMode;
+            listener.flightModeChanged(this.currentFlightMode);
         }
     }
 }
