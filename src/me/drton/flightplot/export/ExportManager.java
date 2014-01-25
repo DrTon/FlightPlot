@@ -20,7 +20,6 @@ public class ExportManager {
     private static final String READER_CONFIGURATION_SETTING = "ReaderConfiguration";
     private static final String LAST_EXPORT_DIRECTORY_SETTING = "LastExportDirectory";
 
-    private FileNameExtensionFilter kmlExtensionFilter = new FileNameExtensionFilter("KML", ".kml");
     private File lastExportDirectory;
     private ExporterConfigurationDialog dialog;
     private ExportRunner runner;
@@ -33,10 +32,12 @@ public class ExportManager {
 
     public boolean export(LogReader logReader, Runnable finishedCallback) throws IOException, FormatErrorException {
         if(showConfigurationDialog()){
-            File destination = getExportDestination();
+            ExportFormat exportFormat = this.dialog.getExporterConfiguration().getExportFormat();
+            File destination = getExportDestination(exportFormat);
+
             if(null != destination){
                 TrackReader trackReader = TrackReaderFactory.getTrackReader(logReader);
-                KmlTrackExporter exporter = new KmlTrackExporter(trackReader);
+                TrackExporter exporter = exportFormat.getTrackExporter(trackReader);
                 trackReader.setConfiguration(this.dialog.getReaderConfiguration());
                 exporter.setConfiguration(this.dialog.getExporterConfiguration());
                 this.runner = new ExportRunner(trackReader, exporter, destination);
@@ -53,18 +54,20 @@ public class ExportManager {
         return !this.dialog.isCanceled();
     }
 
-    private File getExportDestination(){
+    private File getExportDestination(ExportFormat exportFormat){
         JFileChooser fc = new JFileChooser();
         if (lastExportDirectory != null)
             fc.setCurrentDirectory(lastExportDirectory);
-        fc.setFileFilter(kmlExtensionFilter);
+        FileNameExtensionFilter extensionFilter =
+                new FileNameExtensionFilter(exportFormat.getFileExtensionName(), exportFormat.getFileExtension());
+        fc.setFileFilter(extensionFilter);
         fc.setDialogTitle("Export Track");
         int returnVal = fc.showDialog(null, "Export");
         if (returnVal == JFileChooser.APPROVE_OPTION) {
             lastExportDirectory = fc.getCurrentDirectory();
             String exportFileName = fc.getSelectedFile().toString();
-            String exportFileExtension = kmlExtensionFilter.getExtensions()[0];
-            if (kmlExtensionFilter == fc.getFileFilter() && !exportFileName.toLowerCase().endsWith(exportFileExtension))
+            String exportFileExtension = extensionFilter.getExtensions()[0];
+            if (extensionFilter == fc.getFileFilter() && !exportFileName.toLowerCase().endsWith(exportFileExtension))
                 exportFileName += exportFileExtension;
             File exportFile = new File(exportFileName);
             if (!exportFile.exists()) {

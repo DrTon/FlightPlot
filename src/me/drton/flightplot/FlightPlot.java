@@ -588,7 +588,7 @@ public class FlightPlot {
 
     public void exportTrack() {
         if (null == this.logReader) {
-            showExportTrackStatusMessage("Log file must be opened first.");
+            JOptionPane.showMessageDialog(mainFrame, "Log file must be opened first.", "Error", JOptionPane.ERROR_MESSAGE);
             return;
         }
 
