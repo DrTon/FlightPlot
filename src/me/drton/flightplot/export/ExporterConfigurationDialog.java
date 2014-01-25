@@ -3,20 +3,21 @@ package me.drton.flightplot.export;
 import javax.swing.*;
 import java.awt.event.*;
 
-public class KmlExportConfigurationDialog extends JDialog {
+public class ExporterConfigurationDialog extends JDialog {
     private JPanel contentPane;
     private JButton buttonOK;
     private JButton buttonCancel;
     private JCheckBox splitTrackByFlightCheckBox;
 
     private boolean canceled;
-    private KmlExportConfiguration configuration = new KmlExportConfiguration();
+    private ExporterConfiguration exporterConfiguration = new ExporterConfiguration();
+    private ReaderConfiguration readerConfiguration = new ReaderConfiguration();
 
-    public KmlExportConfigurationDialog() {
+    public ExporterConfigurationDialog() {
         setContentPane(contentPane);
         setModal(true);
         getRootPane().setDefaultButton(buttonOK);
-        setTitle("KML export settings");
+        setTitle("Export settings");
 
         buttonOK.addActionListener(new ActionListener() {
             public void actionPerformed(ActionEvent e) {
@@ -53,7 +54,7 @@ public class KmlExportConfigurationDialog extends JDialog {
     }
 
     private void updateConfigurationFromDialog() {
-        this.configuration.setSplitTracksByFlightMode(this.splitTrackByFlightCheckBox.isSelected());
+        this.exporterConfiguration.setSplitTracksByFlightMode(this.splitTrackByFlightCheckBox.isSelected());
     }
 
     private void onCancel() {
@@ -61,8 +62,20 @@ public class KmlExportConfigurationDialog extends JDialog {
         dispose();
     }
 
-    public KmlExportConfiguration getConfiguration(){
-        return this.configuration;
+    public ReaderConfiguration getReaderConfiguration() {
+        return readerConfiguration;
+    }
+
+    public void setReaderConfiguration(ReaderConfiguration readerConfiguration) {
+        this.readerConfiguration = readerConfiguration;
+    }
+
+    public ExporterConfiguration getExporterConfiguration() {
+        return exporterConfiguration;
+    }
+
+    public void setExporterConfiguration(ExporterConfiguration exporterConfiguration) {
+        this.exporterConfiguration = exporterConfiguration;
     }
 
     public boolean isCanceled() {

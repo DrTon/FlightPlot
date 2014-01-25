@@ -12,11 +12,10 @@ public class KmlTrackExporter extends AbstractTrackExporter implements TrackExpo
 
     private KmlTrackExportWriter writer;
     private boolean trackStarted = false;
-    private KmlExportConfiguration config;
+    private ExporterConfiguration configuration = new ExporterConfiguration();
 
     public KmlTrackExporter(TrackReader trackReader) {
         super(trackReader);
-        this.config = new KmlExportConfiguration();
     }
 
     public void exportToFile(File file, String title) throws IOException {
@@ -57,7 +56,7 @@ public class KmlTrackExporter extends AbstractTrackExporter implements TrackExpo
     }
 
     private void splitTrack(FlightMode newFlightMode) throws IOException {
-        if(config.isSplitTracksByFlightMode()){
+        if(configuration.isSplitTracksByFlightMode()){
             if(this.trackStarted){
                 this.writer.endTrackPart();
                 this.writer.startTrackPart(determineStyleByFlightMode(newFlightMode));
@@ -92,16 +91,7 @@ public class KmlTrackExporter extends AbstractTrackExporter implements TrackExpo
     }
 
     @Override
-    public boolean configureExporter() {
-        KmlExportConfigurationDialog dialog = new KmlExportConfigurationDialog();
-        dialog.pack();
-        dialog.setVisible(true);
-        if(dialog.isCanceled()){
-            return false;
-        }
-        else {
-            this.config = dialog.getConfiguration();
-            return true;
-        }
+    public void setConfiguration(ExporterConfiguration configuration) {
+        this.configuration = configuration;
     }
 }

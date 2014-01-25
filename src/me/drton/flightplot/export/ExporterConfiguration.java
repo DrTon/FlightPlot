@@ -3,7 +3,7 @@ package me.drton.flightplot.export;
 /**
  * Created by ada on 19.01.14.
  */
-public class KmlExportConfiguration {
+public class ExporterConfiguration {
     private boolean splitTracksByFlightMode = false;
 
     public boolean isSplitTracksByFlightMode() {

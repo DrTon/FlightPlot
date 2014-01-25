@@ -22,7 +22,8 @@ public class PX4TrackReader implements TrackReader {
 
     private final PX4LogReader reader;
     private long timeLast = 0;
-    FlightMode lastFlightMode = null;
+    private FlightMode lastFlightMode = null;
+    private ReaderConfiguration configuration = new ReaderConfiguration();
 
     public PX4TrackReader(PX4LogReader reader) throws IOException, FormatErrorException {
         this.reader = reader;
@@ -82,7 +83,7 @@ public class PX4TrackReader implements TrackReader {
     }
 
     @Override
-    public boolean configureReader() {
-        return true;
+    public void setConfiguration(ReaderConfiguration configuration) {
+        this.configuration = configuration;
     }
 }

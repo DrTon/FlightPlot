@@ -77,6 +77,7 @@ public class FlightPlot {
     private FileNameExtensionFilter presetExtensionFilter = new FileNameExtensionFilter("FlightPlot Presets (*.fplot)",
             "fplot");
     private AtomicBoolean invokeProcessFile = new AtomicBoolean(false);
+    private ExportManager exportManager;
 
     private static final NumberFormat doubleNumberFormat = NumberFormat.getInstance(Locale.ROOT);
 
@@ -239,6 +240,7 @@ public class FlightPlot {
             }
         });
         mainFrame.setVisible(true);
+        this.exportManager = new ExportManager();
     }
 
     private void onQuit() {
@@ -468,7 +470,7 @@ public class FlightPlot {
         JMenuItem fileOpenItem = new JMenuItem("Open Log...");
         JMenuItem importPresetItem = new JMenuItem("Import Preset...");
         JMenuItem exportPresetItem = new JMenuItem("Export Preset...");
-        JMenuItem exportTrack = new JMenuItem("Export track as KML...");
+        JMenuItem exportTrack = new JMenuItem("Export Track...");
         fileOpenItem.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
@@ -490,7 +492,7 @@ public class FlightPlot {
         exportTrack.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                exportToKml();
+                exportTrack();
             }
         });
         newMenu.add(fileOpenItem);
@@ -601,25 +603,23 @@ public class FlightPlot {
         }
     }
 
-    public void exportToKml() {
+    public void exportTrack() {
         if (null == this.logReader) {
             showExportTrackStatusMessage("Log file must be opened first.");
             return;
         }
 
         try{
-            TrackReader trackReader = TrackReaderFactory.getTrackReader(logReader);
-            KmlTrackExporter exporter = new KmlTrackExporter(trackReader);
-            final ExportRunner exportRunner = new ExportRunner(trackReader, exporter);
-            exportRunner.setFinishedCallback(new Runnable() {
+            boolean exportStarted = this.exportManager.export(this.logReader, new Runnable() {
                 @Override
                 public void run() {
-                    showExportTrackStatusMessage(exportRunner.getStatusMessage());
-                    FlightPlot.this.lastPresetDirectory = exportRunner.getLastPresetDirectory();
+                    showExportTrackStatusMessage(FlightPlot.this.exportManager.getLastStatusMessage());
+                    FlightPlot.this.lastPresetDirectory = FlightPlot.this.exportManager.getLastPresetDirectory();
                 }
             });
-            new Thread(exportRunner).start();
-            showExportTrackStatusMessage("Exporting...");
+            if(exportStarted){
+                showExportTrackStatusMessage("Exporting...");
+            }
         }
         catch (Exception e){
             e.printStackTrace();

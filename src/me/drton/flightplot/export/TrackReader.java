@@ -23,10 +23,6 @@ public interface TrackReader {
      */
     void reset() throws IOException, FormatErrorException;
 
-    /**
-     * Configures reader, usually through user input by showing a dialog.
-     * @return true if process should continue, false otherwise
-     */
-    boolean configureReader();
+    void setConfiguration(ReaderConfiguration configuration);
 
 }
