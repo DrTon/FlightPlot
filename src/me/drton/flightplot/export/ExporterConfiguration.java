@@ -1,10 +1,21 @@
 package me.drton.flightplot.export;
 
+import java.util.prefs.Preferences;
+
 /**
  * Created by ada on 19.01.14.
  */
 public class ExporterConfiguration {
-    private boolean splitTracksByFlightMode = false;
+    private boolean splitTracksByFlightMode;
+    private final static String SPLIT_TRACK_BY_FLIGHT_MODE_SETTING = "splitTracksByFlightMode";
+
+    public void saveConfiguration(Preferences preferences){
+        preferences.putBoolean(SPLIT_TRACK_BY_FLIGHT_MODE_SETTING, this.splitTracksByFlightMode);
+    }
+
+    public void loadConfiguration(Preferences preferences){
+        this.splitTracksByFlightMode = preferences.getBoolean(SPLIT_TRACK_BY_FLIGHT_MODE_SETTING, false);
+    }
 
     public boolean isSplitTracksByFlightMode() {
         return splitTracksByFlightMode;

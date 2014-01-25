@@ -47,6 +47,12 @@ public class ExporterConfigurationDialog extends JDialog {
         }, KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0), JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT);
     }
 
+    public void display(){
+        updateDialogFromConfiguration();
+        pack();
+        setVisible(true);
+    }
+
     private void onOK() {
         this.canceled = false;
         updateConfigurationFromDialog();
@@ -55,6 +61,10 @@ public class ExporterConfigurationDialog extends JDialog {
 
     private void updateConfigurationFromDialog() {
         this.exporterConfiguration.setSplitTracksByFlightMode(this.splitTrackByFlightCheckBox.isSelected());
+    }
+
+    private void updateDialogFromConfiguration(){
+        this.splitTrackByFlightCheckBox.setSelected(this.exporterConfiguration.isSplitTracksByFlightMode());
     }
 
     private void onCancel() {
@@ -66,16 +76,8 @@ public class ExporterConfigurationDialog extends JDialog {
         return readerConfiguration;
     }
 
-    public void setReaderConfiguration(ReaderConfiguration readerConfiguration) {
-        this.readerConfiguration = readerConfiguration;
-    }
-
     public ExporterConfiguration getExporterConfiguration() {
         return exporterConfiguration;
-    }
-
-    public void setExporterConfiguration(ExporterConfiguration exporterConfiguration) {
-        this.exporterConfiguration = exporterConfiguration;
     }
 
     public boolean isCanceled() {

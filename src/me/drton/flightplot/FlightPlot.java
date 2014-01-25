@@ -29,9 +29,7 @@ import java.awt.*;
 import java.awt.event.*;
 import java.io.*;
 import java.nio.charset.Charset;
-import java.text.DateFormat;
 import java.text.NumberFormat;
-import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -77,7 +75,8 @@ public class FlightPlot {
     private FileNameExtensionFilter presetExtensionFilter = new FileNameExtensionFilter("FlightPlot Presets (*.fplot)",
             "fplot");
     private AtomicBoolean invokeProcessFile = new AtomicBoolean(false);
-    private ExportManager exportManager;
+    private ExportManager exportManager = new ExportManager();
+    private PreferencesUtil preferencesUtil = new PreferencesUtil();
 
     private static final NumberFormat doubleNumberFormat = NumberFormat.getInstance(Locale.ROOT);
 
@@ -240,7 +239,6 @@ public class FlightPlot {
             }
         });
         mainFrame.setVisible(true);
-        this.exportManager = new ExportManager();
     }
 
     private void onQuit() {
@@ -301,10 +299,10 @@ public class FlightPlot {
     }
 
     private void loadPreferences() throws BackingStoreException {
-        loadWindowPreferences(mainFrame, preferences.node("MainWindow"), 800, 600);
-        loadWindowPreferences(fieldsListDialog, preferences.node("FieldsListDialog"), 300, 600);
-        loadWindowPreferences(addProcessorDialog, preferences.node("AddProcessorDialog"), -1, -1);
-        loadWindowPreferences(logInfo.getFrame(), preferences.node("LogInfoFrame"), 600, 600);
+        preferencesUtil.loadWindowPreferences(mainFrame, preferences.node("MainWindow"), 800, 600);
+        preferencesUtil.loadWindowPreferences(fieldsListDialog, preferences.node("FieldsListDialog"), 300, 600);
+        preferencesUtil.loadWindowPreferences(addProcessorDialog, preferences.node("AddProcessorDialog"), -1, -1);
+        preferencesUtil.loadWindowPreferences(logInfo.getFrame(), preferences.node("LogInfoFrame"), 600, 600);
         String logDirectoryStr = preferences.get("LogDirectory", null);
         if (logDirectoryStr != null)
             lastLogDirectory = new File(logDirectoryStr);
@@ -319,6 +317,7 @@ public class FlightPlot {
                 presetComboBox.addItem(preset);
             }
         }
+        this.exportManager.loadPreferences(preferences.node("ExportManager"));
     }
 
     private void savePreferences() throws BackingStoreException {
@@ -326,10 +325,10 @@ public class FlightPlot {
         for (String child : preferences.childrenNames()) {
             preferences.node(child).removeNode();
         }
-        saveWindowPreferences(mainFrame, preferences.node("MainWindow"));
-        saveWindowPreferences(fieldsListDialog, preferences.node("FieldsListDialog"));
-        saveWindowPreferences(addProcessorDialog, preferences.node("AddProcessorDialog"));
-        saveWindowPreferences(logInfo.getFrame(), preferences.node("LogInfoFrame"));
+        preferencesUtil.saveWindowPreferences(mainFrame, preferences.node("MainWindow"));
+        preferencesUtil.saveWindowPreferences(fieldsListDialog, preferences.node("FieldsListDialog"));
+        preferencesUtil.saveWindowPreferences(addProcessorDialog, preferences.node("AddProcessorDialog"));
+        preferencesUtil.saveWindowPreferences(logInfo.getFrame(), preferences.node("LogInfoFrame"));
         if (lastLogDirectory != null)
             preferences.put("LogDirectory", lastLogDirectory.getAbsolutePath());
         if (lastPresetDirectory != null)
@@ -342,6 +341,7 @@ public class FlightPlot {
                 preset.pack(presetsPref);
             }
         }
+        this.exportManager.savePreferences(preferences.node("ExportManager"));
     }
 
     private void loadPreset(Preset preset) {
@@ -367,23 +367,6 @@ public class FlightPlot {
             processorPresets.add(new ProcessorPreset(processor));
         }
         return new Preset(title, processorPresets);
-    }
-
-    private void loadWindowPreferences(Component window, Preferences windowPreferences, int defaultWidth,
-                                       int defaultHeight) {
-        if (defaultWidth > 0)
-            window.setSize(windowPreferences.getInt("Width", defaultWidth),
-                    windowPreferences.getInt("Height", defaultHeight));
-        window.setLocation(windowPreferences.getInt("X", 0), windowPreferences.getInt("Y", 0));
-    }
-
-    private void saveWindowPreferences(Component window, Preferences windowPreferences) {
-        Dimension size = window.getSize();
-        windowPreferences.putInt("Width", size.width);
-        windowPreferences.putInt("Height", size.height);
-        Point location = window.getLocation();
-        windowPreferences.putInt("X", location.x);
-        windowPreferences.putInt("Y", location.y);
     }
 
     private void createUIComponents() throws IllegalAccessException, InstantiationException {
@@ -614,7 +597,6 @@ public class FlightPlot {
                 @Override
                 public void run() {
                     showExportTrackStatusMessage(FlightPlot.this.exportManager.getLastStatusMessage());
-                    FlightPlot.this.lastPresetDirectory = FlightPlot.this.exportManager.getLastPresetDirectory();
                 }
             });
             if(exportStarted){

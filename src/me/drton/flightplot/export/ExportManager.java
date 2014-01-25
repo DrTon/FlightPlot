@@ -2,28 +2,33 @@ package me.drton.flightplot.export;
 
 import me.drton.flightplot.FormatErrorException;
 import me.drton.flightplot.LogReader;
+import me.drton.flightplot.PreferencesUtil;
 
 import javax.swing.*;
 import javax.swing.filechooser.FileNameExtensionFilter;
 import java.io.File;
 import java.io.IOException;
+import java.util.prefs.Preferences;
 
 /**
  * Created by ada on 25.01.14.
  */
 public class ExportManager {
 
+    private static final String DIALOG_SETTING = "Dialog";
+    private static final String EXPORTER_CONFIGURATION_SETTING = "ExporterConfiguration";
+    private static final String READER_CONFIGURATION_SETTING = "ReaderConfiguration";
+    private static final String LAST_EXPORT_DIRECTORY_SETTING = "LastExportDirectory";
+
     private FileNameExtensionFilter kmlExtensionFilter = new FileNameExtensionFilter("KML", ".kml");
-
-    private File lastPresetDirectory;
-
+    private File lastExportDirectory;
     private ExporterConfigurationDialog dialog;
-
     private ExportRunner runner;
+    private PreferencesUtil preferencesUtil;
 
     public ExportManager(){
+        this.preferencesUtil = new PreferencesUtil();
         this.dialog = new ExporterConfigurationDialog();
-        dialog.pack();
     }
 
     public boolean export(LogReader logReader, Runnable finishedCallback) throws IOException, FormatErrorException {
@@ -44,25 +49,19 @@ public class ExportManager {
     }
 
     private boolean showConfigurationDialog(){
-        dialog.setVisible(true);
-        if(dialog.isCanceled()){
-            return false;
-        }
-        else {
-            // TODO: get config values
-            return true;
-        }
+        this.dialog.display();
+        return !this.dialog.isCanceled();
     }
 
     private File getExportDestination(){
         JFileChooser fc = new JFileChooser();
-        if (lastPresetDirectory != null)
-            fc.setCurrentDirectory(lastPresetDirectory);
+        if (lastExportDirectory != null)
+            fc.setCurrentDirectory(lastExportDirectory);
         fc.setFileFilter(kmlExtensionFilter);
         fc.setDialogTitle("Export Track");
         int returnVal = fc.showDialog(null, "Export");
         if (returnVal == JFileChooser.APPROVE_OPTION) {
-            lastPresetDirectory = fc.getCurrentDirectory();
+            lastExportDirectory = fc.getCurrentDirectory();
             String exportFileName = fc.getSelectedFile().toString();
             String exportFileExtension = kmlExtensionFilter.getExtensions()[0];
             if (kmlExtensionFilter == fc.getFileFilter() && !exportFileName.toLowerCase().endsWith(exportFileExtension))
@@ -90,12 +89,23 @@ public class ExportManager {
         return "";
     }
 
-    public File getLastPresetDirectory() {
-        return lastPresetDirectory;
+    public void savePreferences(Preferences preferences){
+        this.preferencesUtil.saveWindowPreferences(this.dialog, preferences.node(DIALOG_SETTING));
+        this.dialog.getExporterConfiguration().saveConfiguration(preferences.node(EXPORTER_CONFIGURATION_SETTING));
+        this.dialog.getReaderConfiguration().saveConfiguration(preferences.node(READER_CONFIGURATION_SETTING));
+        if (this.lastExportDirectory != null){
+            preferences.put(LAST_EXPORT_DIRECTORY_SETTING, this.lastExportDirectory.getAbsolutePath());
+        }
     }
 
-    public void setLastPresetDirectory(File lastPresetDirectory) {
-        this.lastPresetDirectory = lastPresetDirectory;
+    public void loadPreferences(Preferences preferences){
+        this.preferencesUtil.loadWindowPreferences(this.dialog, preferences.node(DIALOG_SETTING), -1, -1);
+        this.dialog.getExporterConfiguration().loadConfiguration(preferences.node(EXPORTER_CONFIGURATION_SETTING));
+        this.dialog.getReaderConfiguration().loadConfiguration(preferences.node(READER_CONFIGURATION_SETTING));
+        String lastExportDirectoryPath = preferences.get(LAST_EXPORT_DIRECTORY_SETTING, null);
+        if(null != lastExportDirectoryPath){
+            this.lastExportDirectory = new File(lastExportDirectoryPath);
+        }
     }
 
 }
