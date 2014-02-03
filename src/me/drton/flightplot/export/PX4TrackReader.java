@@ -21,13 +21,15 @@ public class PX4TrackReader implements TrackReader {
     private static final int REQUIRED_FIXTYPE = 3;
 
     private final PX4LogReader reader;
-    private long timeLast = 0;
+    private long nextMinTime = 0;
+    private long timeGap = 0;
     private FlightMode lastFlightMode = null;
     private ReaderConfiguration configuration = new ReaderConfiguration();
 
     public PX4TrackReader(PX4LogReader reader) throws IOException, FormatErrorException {
         this.reader = reader;
         reset();
+        initFromConfig();
     }
 
     public void reset() throws IOException, FormatErrorException {
@@ -54,9 +56,12 @@ public class PX4TrackReader implements TrackReader {
                 Double lat = (Double) data.get(GPS_LAT);
                 Double lon = (Double) data.get(GPS_LON);
                 Float alt = (Float) data.get(GPS_ALT);
-                if (time > timeLast && fixType != null && fixType >= REQUIRED_FIXTYPE &&
+                if (time >= this.nextMinTime && fixType != null && fixType >= REQUIRED_FIXTYPE &&
                         lat != null && lon != null && alt != null) {
-                    timeLast = time;
+                    if(0 == this.nextMinTime){
+                        this.nextMinTime = time;
+                    }
+                    this.nextMinTime += this.timeGap;
                     TrackPoint point = new TrackPoint(lat, lon, alt, time);
                     point.flightMode = lastFlightMode;
                     return point;
@@ -85,5 +90,10 @@ public class PX4TrackReader implements TrackReader {
     @Override
     public void setConfiguration(ReaderConfiguration configuration) {
         this.configuration = configuration;
+        initFromConfig();
+    }
+
+    private void initFromConfig(){
+        this.timeGap = (long)Math.floor(1000 / this.configuration.getSamplesPerSecond());
     }
 }

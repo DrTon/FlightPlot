@@ -1,7 +1,11 @@
 package me.drton.flightplot.export;
 
 import javax.swing.*;
+import javax.swing.event.ChangeEvent;
+import javax.swing.event.ChangeListener;
 import java.awt.event.*;
+import java.util.Dictionary;
+import java.util.Hashtable;
 
 public class ExporterConfigurationDialog extends JDialog {
     private JPanel contentPane;
@@ -9,6 +13,8 @@ public class ExporterConfigurationDialog extends JDialog {
     private JButton buttonCancel;
     private JCheckBox splitTrackByFlightCheckBox;
     private JComboBox exportFormat;
+    private JSlider samplesPerSecond;
+    private JLabel samplesPerSecondValue;
 
     private boolean canceled;
     private ExporterConfiguration exporterConfiguration = new ExporterConfiguration();
@@ -34,7 +40,7 @@ public class ExporterConfigurationDialog extends JDialog {
         setModal(true);
         getRootPane().setDefaultButton(buttonOK);
         setTitle("Export settings");
-        initFormatList();
+        initGuiElements();
 
         buttonOK.addActionListener(new ActionListener() {
             public void actionPerformed(ActionEvent e) {
@@ -62,12 +68,63 @@ public class ExporterConfigurationDialog extends JDialog {
                 onCancel();
             }
         }, KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0), JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT);
+
+        samplesPerSecond.addChangeListener(new ChangeListener() {
+
+            @Override
+            public void stateChanged(ChangeEvent changeEvent) {
+                if(getSamplesPerSecond() == Double.MAX_VALUE){
+                    ExporterConfigurationDialog.this.samplesPerSecondValue.setText("max");
+                }
+                else {
+                    ExporterConfigurationDialog.this.samplesPerSecondValue.setText(String.format("%.1f", getSamplesPerSecond()));
+                }
+            }
+        });
+    }
+
+    private void initGuiElements(){
+        initFormatList();
+        initSampleSlider();
     }
 
     private void initFormatList(){
         this.exportFormat.addItem(new FormatItem("", ""));
         for(ExportFormatFactory.ExportFormatType type : ExportFormatFactory.ExportFormatType.values()){
             this.exportFormat.addItem(new FormatItem(type.getExportFormat().getFormatName(), type.name()));
+        }
+    }
+
+    private void initSampleSlider(){
+        Dictionary<Integer, JLabel> labels = new Hashtable<Integer, JLabel>();
+        labels.put(1, new JLabel("0.1"));
+        labels.put(10, new JLabel("1"));
+        labels.put(19, new JLabel("10"));
+        this.samplesPerSecond.setLabelTable(labels);
+    }
+
+    private double getSamplesPerSecond(){
+        int value = this.samplesPerSecond.getValue();
+        if(value <= 10){
+            return (double)value/10;
+        }
+        else if (value == 20){
+            return Double.MAX_VALUE;
+        }
+        else {
+            return value - 9;
+        }
+    }
+
+    private void setSamplesPerSecond(double value){
+        if(Double.MAX_VALUE == value){
+            this.samplesPerSecond.setValue(20);
+        }
+        else if (value <= 1){
+            this.samplesPerSecond.setValue((int)(value*10));
+        }
+        else {
+            this.samplesPerSecond.setValue((int)value + 9);
         }
     }
 
@@ -99,6 +156,8 @@ public class ExporterConfigurationDialog extends JDialog {
             FormatItem item = (FormatItem)this.exportFormat.getSelectedItem();
             this.exporterConfiguration.setExportFormatType(ExportFormatFactory.ExportFormatType.valueOf(item.name));
         }
+
+        this.readerConfiguration.setSamplesPerSecond(getSamplesPerSecond());
     }
 
     private void updateDialogFromConfiguration(){
@@ -112,6 +171,8 @@ public class ExporterConfigurationDialog extends JDialog {
                 }
             }
         }
+
+        setSamplesPerSecond(this.readerConfiguration.getSamplesPerSecond());
     }
 
     private void onCancel() {

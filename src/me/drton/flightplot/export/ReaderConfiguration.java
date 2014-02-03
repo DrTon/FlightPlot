@@ -14,7 +14,7 @@ public class ReaderConfiguration {
     }
 
     public void loadConfiguration(Preferences preferences){
-        this.samplesPerSecond = preferences.getDouble(SAMPLES_PER_SECOND_SETTING, 10);
+        this.samplesPerSecond = preferences.getDouble(SAMPLES_PER_SECOND_SETTING, Double.MAX_VALUE);
     }
 
     public double getSamplesPerSecond() {
