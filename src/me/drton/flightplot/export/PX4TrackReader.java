@@ -39,9 +39,10 @@ public class PX4TrackReader implements TrackReader {
     @Override
     public TrackPoint readNextPoint() throws IOException, FormatErrorException {
         Map<String, Object> data = new HashMap<String, Object>();
+        long logTime = 0;
         while (true) {
             try {
-                reader.readUpdate(data);
+                logTime = reader.readUpdate(data);
             } catch (EOFException e) {
                 break;  // End of file
             }
@@ -56,10 +57,11 @@ public class PX4TrackReader implements TrackReader {
                 Double lat = (Double) data.get(GPS_LAT);
                 Double lon = (Double) data.get(GPS_LON);
                 Float alt = (Float) data.get(GPS_ALT);
-                if (time >= this.nextMinTime && fixType != null && fixType >= REQUIRED_FIXTYPE &&
-                        lat != null && lon != null && alt != null) {
+                if (logTime >= this.nextMinTime
+                        && fixType != null && fixType >= REQUIRED_FIXTYPE
+                        && lat != null && lon != null && alt != null) {
                     if(0 == this.nextMinTime){
-                        this.nextMinTime = time;
+                        this.nextMinTime = logTime;
                     }
                     this.nextMinTime += this.timeGap;
                     TrackPoint point = new TrackPoint(lat, lon, alt, time);
@@ -94,6 +96,6 @@ public class PX4TrackReader implements TrackReader {
     }
 
     private void initFromConfig(){
-        this.timeGap = (long)Math.floor(1000 / this.configuration.getSamplesPerSecond());
+        this.timeGap = (long)Math.floor(1000000 / this.configuration.getSamplesPerSecond());
     }
 }
