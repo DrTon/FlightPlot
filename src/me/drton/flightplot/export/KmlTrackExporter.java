@@ -24,6 +24,10 @@ public class KmlTrackExporter extends AbstractTrackExporter implements TrackExpo
             this.writer.writeStart();
 
             TrackPoint point = readNextPoint();
+            if(!this.trackStarted){
+                this.writer.startTrackPart();
+                this.trackStarted = true;
+            }
             while (null != point) {
                 this.writer.writePoint(point);
                 point = readNextPoint();
@@ -63,12 +67,6 @@ public class KmlTrackExporter extends AbstractTrackExporter implements TrackExpo
             }
             else {
                 this.writer.startTrackPart(determineStyleByFlightMode(newFlightMode));
-                this.trackStarted = true;
-            }
-        }
-        else {
-            if(!this.trackStarted){
-                this.writer.startTrackPart();
                 this.trackStarted = true;
             }
         }
