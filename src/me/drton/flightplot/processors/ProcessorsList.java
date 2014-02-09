@@ -19,7 +19,6 @@ public class ProcessorsList {
         addProcessorClass(ATan2.class);
         addProcessorClass(PosPIDControlSimulator.class);
         addProcessorClass(PosRatePIDControlSimulator.class);
-        addProcessorClass(AltitudeEstimator.class);
         addProcessorClass(PositionEstimator.class);
         addProcessorClass(GlobalPositionProjection.class);
         addProcessorClass(LandDetector.class);
