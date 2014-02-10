@@ -1,9 +1,6 @@
 package me.drton.flightplot;
 
-import me.drton.flightplot.export.KmlTrackExporter;
-import me.drton.flightplot.export.TrackPoint;
-import me.drton.flightplot.export.TrackReader;
-import me.drton.flightplot.export.TrackReaderFactory;
+import me.drton.flightplot.export.*;
 import me.drton.flightplot.processors.PlotProcessor;
 import me.drton.flightplot.processors.ProcessorsList;
 import me.drton.flightplot.processors.Simple;
@@ -32,9 +29,7 @@ import java.awt.*;
 import java.awt.event.*;
 import java.io.*;
 import java.nio.charset.Charset;
-import java.text.DateFormat;
 import java.text.NumberFormat;
-import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -79,8 +74,9 @@ public class FlightPlot {
     private FileNameExtensionFilter logExtensionFilter = new FileNameExtensionFilter("PX4 Logs (*.bin)", "bin");
     private FileNameExtensionFilter presetExtensionFilter = new FileNameExtensionFilter("FlightPlot Presets (*.fplot)",
             "fplot");
-    private FileNameExtensionFilter kmlExtensionFilter = new FileNameExtensionFilter("KML", ".kml");
     private AtomicBoolean invokeProcessFile = new AtomicBoolean(false);
+    private ExportManager exportManager = new ExportManager();
+    private PreferencesUtil preferencesUtil = new PreferencesUtil();
 
     private static final NumberFormat doubleNumberFormat = NumberFormat.getInstance(Locale.ROOT);
 
@@ -303,10 +299,10 @@ public class FlightPlot {
     }
 
     private void loadPreferences() throws BackingStoreException {
-        loadWindowPreferences(mainFrame, preferences.node("MainWindow"), 800, 600);
-        loadWindowPreferences(fieldsListDialog, preferences.node("FieldsListDialog"), 300, 600);
-        loadWindowPreferences(addProcessorDialog, preferences.node("AddProcessorDialog"), -1, -1);
-        loadWindowPreferences(logInfo.getFrame(), preferences.node("LogInfoFrame"), 600, 600);
+        preferencesUtil.loadWindowPreferences(mainFrame, preferences.node("MainWindow"), 800, 600);
+        preferencesUtil.loadWindowPreferences(fieldsListDialog, preferences.node("FieldsListDialog"), 300, 600);
+        preferencesUtil.loadWindowPreferences(addProcessorDialog, preferences.node("AddProcessorDialog"), -1, -1);
+        preferencesUtil.loadWindowPreferences(logInfo.getFrame(), preferences.node("LogInfoFrame"), 600, 600);
         String logDirectoryStr = preferences.get("LogDirectory", null);
         if (logDirectoryStr != null)
             lastLogDirectory = new File(logDirectoryStr);
@@ -321,6 +317,7 @@ public class FlightPlot {
                 presetComboBox.addItem(preset);
             }
         }
+        this.exportManager.loadPreferences(preferences.node("ExportManager"));
     }
 
     private void savePreferences() throws BackingStoreException {
@@ -328,10 +325,10 @@ public class FlightPlot {
         for (String child : preferences.childrenNames()) {
             preferences.node(child).removeNode();
         }
-        saveWindowPreferences(mainFrame, preferences.node("MainWindow"));
-        saveWindowPreferences(fieldsListDialog, preferences.node("FieldsListDialog"));
-        saveWindowPreferences(addProcessorDialog, preferences.node("AddProcessorDialog"));
-        saveWindowPreferences(logInfo.getFrame(), preferences.node("LogInfoFrame"));
+        preferencesUtil.saveWindowPreferences(mainFrame, preferences.node("MainWindow"));
+        preferencesUtil.saveWindowPreferences(fieldsListDialog, preferences.node("FieldsListDialog"));
+        preferencesUtil.saveWindowPreferences(addProcessorDialog, preferences.node("AddProcessorDialog"));
+        preferencesUtil.saveWindowPreferences(logInfo.getFrame(), preferences.node("LogInfoFrame"));
         if (lastLogDirectory != null)
             preferences.put("LogDirectory", lastLogDirectory.getAbsolutePath());
         if (lastPresetDirectory != null)
@@ -344,6 +341,7 @@ public class FlightPlot {
                 preset.pack(presetsPref);
             }
         }
+        this.exportManager.savePreferences(preferences.node("ExportManager"));
     }
 
     private void loadPreset(Preset preset) {
@@ -369,23 +367,6 @@ public class FlightPlot {
             processorPresets.add(new ProcessorPreset(processor));
         }
         return new Preset(title, processorPresets);
-    }
-
-    private void loadWindowPreferences(Component window, Preferences windowPreferences, int defaultWidth,
-                                       int defaultHeight) {
-        if (defaultWidth > 0)
-            window.setSize(windowPreferences.getInt("Width", defaultWidth),
-                    windowPreferences.getInt("Height", defaultHeight));
-        window.setLocation(windowPreferences.getInt("X", 0), windowPreferences.getInt("Y", 0));
-    }
-
-    private void saveWindowPreferences(Component window, Preferences windowPreferences) {
-        Dimension size = window.getSize();
-        windowPreferences.putInt("Width", size.width);
-        windowPreferences.putInt("Height", size.height);
-        Point location = window.getLocation();
-        windowPreferences.putInt("X", location.x);
-        windowPreferences.putInt("Y", location.y);
     }
 
     private void createUIComponents() throws IllegalAccessException, InstantiationException {
@@ -472,7 +453,7 @@ public class FlightPlot {
         JMenuItem fileOpenItem = new JMenuItem("Open Log...");
         JMenuItem importPresetItem = new JMenuItem("Import Preset...");
         JMenuItem exportPresetItem = new JMenuItem("Export Preset...");
-        JMenuItem exportTrack = new JMenuItem("Export track as KML...");
+        JMenuItem exportTrack = new JMenuItem("Export Track...");
         fileOpenItem.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
@@ -494,7 +475,7 @@ public class FlightPlot {
         exportTrack.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                showExportTrackDialog();
+                exportTrack();
             }
         });
         newMenu.add(fileOpenItem);
@@ -605,45 +586,26 @@ public class FlightPlot {
         }
     }
 
-    public void showExportTrackDialog() {
+    public void exportTrack() {
         if (null == this.logReader) {
-            showExportTrackStatusMessage("Log file must be opened first.");
+            JOptionPane.showMessageDialog(mainFrame, "Log file must be opened first.", "Error", JOptionPane.ERROR_MESSAGE);
             return;
         }
-        JFileChooser fc = new JFileChooser();
-        if (lastPresetDirectory != null)
-            fc.setCurrentDirectory(lastPresetDirectory);
-        fc.setFileFilter(kmlExtensionFilter);
-        fc.setDialogTitle("Export Track");
-        int returnVal = fc.showDialog(mainFrame, "Export");
-        if (returnVal == JFileChooser.APPROVE_OPTION) {
-            lastPresetDirectory = fc.getCurrentDirectory();
-            String exportFileName = fc.getSelectedFile().toString();
-            String exportFileExtension = kmlExtensionFilter.getExtensions()[0];
-            if (kmlExtensionFilter == fc.getFileFilter() && !exportFileName.toLowerCase().endsWith(exportFileExtension))
-                exportFileName += exportFileExtension;
-            try {
-                File exportFile = new File(exportFileName);
-                if (!exportFile.exists()) {
-                    TrackReader trackReader = TrackReaderFactory.getTrackReader(logReader);
-                    KmlTrackExporter exporter = new KmlTrackExporter(trackReader);
-                    // TODO: start export in separate thread
-                    // get time of first point to use it as track title
-                    TrackPoint point = trackReader.readNextPoint();
-                    trackReader.reset();
-                    DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-                    String trackTitle = dateFormat.format(point.time) + " UTC";
-                    exporter.exportToFile(exportFile, trackTitle);
-                    showExportTrackStatusMessage(
-                            String.format("Successfully exported track %s to %s", trackTitle, exportFileName));
-                } else {
-                    // TODO: ask for user approval to overwrite file
-                    showExportTrackStatusMessage("File already exists, export aborted.");
+
+        try{
+            boolean exportStarted = this.exportManager.export(this.logReader, new Runnable() {
+                @Override
+                public void run() {
+                    showExportTrackStatusMessage(FlightPlot.this.exportManager.getLastStatusMessage());
                 }
-            } catch (Exception e) {
-                setStatus("Error: " + e);
-                e.printStackTrace();
+            });
+            if(exportStarted){
+                showExportTrackStatusMessage("Exporting...");
             }
+        }
+        catch (Exception e){
+            e.printStackTrace();
+            showExportTrackStatusMessage("Track reader could not be opened.");
         }
     }
 

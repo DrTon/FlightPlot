@@ -2,6 +2,7 @@ package me.drton.flightplot.export;
 
 import me.drton.flightplot.FormatErrorException;
 
+import javax.swing.*;
 import java.io.IOException;
 
 /**
@@ -11,7 +12,7 @@ public interface TrackReader {
 
     /**
      * Reads next track point from LogReader.
-     * @return returns TrackPoint or null no more points can be read.
+     * @return returns TrackPoint or null if no more points can be read.
      * @throws IOException
      * @throws FormatErrorException
      */
@@ -21,4 +22,7 @@ public interface TrackReader {
      * Reset reader to start of log.
      */
     void reset() throws IOException, FormatErrorException;
+
+    void setConfiguration(ReaderConfiguration configuration);
+
 }
