@@ -593,7 +593,13 @@ public class FlightPlot {
         }
 
         try{
-            boolean exportStarted = this.exportManager.export(this.logReader, new Runnable() {
+            ExportData data = new ExportData();
+            Range timeAxisRange = jFreeChart.getXYPlot().getDomainAxis().getRange();
+            data.setChartRangeFrom((long)(timeAxisRange.getLowerBound() * 1000000));
+            data.setChartRangeTo((long)(timeAxisRange.getUpperBound() * 1000000));
+            data.setLogReader(this.logReader);
+
+            boolean exportStarted = this.exportManager.export(data, new Runnable() {
                 @Override
                 public void run() {
                     showExportTrackStatusMessage(FlightPlot.this.exportManager.getLastStatusMessage());

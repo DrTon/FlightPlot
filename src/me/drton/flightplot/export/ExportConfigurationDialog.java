@@ -7,7 +7,7 @@ import java.awt.event.*;
 import java.util.Dictionary;
 import java.util.Hashtable;
 
-public class ExporterConfigurationDialog extends JDialog {
+public class ExportConfigurationDialog extends JDialog {
     private JPanel contentPane;
     private JButton buttonOK;
     private JButton buttonCancel;
@@ -15,10 +15,15 @@ public class ExporterConfigurationDialog extends JDialog {
     private JComboBox exportFormat;
     private JSlider samplesPerSecond;
     private JLabel samplesPerSecondValue;
+    private JLabel maxTimeValue;
+    private JTextField exportTimeTo;
+    private JTextField exportTimeFrom;
+    private JCheckBox exportDataInRange;
 
     private boolean canceled;
     private ExporterConfiguration exporterConfiguration = new ExporterConfiguration();
     private ReaderConfiguration readerConfiguration = new ReaderConfiguration();
+    private ExportData exportData;
 
     private class FormatItem{
         String displayName;
@@ -35,7 +40,7 @@ public class ExporterConfigurationDialog extends JDialog {
         }
     }
 
-    public ExporterConfigurationDialog() {
+    public ExportConfigurationDialog() {
         setContentPane(contentPane);
         setModal(true);
         getRootPane().setDefaultButton(buttonOK);
@@ -73,11 +78,21 @@ public class ExporterConfigurationDialog extends JDialog {
 
             @Override
             public void stateChanged(ChangeEvent changeEvent) {
-                if(getSamplesPerSecond() == Double.MAX_VALUE){
-                    ExporterConfigurationDialog.this.samplesPerSecondValue.setText("max");
-                }
-                else {
-                    ExporterConfigurationDialog.this.samplesPerSecondValue.setText(String.format("%.1f", getSamplesPerSecond()));
+                updateForSamplesPerSecond();
+            }
+        });
+        exportDataInRange.addItemListener(new ItemListener() {
+            @Override
+            public void itemStateChanged(ItemEvent itemEvent) {
+                updateForExportDataInRange();
+            }
+        });
+        maxTimeValue.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent mouseEvent) {
+                if(!ExportConfigurationDialog.this.exportDataInRange.isSelected()){
+                    ExportConfigurationDialog.this.exportTimeTo.setText(String.valueOf(
+                            ExportConfigurationDialog.this.exportData.getLogReader().getSizeMicroseconds()));
                 }
             }
         });
@@ -126,9 +141,45 @@ public class ExporterConfigurationDialog extends JDialog {
         else {
             this.samplesPerSecond.setValue((int)value + 9);
         }
+        updateForSamplesPerSecond();
     }
 
-    public void display(){
+    private void updateForExportDataInRange(){
+        if (exportDataInRange.isSelected()) {
+            this.exportTimeFrom.setText(
+                    String.valueOf(
+                            Math.max(this.exportData.getChartRangeFrom()
+                                    - this.exportData.getLogReader().getStartMicroseconds()
+                                    , 0)
+                    )
+            );
+            this.exportTimeTo.setText(
+                    String.valueOf(
+                            Math.min(this.exportData.getChartRangeTo()
+                                    - this.exportData.getLogReader().getStartMicroseconds()
+                                    , this.exportData.getLogReader().getSizeMicroseconds())
+                    )
+            );
+            this.exportTimeFrom.setEnabled(false);
+            this.exportTimeTo.setEnabled(false);
+        } else {
+            this.exportTimeFrom.setEnabled(true);
+            this.exportTimeTo.setEnabled(true);
+        }
+    }
+
+    private void updateForSamplesPerSecond(){
+        if(getSamplesPerSecond() == Double.MAX_VALUE){
+            this.samplesPerSecondValue.setText("max");
+        }
+        else {
+            this.samplesPerSecondValue.setText(
+                    String.format("%.1f", getSamplesPerSecond()));
+        }
+    }
+
+    public void display(ExportData exportData){
+        this.exportData = exportData;
         updateDialogFromConfiguration();
         pack();
         setVisible(true);
@@ -147,6 +198,22 @@ public class ExporterConfigurationDialog extends JDialog {
             JOptionPane.showMessageDialog(this, "You must select a export format.", "Error", JOptionPane.ERROR_MESSAGE);
             return false;
         }
+
+        try{
+            long from = Long.parseLong(this.exportTimeFrom.getText());
+            long to = Long.parseLong(this.exportTimeTo.getText());
+            if(from < 0 || to <= from || to > this.exportData.getLogReader().getSizeMicroseconds()){
+                JOptionPane.showMessageDialog(this, "Export range FROM must be greater or equal to 0, TO must be greater " +
+                        "than FROM and smaller than MAX.", "Error", JOptionPane.ERROR_MESSAGE);
+                return false;
+            }
+        }
+        catch (NumberFormatException e){
+            JOptionPane.showMessageDialog(this, "Export range FROM and TO must be valid numbers."
+                    , "Error", JOptionPane.ERROR_MESSAGE);
+            return false;
+        }
+
         return true;
     }
 
@@ -158,6 +225,13 @@ public class ExporterConfigurationDialog extends JDialog {
         }
 
         this.readerConfiguration.setSamplesPerSecond(getSamplesPerSecond());
+        this.readerConfiguration.setTimeTo(getNumberFromTextField(this.exportTimeTo));
+        this.readerConfiguration.setTimeFrom(getNumberFromTextField(this.exportTimeFrom));
+        this.readerConfiguration.setExportChartRangeOnly(this.exportDataInRange.isSelected());
+    }
+
+    private long getNumberFromTextField(final JTextField field){
+        return Long.parseLong(field.getText());
     }
 
     private void updateDialogFromConfiguration(){
@@ -173,6 +247,11 @@ public class ExporterConfigurationDialog extends JDialog {
         }
 
         setSamplesPerSecond(this.readerConfiguration.getSamplesPerSecond());
+        this.exportTimeFrom.setText(String.valueOf(0));
+        this.exportTimeTo.setText(String.valueOf(this.exportData.getLogReader().getSizeMicroseconds()));
+        this.maxTimeValue.setText(String.format(" (max: %d)", this.exportData.getLogReader().getSizeMicroseconds()));
+        this.exportDataInRange.setSelected(this.readerConfiguration.isExportChartRangeOnly());
+        updateForExportDataInRange();
     }
 
     private void onCancel() {
@@ -190,5 +269,9 @@ public class ExporterConfigurationDialog extends JDialog {
 
     public boolean isCanceled() {
         return canceled;
+    }
+
+    public void setExportData(ExportData exportData) {
+        this.exportData = exportData;
     }
 }

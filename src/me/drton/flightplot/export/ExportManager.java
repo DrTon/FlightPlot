@@ -21,22 +21,23 @@ public class ExportManager {
     private static final String LAST_EXPORT_DIRECTORY_SETTING = "LastExportDirectory";
 
     private File lastExportDirectory;
-    private ExporterConfigurationDialog dialog;
+    private ExportConfigurationDialog dialog;
     private ExportRunner runner;
     private PreferencesUtil preferencesUtil;
 
     public ExportManager(){
         this.preferencesUtil = new PreferencesUtil();
-        this.dialog = new ExporterConfigurationDialog();
+        this.dialog = new ExportConfigurationDialog();
     }
 
-    public boolean export(LogReader logReader, Runnable finishedCallback) throws IOException, FormatErrorException {
-        if(showConfigurationDialog()){
+    public boolean export(ExportData exportData, Runnable finishedCallback)
+            throws IOException, FormatErrorException {
+        if(showConfigurationDialog(exportData)){
             ExportFormat exportFormat = this.dialog.getExporterConfiguration().getExportFormat();
             File destination = getExportDestination(exportFormat);
 
             if(null != destination){
-                TrackReader trackReader = TrackReaderFactory.getTrackReader(logReader);
+                TrackReader trackReader = TrackReaderFactory.getTrackReader(exportData.getLogReader());
                 TrackExporter exporter = exportFormat.getTrackExporter(trackReader);
                 trackReader.setConfiguration(this.dialog.getReaderConfiguration());
                 exporter.setConfiguration(this.dialog.getExporterConfiguration());
@@ -49,8 +50,8 @@ public class ExportManager {
         return false;
     }
 
-    private boolean showConfigurationDialog(){
-        this.dialog.display();
+    private boolean showConfigurationDialog(ExportData exportData){
+        this.dialog.display(exportData);
         return !this.dialog.isCanceled();
     }
 
