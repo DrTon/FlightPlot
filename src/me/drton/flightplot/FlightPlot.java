@@ -611,7 +611,7 @@ public class FlightPlot {
         }
         catch (Exception e){
             e.printStackTrace();
-            showExportTrackStatusMessage("Track reader could not be opened.");
+            showExportTrackStatusMessage("Track could not be exported.");
         }
     }
 

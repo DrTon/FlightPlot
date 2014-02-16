@@ -1,7 +1,6 @@
 package me.drton.flightplot.export;
 
 import me.drton.flightplot.FormatErrorException;
-import me.drton.flightplot.LogReader;
 import me.drton.flightplot.PreferencesUtil;
 
 import javax.swing.*;
@@ -31,7 +30,7 @@ public class ExportManager {
     }
 
     public boolean export(ExportData exportData, Runnable finishedCallback)
-            throws IOException, FormatErrorException {
+            throws IOException, FormatErrorException, ConfigurationException {
         if(showConfigurationDialog(exportData)){
             ExportFormat exportFormat = this.dialog.getExporterConfiguration().getExportFormat();
             File destination = getExportDestination(exportFormat);
