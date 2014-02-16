@@ -9,10 +9,10 @@ import java.util.Set;
 /**
  * Created by ada on 14.01.14.
  */
-public abstract class AbstractTrackExporter {
+public abstract class AbstractTrackExporter implements TrackExporter {
 
     private final TrackReader trackReader;
-
+    private ExporterConfiguration configuration = new ExporterConfiguration();
     private Set<TrackAnalyzer> analyzers;
 
     public AbstractTrackExporter(TrackReader trackReader) {
@@ -41,4 +41,12 @@ public abstract class AbstractTrackExporter {
         }
     }
 
+    @Override
+    public void setConfiguration(ExporterConfiguration configuration) {
+        this.configuration = configuration;
+    }
+
+    public ExporterConfiguration getConfiguration() {
+        return configuration;
+    }
 }

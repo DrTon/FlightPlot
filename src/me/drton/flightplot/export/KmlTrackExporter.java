@@ -8,11 +8,10 @@ import java.io.Writer;
 /**
  * Created by ada on 23.12.13.
  */
-public class KmlTrackExporter extends AbstractTrackExporter implements TrackExporter, FlightModeChangeListener{
+public class KmlTrackExporter extends AbstractTrackExporter implements FlightModeChangeListener{
 
     private KmlTrackExportWriter writer;
     private boolean trackStarted = false;
-    private ExporterConfiguration configuration = new ExporterConfiguration();
 
     public KmlTrackExporter(TrackReader trackReader) {
         super(trackReader);
@@ -60,7 +59,7 @@ public class KmlTrackExporter extends AbstractTrackExporter implements TrackExpo
     }
 
     private void splitTrack(FlightMode newFlightMode) throws IOException {
-        if(configuration.isSplitTracksByFlightMode()){
+        if(getConfiguration().isSplitTracksByFlightMode()){
             if(this.trackStarted){
                 this.writer.endTrackPart();
                 this.writer.startTrackPart(determineStyleByFlightMode(newFlightMode));
@@ -88,8 +87,4 @@ public class KmlTrackExporter extends AbstractTrackExporter implements TrackExpo
         }
     }
 
-    @Override
-    public void setConfiguration(ExporterConfiguration configuration) {
-        this.configuration = configuration;
-    }
 }
