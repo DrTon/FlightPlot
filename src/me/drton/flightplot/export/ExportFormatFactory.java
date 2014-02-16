@@ -5,7 +5,8 @@ package me.drton.flightplot.export;
  */
 public class ExportFormatFactory {
     public enum ExportFormatType {
-        KML(new KmlExportFormat());
+        KML(new KmlExportFormat()),
+        GPX(new GpxExportFormat());
 
         private ExportFormat exportFormat;
         ExportFormatType(ExportFormat exportFormat){
