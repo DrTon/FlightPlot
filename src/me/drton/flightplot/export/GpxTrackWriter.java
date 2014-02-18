@@ -35,8 +35,8 @@ public class GpxTrackWriter {
     }
 
     public void writePoint(TrackPoint point) throws IOException {
-        writer.write(String.format("<trkpt lat=\"%.10f\" lon=\"%.10f\">\n", point.lat, point.lon));
-        writer.write(String.format("<ele>%.0f</ele>\n", point.alt));
+        writer.write(String.format(Locale.ROOT, "<trkpt lat=\"%.10f\" lon=\"%.10f\">\n", point.lat, point.lon));
+        writer.write(String.format(Locale.ROOT, "<ele>%.0f</ele>\n", point.alt));
         writer.write(String.format("<time>%s</time>\n", dateFormatter.format(point.time)));
         writer.write("</trkpt>\n");
     }
