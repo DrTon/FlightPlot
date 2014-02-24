@@ -2,8 +2,12 @@ package me.drton.flightplot.export;
 
 import me.drton.flightplot.FormatErrorException;
 
+import java.io.File;
+import java.io.FileWriter;
 import java.io.IOException;
+import java.io.Writer;
 import java.util.HashSet;
+import java.util.Locale;
 import java.util.Set;
 
 /**
@@ -12,8 +16,12 @@ import java.util.Set;
 public abstract class AbstractTrackExporter implements TrackExporter {
 
     private final TrackReader trackReader;
-    private ExporterConfiguration configuration = new ExporterConfiguration();
     private Set<TrackAnalyzer> analyzers;
+
+    protected ExporterConfiguration configuration = new ExporterConfiguration();
+    protected boolean trackStarted;
+    protected String title;
+    protected Writer writer;
 
     public AbstractTrackExporter(TrackReader trackReader) {
         this.trackReader = trackReader;
@@ -40,6 +48,48 @@ public abstract class AbstractTrackExporter implements TrackExporter {
             analyzer.inputTrackPoint(point);
         }
     }
+
+    public void exportToFile(File file, String title) throws IOException {
+        this.writer = initWriter(file, title);
+        try {
+            writeStart();
+
+            TrackPoint point = readNextPoint();
+            if(!this.trackStarted){
+                startTrackPart();
+                this.trackStarted = true;
+            }
+            while (null != point) {
+                writePoint(point);
+                point = readNextPoint();
+            }
+
+            endTrackPart();
+            writeEnd();
+        } catch (Exception e) {
+            e.printStackTrace();
+        } finally {
+            this.writer.close();
+        }
+    }
+
+    protected Writer initWriter(File file, String title) throws IOException {
+        Writer fileWriter = new FileWriter(file);
+        this.trackStarted = false;
+        this.title = title;
+        return fileWriter;
+    }
+
+    protected abstract void writeStart() throws IOException;
+
+    protected abstract void startTrackPart() throws IOException;
+
+    protected abstract void writePoint(TrackPoint point) throws IOException;
+
+    protected abstract void endTrackPart() throws IOException;
+
+    protected abstract void writeEnd() throws IOException;
+
 
     @Override
     public void setConfiguration(ExporterConfiguration configuration) {
