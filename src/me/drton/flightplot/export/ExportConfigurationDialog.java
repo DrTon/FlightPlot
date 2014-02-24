@@ -104,7 +104,6 @@ public class ExportConfigurationDialog extends JDialog {
     }
 
     private void initFormatList(){
-        this.exportFormat.addItem(new FormatItem("", ""));
         for(ExportFormatFactory.ExportFormatType type : ExportFormatFactory.ExportFormatType.values()){
             this.exportFormat.addItem(new FormatItem(type.getExportFormat().getFormatName(), type.name()));
         }
@@ -194,11 +193,6 @@ public class ExportConfigurationDialog extends JDialog {
     }
 
     private boolean isConfigValid(){
-        if(this.exportFormat.getSelectedIndex() <= 0){
-            JOptionPane.showMessageDialog(this, "You must select a export format.", "Error", JOptionPane.ERROR_MESSAGE);
-            return false;
-        }
-
         try{
             long from = Long.parseLong(this.exportTimeFrom.getText());
             long to = Long.parseLong(this.exportTimeTo.getText());
@@ -219,10 +213,8 @@ public class ExportConfigurationDialog extends JDialog {
 
     private void updateConfigurationFromDialog() {
         this.exporterConfiguration.setSplitTracksByFlightMode(this.splitTrackByFlightCheckBox.isSelected());
-        if(this.exportFormat.getSelectedIndex() > 0){
-            FormatItem item = (FormatItem)this.exportFormat.getSelectedItem();
-            this.exporterConfiguration.setExportFormatType(ExportFormatFactory.ExportFormatType.valueOf(item.name));
-        }
+        FormatItem item = (FormatItem)this.exportFormat.getSelectedItem();
+        this.exporterConfiguration.setExportFormatType(ExportFormatFactory.ExportFormatType.valueOf(item.name));
 
         this.readerConfiguration.setSamplesPerSecond(getSamplesPerSecond());
         this.readerConfiguration.setTimeTo(getNumberFromTextField(this.exportTimeTo));
