@@ -112,7 +112,7 @@ public class KmlTrackExporter extends AbstractTrackExporter implements FlightMod
     protected void writePoint(TrackPoint point) throws IOException {
         writer.write(String.format("<when>%s</when>\n", dateFormatter.format(point.time)));
         writer.write(
-                String.format(Locale.ROOT, "<gx:coord>%.10f %.10f %.0f</gx:coord>\n", point.lon, point.lat, point.alt));
+                String.format(Locale.ROOT, "<gx:coord>%.10f %.10f %.2f</gx:coord>\n", point.lon, point.lat, point.alt));
     }
 
     protected void endTrackPart() throws IOException{
