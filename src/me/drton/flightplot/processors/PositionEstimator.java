@@ -51,6 +51,9 @@ public class PositionEstimator extends PlotProcessor {
     private DelayLine[][] delayLinesGPS;
     private boolean gpsInited;
     private boolean baroInited;
+    private boolean[] show;
+    private double[] offsets;
+    private double[] scales;
 
     @Override
     public Map<String, Object> getDefaultParameters() {
@@ -67,6 +70,9 @@ public class PositionEstimator extends PlotProcessor {
         params.put("W Z Baro", 0.5);
         params.put("W Z GPS P", 0.005);
         params.put("W Acc Bias", 0.05);
+        params.put("Show", "XYZ");
+        params.put("Offsets", "0.0 0.0 0.0");
+        params.put("Z Downside", false);
         /*
         params.put("Fields Flow", "FLOW.RawX FLOW.RawY FLOW.Q");
         params.put("W XY Flow", 5.0);
@@ -132,15 +138,26 @@ public class PositionEstimator extends PlotProcessor {
                 delayLinesGPS[axis][posVel].getOutput(0.0, 0.0);
             }
         }
-        addSeries("X");
-        addSeries("Y");
-        addSeries("Z");
-        addSeries("VX");
-        addSeries("VY");
-        addSeries("VZ");
-        //addSeries("Dist");
-        //addSeries("FlowVX");
-        //addSeries("FlowVY");
+        show = new boolean[]{false, false, false};
+        offsets = new double[]{0.0, 0.0, 0.0};
+        scales = new double[]{1.0, 1.0, 1.0};
+        String showStr = (String) parameters.get("Show");
+        String[] offsetsStr = ((String) parameters.get("Offsets")).split(WHITESPACE_RE);
+        if (!(Boolean) parameters.get("Z Downside"))
+            scales[2] = -1.0;
+        for (int i = 0; i < 3; i++) {
+            String axisName = "XYZ".substring(i, i + 1);
+            show[i] = showStr.contains(axisName);
+            if (show[i]) {
+                addSeries(axisName);
+                addSeries("V" + axisName);
+            }
+            if (offsetsStr.length > i) {
+                offsets[i] = Double.parseDouble(offsetsStr[i]);
+            } else {
+                offsets[i] = 0.0;
+            }
+        }
     }
 
     @Override
@@ -263,17 +280,17 @@ public class PositionEstimator extends PlotProcessor {
                 baroOffset -= dBaro;
                 corrBaro += dBaro;
                 SimpleMatrix accBiasCorrV = new SimpleMatrix(3, 1);
-                for (int axis = 0; axis < 2; axis++) {
+                for (int axis = 0; axis < 3; axis++) {
                     double wPos = param_W_GPS[axis][0] * param_W_GPS[axis][0] * wGPS[axis] * wGPS[axis];
                     double wVel = param_W_GPS[axis][1] * wGPS[axis];
-                    accBiasCorrV.set(axis, corrGPS[axis][0] * wPos + corrGPS[axis][1] * wVel);
+                    accBiasCorrV.set(axis, -corrGPS[axis][0] * wPos - corrGPS[axis][1] * wVel);
                 }
-                accBiasCorrV.set(2, (corrBaro * param_W_Baro));
+                accBiasCorrV.set(2, -corrBaro * param_W_Baro * param_W_Baro);
                 SimpleMatrix b = rot.transpose().mult(accBiasCorrV).scale(param_W_Acc_Bias * dt);
                 SimpleMatrix accNED = rot.mult(acc);
                 accNED.set(2, accNED.get(2) + G);
                 for (int axis = 0; axis < 3; axis++) {
-                    accBias[axis] -= b.get(axis);
+                    accBias[axis] += b.get(axis);
                     corrAcc[axis] = accNED.get(axis) - est[axis][2];
                 }
                 predict(est, dt);
@@ -286,12 +303,13 @@ public class PositionEstimator extends PlotProcessor {
                 }
                 correct(est[2], dt, 0, corrBaro, param_W_Baro);
                 if (gpsInited && baroInited) {
-                    addPoint(0, time, est[0][0]);
-                    addPoint(1, time, est[1][0]);
-                    addPoint(2, time, est[2][0]);
-                    addPoint(3, time, est[0][1]);
-                    addPoint(4, time, est[1][1]);
-                    addPoint(5, time, est[2][1]);
+                    int seriesIdx = 0;
+                    for (int axis = 0; axis < 3; axis++) {
+                        if (show[axis]) {
+                            addPoint(seriesIdx++, time, est[axis][0] * scales[axis] + offsets[axis]);
+                            addPoint(seriesIdx++, time, est[axis][1] * scales[axis]);
+                        }
+                    }
                 }
             }
             timePrev = time;
