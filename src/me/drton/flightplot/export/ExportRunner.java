@@ -49,14 +49,19 @@ public class ExportRunner implements  Runnable {
 
     private void doExport(File exportFile) throws IOException, FormatErrorException {
         // get time of first point to use it as track title
-        // TODO: < does this work if there was no GPS fix in the beginning?
         TrackPoint point = this.reader.readNextPoint();
         this.reader.reset();
-        DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-        String trackTitle = dateFormat.format(point.time) + " UTC";
-        this.exporter.exportToFile(exportFile, trackTitle);
-        this.statusMessage =
-                String.format("Successfully exported track %s to %s", trackTitle, exportFile.getAbsoluteFile());
+        if(null != point){
+            DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+            String trackTitle = dateFormat.format(point.time) + " UTC";
+            this.exporter.exportToFile(exportFile, trackTitle);
+            this.statusMessage =
+                    String.format("Successfully exported track %s to %s", trackTitle, exportFile.getAbsoluteFile());
+        }
+        else {
+            this.statusMessage =
+                    String.format("Couldn't find any data to export");
+        }
     }
 
     public String getStatusMessage() {
