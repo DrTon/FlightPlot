@@ -16,6 +16,7 @@ public class GlobalPositionProjection extends PlotProcessor {
     public Map<String, Object> getDefaultParameters() {
         Map<String, Object> params = new HashMap<String, Object>();
         params.put("Fields", "GPS.Lat GPS.Lon");
+        params.put("Ref", "");
         return params;
     }
 
@@ -24,6 +25,10 @@ public class GlobalPositionProjection extends PlotProcessor {
         super.init();
         positionProjector.reset();
         param_Fields = ((String) parameters.get("Fields")).split(WHITESPACE_RE);
+        String[] ref = ((String) parameters.get("Ref")).split(WHITESPACE_RE);
+        if (ref.length == 2) {
+            positionProjector.init(Double.parseDouble(ref[0]), Double.parseDouble(ref[1]));
+        }
         addSeries("X");
         addSeries("Y");
     }
