@@ -84,7 +84,6 @@ public class ExporterConfigurationDialog extends JDialog {
     }
 
     private void initFormatList() {
-        this.exportFormat.addItem(new FormatItem("", ""));
         for (ExportFormatFactory.ExportFormatType type : ExportFormatFactory.ExportFormatType.values()) {
             this.exportFormat.addItem(new FormatItem(type.getExportFormat().getFormatName(), type.name()));
         }
