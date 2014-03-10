@@ -10,6 +10,7 @@ public interface TrackExporter {
 
     /**
      * Exports track to specified file, uses title if possible for current export format.
+     *
      * @param file
      * @param title
      * @throws IOException
@@ -17,5 +18,4 @@ public interface TrackExporter {
     public void exportToFile(File file, String title) throws IOException;
 
     void setConfiguration(ExporterConfiguration configuration);
-
 }

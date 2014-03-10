@@ -1,9 +1,6 @@
 package me.drton.flightplot.export;
 
-import java.io.File;
-import java.io.FileWriter;
 import java.io.IOException;
-import java.io.Writer;
 import java.text.SimpleDateFormat;
 import java.util.Locale;
 
@@ -40,14 +37,12 @@ public class GpxTrackExporter extends AbstractTrackExporter {
         writer.write("</trkpt>\n");
     }
 
-    protected void endTrackPart() throws IOException{
+    protected void endTrackPart() throws IOException {
         writer.write("</trkseg>\n");
     }
 
-    protected void writeEnd() throws IOException{
+    protected void writeEnd() throws IOException {
         writer.write("</trk>\n");
         writer.write("</gpx>\n");
     }
-
-
 }

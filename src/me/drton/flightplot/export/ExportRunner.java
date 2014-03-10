@@ -2,8 +2,6 @@ package me.drton.flightplot.export;
 
 import me.drton.flightplot.FormatErrorException;
 
-import javax.swing.*;
-import javax.swing.filechooser.FileNameExtensionFilter;
 import java.io.File;
 import java.io.IOException;
 import java.text.DateFormat;
@@ -12,7 +10,7 @@ import java.text.SimpleDateFormat;
 /**
  * Created by ada on 19.01.14.
  */
-public class ExportRunner implements  Runnable {
+public class ExportRunner implements Runnable {
 
     private TrackReader reader;
 
@@ -24,7 +22,7 @@ public class ExportRunner implements  Runnable {
 
     private File destination;
 
-    public ExportRunner(TrackReader reader, TrackExporter exporter, File destination){
+    public ExportRunner(TrackReader reader, TrackExporter exporter, File destination) {
         this.reader = reader;
         this.exporter = exporter;
         this.destination = destination;
@@ -32,7 +30,7 @@ public class ExportRunner implements  Runnable {
 
     @Override
     public void run() {
-        try{
+        try {
             doExport(this.destination);
         } catch (Exception e) {
             this.statusMessage = "Error: " + e;
@@ -41,8 +39,8 @@ public class ExportRunner implements  Runnable {
         finish();
     }
 
-    private void finish(){
-        if(null != this.finishedCallback){
+    private void finish() {
+        if (null != this.finishedCallback) {
             this.finishedCallback.run();
         }
     }
@@ -51,16 +49,14 @@ public class ExportRunner implements  Runnable {
         // get time of first point to use it as track title
         TrackPoint point = this.reader.readNextPoint();
         this.reader.reset();
-        if(null != point){
+        if (null != point) {
             DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
             String trackTitle = dateFormat.format(point.time) + " UTC";
             this.exporter.exportToFile(exportFile, trackTitle);
-            this.statusMessage =
-                    String.format("Successfully exported track %s to %s", trackTitle, exportFile.getAbsoluteFile());
-        }
-        else {
-            this.statusMessage =
-                    String.format("Couldn't find any data to export");
+            this.statusMessage = String.format("Successfully exported track %s to %s", trackTitle,
+                    exportFile.getAbsoluteFile());
+        } else {
+            this.statusMessage = String.format("Couldn't find any data to export");
         }
     }
 

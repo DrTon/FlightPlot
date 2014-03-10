@@ -7,7 +7,6 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.Writer;
 import java.util.HashSet;
-import java.util.Locale;
 import java.util.Set;
 
 /**
@@ -28,23 +27,23 @@ public abstract class AbstractTrackExporter implements TrackExporter {
         initAnalyzers();
     }
 
-    private void initAnalyzers(){
+    private void initAnalyzers() {
         analyzers = new HashSet<TrackAnalyzer>();
-        if(this instanceof FlightModeChangeListener){
-            analyzers.add(new FlightModeReader((FlightModeChangeListener)this));
+        if (this instanceof FlightModeChangeListener) {
+            analyzers.add(new FlightModeReader((FlightModeChangeListener) this));
         }
     }
 
-    protected TrackPoint readNextPoint() throws IOException, FormatErrorException{
+    protected TrackPoint readNextPoint() throws IOException, FormatErrorException {
         TrackPoint point = this.trackReader.readNextPoint();
-        if(null != point){
+        if (null != point) {
             feedAnalyzers(point);
         }
         return point;
     }
 
-    private void feedAnalyzers(TrackPoint point){
-        for (TrackAnalyzer analyzer : this.analyzers){
+    private void feedAnalyzers(TrackPoint point) {
+        for (TrackAnalyzer analyzer : this.analyzers) {
             analyzer.inputTrackPoint(point);
         }
     }
@@ -53,9 +52,8 @@ public abstract class AbstractTrackExporter implements TrackExporter {
         this.writer = initWriter(file, title);
         try {
             writeStart();
-
             TrackPoint point = readNextPoint();
-            if(!this.trackStarted){
+            if (!this.trackStarted) {
                 startTrackPart();
                 this.trackStarted = true;
             }
@@ -63,7 +61,6 @@ public abstract class AbstractTrackExporter implements TrackExporter {
                 writePoint(point);
                 point = readNextPoint();
             }
-
             endTrackPart();
             writeEnd();
         } catch (Exception e) {
@@ -89,7 +86,6 @@ public abstract class AbstractTrackExporter implements TrackExporter {
     protected abstract void endTrackPart() throws IOException;
 
     protected abstract void writeEnd() throws IOException;
-
 
     @Override
     public void setConfiguration(ExporterConfiguration configuration) {

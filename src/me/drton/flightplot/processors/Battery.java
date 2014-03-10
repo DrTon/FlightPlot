@@ -81,8 +81,7 @@ public class Battery extends PlotProcessor {
             if (dischargedNum != null) {
                 double discharged = dischargedNum.doubleValue();
                 if (discharged > 0.0) {
-                    double remainingC = Math.min(1.0,
-                            Math.max(0.0, 1.0 - discharged / param_Capacity));
+                    double remainingC = Math.min(1.0, Math.max(0.0, 1.0 - discharged / param_Capacity));
                     if (showRemainingC)
                         addPoint(1, time, remainingC * 100.0);
                 }

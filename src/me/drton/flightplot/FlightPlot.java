@@ -1,6 +1,6 @@
 package me.drton.flightplot;
 
-import me.drton.flightplot.export.*;
+import me.drton.flightplot.export.ExportManager;
 import me.drton.flightplot.processors.PlotProcessor;
 import me.drton.flightplot.processors.ProcessorsList;
 import me.drton.flightplot.processors.Simple;
@@ -588,22 +588,21 @@ public class FlightPlot {
 
     public void exportTrack() {
         if (null == this.logReader) {
-            JOptionPane.showMessageDialog(mainFrame, "Log file must be opened first.", "Error", JOptionPane.ERROR_MESSAGE);
+            JOptionPane.showMessageDialog(mainFrame, "Log file must be opened first.", "Error",
+                    JOptionPane.ERROR_MESSAGE);
             return;
         }
-
-        try{
+        try {
             boolean exportStarted = this.exportManager.export(this.logReader, new Runnable() {
                 @Override
                 public void run() {
                     showExportTrackStatusMessage(FlightPlot.this.exportManager.getLastStatusMessage());
                 }
             });
-            if(exportStarted){
+            if (exportStarted) {
                 showExportTrackStatusMessage("Exporting...");
             }
-        }
-        catch (Exception e){
+        } catch (Exception e) {
             e.printStackTrace();
             showExportTrackStatusMessage("Track reader could not be opened.");
         }

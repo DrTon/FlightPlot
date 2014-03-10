@@ -48,7 +48,7 @@ public class PX4TrackReader implements TrackReader {
             }
             Long timeGPS = (Long) data.get(GPS_TIME);
             FlightMode currentFlightMode = extractFlightMode(data);
-            if(null != currentFlightMode){
+            if (null != currentFlightMode) {
                 lastFlightMode = currentFlightMode;
             }
             if (timeGPS != null) {
@@ -57,10 +57,9 @@ public class PX4TrackReader implements TrackReader {
                 Double lat = (Double) data.get(GPS_LAT);
                 Double lon = (Double) data.get(GPS_LON);
                 Float alt = (Float) data.get(GPS_ALT);
-                if (logTime >= this.nextMinTime
-                        && fixType != null && fixType >= REQUIRED_FIXTYPE
-                        && lat != null && lon != null && alt != null) {
-                    if(0 == this.nextMinTime){
+                if (logTime >= this.nextMinTime && fixType != null && fixType >= REQUIRED_FIXTYPE && lat != null &&
+                        lon != null && alt != null) {
+                    if (0 == this.nextMinTime) {
                         this.nextMinTime = logTime;
                     }
                     this.nextMinTime += this.timeGap;
@@ -75,8 +74,8 @@ public class PX4TrackReader implements TrackReader {
 
     private FlightMode extractFlightMode(Map<String, Object> data) {
         Integer flightMode = (Integer) data.get(STAT_MAINSTATE);
-        if(null != flightMode){
-            switch(flightMode){
+        if (null != flightMode) {
+            switch (flightMode) {
                 case 0: // MAIN_STATE_MANUAL
                     return FlightMode.MANUAL;
                 case 1: // MAIN_STATE_SEATBELT
@@ -95,7 +94,7 @@ public class PX4TrackReader implements TrackReader {
         initFromConfig();
     }
 
-    private void initFromConfig(){
-        this.timeGap = (long)Math.floor(1000000 / this.configuration.getSamplesPerSecond());
+    private void initFromConfig() {
+        this.timeGap = (long) Math.floor(1000000 / this.configuration.getSamplesPerSecond());
     }
 }

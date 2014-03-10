@@ -1,8 +1,8 @@
 package me.drton.flightplot;
 
 import java.io.EOFException;
-import java.io.RandomAccessFile;
 import java.io.IOException;
+import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.channels.FileChannel;

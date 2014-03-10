@@ -6,5 +6,4 @@ package me.drton.flightplot.export;
 public interface FlightModeChangeListener {
 
     public void flightModeChanged(FlightMode newFlightMode);
-
 }

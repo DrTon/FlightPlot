@@ -9,11 +9,11 @@ public class ReaderConfiguration {
     private double samplesPerSecond;
     private final static String SAMPLES_PER_SECOND_SETTING = "samplesPerSecond";
 
-    public void saveConfiguration(Preferences preferences){
+    public void saveConfiguration(Preferences preferences) {
         preferences.putDouble(SAMPLES_PER_SECOND_SETTING, this.samplesPerSecond);
     }
 
-    public void loadConfiguration(Preferences preferences){
+    public void loadConfiguration(Preferences preferences) {
         this.samplesPerSecond = preferences.getDouble(SAMPLES_PER_SECOND_SETTING, Double.MAX_VALUE);
     }
 

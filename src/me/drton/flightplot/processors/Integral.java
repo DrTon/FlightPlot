@@ -1,7 +1,5 @@
 package me.drton.flightplot.processors;
 
-import me.drton.flightplot.processors.Simple;
-
 import java.util.Map;
 
 /**

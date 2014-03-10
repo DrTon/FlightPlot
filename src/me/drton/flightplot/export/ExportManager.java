@@ -25,17 +25,16 @@ public class ExportManager {
     private ExportRunner runner;
     private PreferencesUtil preferencesUtil;
 
-    public ExportManager(){
+    public ExportManager() {
         this.preferencesUtil = new PreferencesUtil();
         this.dialog = new ExporterConfigurationDialog();
     }
 
     public boolean export(LogReader logReader, Runnable finishedCallback) throws IOException, FormatErrorException {
-        if(showConfigurationDialog()){
+        if (showConfigurationDialog()) {
             ExportFormat exportFormat = this.dialog.getExporterConfiguration().getExportFormat();
             File destination = getExportDestination(exportFormat);
-
-            if(null != destination){
+            if (null != destination) {
                 TrackReader trackReader = TrackReaderFactory.getTrackReader(logReader);
                 TrackExporter exporter = exportFormat.getTrackExporter(trackReader);
                 trackReader.setConfiguration(this.dialog.getReaderConfiguration());
@@ -49,17 +48,17 @@ public class ExportManager {
         return false;
     }
 
-    private boolean showConfigurationDialog(){
+    private boolean showConfigurationDialog() {
         this.dialog.display();
         return !this.dialog.isCanceled();
     }
 
-    private File getExportDestination(ExportFormat exportFormat){
+    private File getExportDestination(ExportFormat exportFormat) {
         JFileChooser fc = new JFileChooser();
         if (lastExportDirectory != null)
             fc.setCurrentDirectory(lastExportDirectory);
-        FileNameExtensionFilter extensionFilter =
-                new FileNameExtensionFilter(exportFormat.getFileExtensionName(), exportFormat.getFileExtension());
+        FileNameExtensionFilter extensionFilter = new FileNameExtensionFilter(exportFormat.getFileExtensionName(),
+                exportFormat.getFileExtension());
         fc.setFileFilter(extensionFilter);
         fc.setDialogTitle("Export Track");
         int returnVal = fc.showDialog(null, "Export");
@@ -73,11 +72,10 @@ public class ExportManager {
             if (!exportFile.exists()) {
                 return exportFile;
             } else {
-                int result = JOptionPane.showConfirmDialog(null
-                        , "Do you want to overwrite the existing file?"
-                        + "\n" + exportFile.getAbsoluteFile()
-                        , "File already exists", JOptionPane.YES_NO_OPTION);
-                if(JOptionPane.YES_OPTION == result){
+                int result = JOptionPane.showConfirmDialog(null,
+                        "Do you want to overwrite the existing file?" + "\n" + exportFile.getAbsoluteFile(),
+                        "File already exists", JOptionPane.YES_NO_OPTION);
+                if (JOptionPane.YES_OPTION == result) {
                     return exportFile;
                 }
             }
@@ -85,30 +83,29 @@ public class ExportManager {
         return null;
     }
 
-    public String getLastStatusMessage(){
-        if(null != this.runner){
+    public String getLastStatusMessage() {
+        if (null != this.runner) {
             return this.runner.getStatusMessage();
         }
         return "";
     }
 
-    public void savePreferences(Preferences preferences){
+    public void savePreferences(Preferences preferences) {
         this.preferencesUtil.saveWindowPreferences(this.dialog, preferences.node(DIALOG_SETTING));
         this.dialog.getExporterConfiguration().saveConfiguration(preferences.node(EXPORTER_CONFIGURATION_SETTING));
         this.dialog.getReaderConfiguration().saveConfiguration(preferences.node(READER_CONFIGURATION_SETTING));
-        if (this.lastExportDirectory != null){
+        if (this.lastExportDirectory != null) {
             preferences.put(LAST_EXPORT_DIRECTORY_SETTING, this.lastExportDirectory.getAbsolutePath());
         }
     }
 
-    public void loadPreferences(Preferences preferences){
+    public void loadPreferences(Preferences preferences) {
         this.preferencesUtil.loadWindowPreferences(this.dialog, preferences.node(DIALOG_SETTING), -1, -1);
         this.dialog.getExporterConfiguration().loadConfiguration(preferences.node(EXPORTER_CONFIGURATION_SETTING));
         this.dialog.getReaderConfiguration().loadConfiguration(preferences.node(READER_CONFIGURATION_SETTING));
         String lastExportDirectoryPath = preferences.get(LAST_EXPORT_DIRECTORY_SETTING, null);
-        if(null != lastExportDirectoryPath){
+        if (null != lastExportDirectoryPath) {
             this.lastExportDirectory = new File(lastExportDirectoryPath);
         }
     }
-
 }

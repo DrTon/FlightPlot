@@ -12,17 +12,17 @@ public class ExporterConfiguration {
     private ExportFormatFactory.ExportFormatType exportFormatType;
     private final static String EXPORT_FORMAT_TYPE_SETTING = "exportFormatType";
 
-    public void saveConfiguration(Preferences preferences){
+    public void saveConfiguration(Preferences preferences) {
         preferences.putBoolean(SPLIT_TRACK_BY_FLIGHT_MODE_SETTING, this.splitTracksByFlightMode);
-        if(null != this.exportFormatType){
+        if (null != this.exportFormatType) {
             preferences.put(EXPORT_FORMAT_TYPE_SETTING, this.exportFormatType.name());
         }
     }
 
-    public void loadConfiguration(Preferences preferences){
+    public void loadConfiguration(Preferences preferences) {
         this.splitTracksByFlightMode = preferences.getBoolean(SPLIT_TRACK_BY_FLIGHT_MODE_SETTING, false);
         String formatType = preferences.get(EXPORT_FORMAT_TYPE_SETTING, null);
-        if(null != formatType){
+        if (null != formatType) {
             this.exportFormatType = ExportFormatFactory.ExportFormatType.valueOf(formatType);
         }
     }

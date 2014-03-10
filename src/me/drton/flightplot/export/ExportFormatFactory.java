@@ -9,14 +9,15 @@ public class ExportFormatFactory {
         GPX(new GpxExportFormat());
 
         private ExportFormat exportFormat;
-        ExportFormatType(ExportFormat exportFormat){
+
+        ExportFormatType(ExportFormat exportFormat) {
             this.exportFormat = exportFormat;
         }
 
-        public ExportFormat getExportFormat(){
+        public ExportFormat getExportFormat() {
             return this.exportFormat;
         }
-    };
+    }
 
-
+    ;
 }

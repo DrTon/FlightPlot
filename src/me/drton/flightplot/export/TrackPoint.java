@@ -16,5 +16,4 @@ public class TrackPoint {
         this.alt = alt;
         this.time = time;
     }
-
 }

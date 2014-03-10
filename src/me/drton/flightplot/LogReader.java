@@ -1,7 +1,6 @@
 package me.drton.flightplot;
 
 import java.io.IOException;
-import java.util.Collection;
 import java.util.Map;
 
 /**

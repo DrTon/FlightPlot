@@ -1,16 +1,13 @@
 package me.drton.flightplot.export;
 
-import java.io.File;
-import java.io.FileWriter;
 import java.io.IOException;
-import java.io.Writer;
 import java.text.SimpleDateFormat;
 import java.util.Locale;
 
 /**
  * Created by ada on 23.12.13.
  */
-public class KmlTrackExporter extends AbstractTrackExporter implements FlightModeChangeListener{
+public class KmlTrackExporter extends AbstractTrackExporter implements FlightModeChangeListener {
 
     private static final String LINE_STYLE_YELLOW = "yellow";
     private static final String LINE_STYLE_BLUE = "blue";
@@ -25,33 +22,30 @@ public class KmlTrackExporter extends AbstractTrackExporter implements FlightMod
 
     @Override
     public void flightModeChanged(FlightMode newFlightMode) {
-        try{
+        try {
             splitTrack(newFlightMode);
-        }
-        catch (IOException e){
+        } catch (IOException e) {
             e.printStackTrace();
         }
     }
 
     private void splitTrack(FlightMode newFlightMode) throws IOException {
-        if(getConfiguration().isSplitTracksByFlightMode()){
-            if(this.trackStarted){
+        if (getConfiguration().isSplitTracksByFlightMode()) {
+            if (this.trackStarted) {
                 endTrackPart();
                 startTrackPart(determineStyleByFlightMode(newFlightMode));
-            }
-            else {
+            } else {
                 startTrackPart(determineStyleByFlightMode(newFlightMode));
                 this.trackStarted = true;
             }
         }
     }
 
-    protected String determineStyleByFlightMode(FlightMode flightMode){
-        if(null == flightMode) {
+    protected String determineStyleByFlightMode(FlightMode flightMode) {
+        if (null == flightMode) {
             return LINE_STYLE_YELLOW;
         }
-
-        switch(flightMode){
+        switch (flightMode) {
             case AUTO:
                 return LINE_STYLE_RED;
             case STABILIZED:
@@ -61,7 +55,6 @@ public class KmlTrackExporter extends AbstractTrackExporter implements FlightMod
                 return LINE_STYLE_YELLOW;
         }
     }
-
 
     protected void writeStart() throws IOException {
         // TODO: maybe make some settings configurable
@@ -115,15 +108,13 @@ public class KmlTrackExporter extends AbstractTrackExporter implements FlightMod
                 String.format(Locale.ROOT, "<gx:coord>%.10f %.10f %.2f</gx:coord>\n", point.lon, point.lat, point.alt));
     }
 
-    protected void endTrackPart() throws IOException{
+    protected void endTrackPart() throws IOException {
         writer.write("</gx:Track>\n");
         writer.write("</Placemark>\n");
     }
 
-    protected void writeEnd() throws IOException{
+    protected void writeEnd() throws IOException {
         writer.write("</Document>\n");
         writer.write("</kml>");
     }
-
-
 }
