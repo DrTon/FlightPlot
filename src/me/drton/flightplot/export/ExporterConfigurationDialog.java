@@ -133,19 +133,13 @@ public class ExporterConfigurationDialog extends JDialog {
     }
 
     private boolean isConfigValid() {
-        if (this.exportFormat.getSelectedIndex() <= 0) {
-            JOptionPane.showMessageDialog(this, "You must select a export format.", "Error", JOptionPane.ERROR_MESSAGE);
-            return false;
-        }
         return true;
     }
 
     private void updateConfigurationFromDialog() {
         this.exporterConfiguration.setSplitTracksByFlightMode(this.splitTrackByFlightCheckBox.isSelected());
-        if (this.exportFormat.getSelectedIndex() > 0) {
-            FormatItem item = (FormatItem) this.exportFormat.getSelectedItem();
-            this.exporterConfiguration.setExportFormatType(ExportFormatFactory.ExportFormatType.valueOf(item.name));
-        }
+        FormatItem item = (FormatItem) this.exportFormat.getSelectedItem();
+        this.exporterConfiguration.setExportFormatType(ExportFormatFactory.ExportFormatType.valueOf(item.name));
         this.readerConfiguration.setSamplesPerSecond(getSamplesPerSecond());
     }
 
