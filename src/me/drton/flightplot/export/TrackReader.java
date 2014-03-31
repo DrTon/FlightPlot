@@ -11,6 +11,7 @@ public interface TrackReader {
 
     /**
      * Reads next track point from LogReader.
+     *
      * @return returns TrackPoint or null if no more points can be read.
      * @throws IOException
      * @throws FormatErrorException

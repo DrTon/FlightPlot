@@ -5,7 +5,10 @@ package me.drton.flightplot.export;
  */
 public interface ExportFormat {
     String getFormatName();
+
     String getFileExtension();
+
     String getFileExtensionName();
+
     TrackExporter getTrackExporter(TrackReader trackReader);
 }

@@ -32,11 +32,11 @@ public abstract class AbstractTrackReader implements TrackReader {
         long logTime = 0;
         while (true) {
             logTime = this.reader.readUpdate(data);
-            if(logTime > this.endTime){
+            if (logTime > this.endTime) {
                 throw new EOFException("Reached configured export limit.");
             }
-            if(logTime >= this.nextMinTime) {
-                if(0 == this.nextMinTime){
+            if (logTime >= this.nextMinTime) {
+                if (0 == this.nextMinTime) {
                     this.nextMinTime = logTime;
                 }
                 this.nextMinTime += this.timeGap;
@@ -48,24 +48,22 @@ public abstract class AbstractTrackReader implements TrackReader {
     @Override
     public void setConfiguration(ReaderConfiguration configuration) throws ConfigurationException {
         this.configuration = configuration;
-        try{
+        try {
             initFromConfig();
-        }
-        catch (IOException e){
+        } catch (IOException e) {
             throw new ConfigurationException(e);
-        }
-        catch (FormatErrorException e){
+        } catch (FormatErrorException e) {
             throw new ConfigurationException(e);
         }
     }
 
-    protected ReaderConfiguration getConfiguration(){
+    protected ReaderConfiguration getConfiguration() {
         return this.configuration;
     }
 
     private void initFromConfig() throws IOException, FormatErrorException {
-        this.timeGap = (long)Math.floor(1000000 / this.configuration.getSamplesPerSecond());
-        if(this.configuration.getTimeFrom() > 0){
+        this.timeGap = (long) Math.floor(1000000 / this.configuration.getSamplesPerSecond());
+        if (this.configuration.getTimeFrom() > 0) {
             this.reader.seek(this.reader.getStartMicroseconds() + this.configuration.getTimeFrom());
         }
         this.endTime = this.reader.getStartMicroseconds() + this.configuration.getTimeTo();

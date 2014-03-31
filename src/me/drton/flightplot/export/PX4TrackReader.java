@@ -11,7 +11,7 @@ import java.util.Map;
 /**
  * Created by ada on 23.12.13.
  */
-public class PX4TrackReader extends AbstractTrackReader{
+public class PX4TrackReader extends AbstractTrackReader {
     private static final String GPS_TIME = "GPS.GPSTime";
     private static final String GPS_LON = "GPS.Lon";
     private static final String GPS_LAT = "GPS.Lat";
@@ -41,7 +41,7 @@ public class PX4TrackReader extends AbstractTrackReader{
             TODO: Is it necessary to hold flight mode here?
             Missing flight mode will be compensated by FlightModeReader already
             */
-            if(null != currentFlightMode){
+            if (null != currentFlightMode) {
                 lastFlightMode = currentFlightMode;
             }
             if (timeGPS != null) {
@@ -64,8 +64,8 @@ public class PX4TrackReader extends AbstractTrackReader{
 
     private FlightMode extractFlightMode(Map<String, Object> data) {
         Integer flightMode = (Integer) data.get(STAT_MAINSTATE);
-        if(null != flightMode){
-            switch(flightMode){
+        if (null != flightMode) {
+            switch (flightMode) {
                 case 0: // MAIN_STATE_MANUAL
                     return FlightMode.MANUAL;
                 case 1: // MAIN_STATE_SEATBELT

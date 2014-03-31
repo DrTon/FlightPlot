@@ -3,7 +3,7 @@ package me.drton.flightplot.export;
 /**
  * Created by ada on 16.02.14.
  */
-public class ConfigurationException extends  Exception {
+public class ConfigurationException extends Exception {
     public ConfigurationException() {
         super();
     }

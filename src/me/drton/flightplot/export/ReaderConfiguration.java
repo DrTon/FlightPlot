@@ -15,12 +15,12 @@ public class ReaderConfiguration {
     private long timeFrom;
     private long timeTo;
 
-    public void saveConfiguration(Preferences preferences){
+    public void saveConfiguration(Preferences preferences) {
         preferences.putDouble(SAMPLES_PER_SECOND_SETTING, this.samplesPerSecond);
         preferences.putBoolean(EXPORT_CHART_RANGE_ONLY_SETTING, this.exportChartRangeOnly);
     }
 
-    public void loadConfiguration(Preferences preferences){
+    public void loadConfiguration(Preferences preferences) {
         this.samplesPerSecond = preferences.getDouble(SAMPLES_PER_SECOND_SETTING, Double.MAX_VALUE);
         this.exportChartRangeOnly = preferences.getBoolean(EXPORT_CHART_RANGE_ONLY_SETTING, false);
     }

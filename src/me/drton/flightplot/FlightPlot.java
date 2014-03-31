@@ -1,6 +1,7 @@
 package me.drton.flightplot;
 
-import me.drton.flightplot.export.*;
+import me.drton.flightplot.export.ExportData;
+import me.drton.flightplot.export.ExportManager;
 import me.drton.flightplot.processors.PlotProcessor;
 import me.drton.flightplot.processors.ProcessorsList;
 import me.drton.flightplot.processors.Simple;
@@ -58,7 +59,7 @@ public class FlightPlot {
     private JButton logInfoButton;
 
     private static String appName = "FlightPlot";
-    private static String version = "0.2.2";
+    private static String version = "0.2.3";
     private static String appNameAndVersion = appName + " v." + version;
     private final Preferences preferences;
     private String logFileName = null;
@@ -588,15 +589,16 @@ public class FlightPlot {
 
     public void exportTrack() {
         if (null == this.logReader) {
-            JOptionPane.showMessageDialog(mainFrame, "Log file must be opened first.", "Error", JOptionPane.ERROR_MESSAGE);
+            JOptionPane.showMessageDialog(mainFrame, "Log file must be opened first.", "Error",
+                    JOptionPane.ERROR_MESSAGE);
             return;
         }
 
-        try{
+        try {
             ExportData data = new ExportData();
             Range timeAxisRange = jFreeChart.getXYPlot().getDomainAxis().getRange();
-            data.setChartRangeFrom((long)(timeAxisRange.getLowerBound() * 1000000));
-            data.setChartRangeTo((long)(timeAxisRange.getUpperBound() * 1000000));
+            data.setChartRangeFrom((long) (timeAxisRange.getLowerBound() * 1000000));
+            data.setChartRangeTo((long) (timeAxisRange.getUpperBound() * 1000000));
             data.setLogReader(this.logReader);
 
             boolean exportStarted = this.exportManager.export(data, new Runnable() {
@@ -605,11 +607,10 @@ public class FlightPlot {
                     showExportTrackStatusMessage(FlightPlot.this.exportManager.getLastStatusMessage());
                 }
             });
-            if(exportStarted){
+            if (exportStarted) {
                 showExportTrackStatusMessage("Exporting...");
             }
-        }
-        catch (Exception e){
+        } catch (Exception e) {
             e.printStackTrace();
             showExportTrackStatusMessage("Track could not be exported.");
         }

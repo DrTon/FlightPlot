@@ -2,43 +2,97 @@ package me.drton.flightplot.export;
 
 import me.drton.flightplot.FormatErrorException;
 
+import java.io.File;
+import java.io.FileWriter;
 import java.io.IOException;
+import java.io.Writer;
 import java.util.HashSet;
 import java.util.Set;
 
 /**
  * Created by ada on 14.01.14.
  */
-public abstract class AbstractTrackExporter {
+public abstract class AbstractTrackExporter implements TrackExporter {
 
     private final TrackReader trackReader;
-
     private Set<TrackAnalyzer> analyzers;
+
+    protected ExporterConfiguration configuration = new ExporterConfiguration();
+    protected boolean trackStarted;
+    protected String title;
+    protected Writer writer;
 
     public AbstractTrackExporter(TrackReader trackReader) {
         this.trackReader = trackReader;
         initAnalyzers();
     }
 
-    private void initAnalyzers(){
+    private void initAnalyzers() {
         analyzers = new HashSet<TrackAnalyzer>();
-        if(this instanceof FlightModeChangeListener){
-            analyzers.add(new FlightModeReader((FlightModeChangeListener)this));
+        if (this instanceof FlightModeChangeListener) {
+            analyzers.add(new FlightModeReader((FlightModeChangeListener) this));
         }
     }
 
-    protected TrackPoint readNextPoint() throws IOException, FormatErrorException{
+    protected TrackPoint readNextPoint() throws IOException, FormatErrorException {
         TrackPoint point = this.trackReader.readNextPoint();
-        if(null != point){
+        if (null != point) {
             feedAnalyzers(point);
         }
         return point;
     }
 
-    private void feedAnalyzers(TrackPoint point){
-        for (TrackAnalyzer analyzer : this.analyzers){
+    private void feedAnalyzers(TrackPoint point) {
+        for (TrackAnalyzer analyzer : this.analyzers) {
             analyzer.inputTrackPoint(point);
         }
     }
 
+    public void exportToFile(File file, String title) throws IOException {
+        this.writer = initWriter(file, title);
+        try {
+            writeStart();
+            TrackPoint point = readNextPoint();
+            if (!this.trackStarted) {
+                startTrackPart();
+                this.trackStarted = true;
+            }
+            while (null != point) {
+                writePoint(point);
+                point = readNextPoint();
+            }
+            endTrackPart();
+            writeEnd();
+        } catch (Exception e) {
+            e.printStackTrace();
+        } finally {
+            this.writer.close();
+        }
+    }
+
+    protected Writer initWriter(File file, String title) throws IOException {
+        Writer fileWriter = new FileWriter(file);
+        this.trackStarted = false;
+        this.title = title;
+        return fileWriter;
+    }
+
+    protected abstract void writeStart() throws IOException;
+
+    protected abstract void startTrackPart() throws IOException;
+
+    protected abstract void writePoint(TrackPoint point) throws IOException;
+
+    protected abstract void endTrackPart() throws IOException;
+
+    protected abstract void writeEnd() throws IOException;
+
+    @Override
+    public void setConfiguration(ExporterConfiguration configuration) {
+        this.configuration = configuration;
+    }
+
+    public ExporterConfiguration getConfiguration() {
+        return configuration;
+    }
 }

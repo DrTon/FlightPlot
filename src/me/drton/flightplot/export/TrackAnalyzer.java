@@ -6,5 +6,4 @@ package me.drton.flightplot.export;
 public interface TrackAnalyzer {
 
     public void inputTrackPoint(TrackPoint point);
-
 }

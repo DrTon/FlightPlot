@@ -25,11 +25,11 @@ public class ExportConfigurationDialog extends JDialog {
     private ReaderConfiguration readerConfiguration = new ReaderConfiguration();
     private ExportData exportData;
 
-    private class FormatItem{
+    private class FormatItem {
         String displayName;
         String name;
 
-        FormatItem(String displayName, String name){
+        FormatItem(String displayName, String name) {
             this.displayName = displayName;
             this.name = name;
         }
@@ -46,34 +46,29 @@ public class ExportConfigurationDialog extends JDialog {
         getRootPane().setDefaultButton(buttonOK);
         setTitle("Export settings");
         initGuiElements();
-
         buttonOK.addActionListener(new ActionListener() {
             public void actionPerformed(ActionEvent e) {
                 onOK();
             }
         });
-
         buttonCancel.addActionListener(new ActionListener() {
             public void actionPerformed(ActionEvent e) {
                 onCancel();
             }
         });
-
-// call onCancel() when cross is clicked
+        // call onCancel() when cross is clicked
         setDefaultCloseOperation(DO_NOTHING_ON_CLOSE);
         addWindowListener(new WindowAdapter() {
             public void windowClosing(WindowEvent e) {
                 onCancel();
             }
         });
-
-// call onCancel() on ESCAPE
+        // call onCancel() on ESCAPE
         contentPane.registerKeyboardAction(new ActionListener() {
             public void actionPerformed(ActionEvent e) {
                 onCancel();
             }
         }, KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0), JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT);
-
         samplesPerSecond.addChangeListener(new ChangeListener() {
 
             @Override
@@ -90,7 +85,7 @@ public class ExportConfigurationDialog extends JDialog {
         maxTimeValue.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseClicked(MouseEvent mouseEvent) {
-                if(!ExportConfigurationDialog.this.exportDataInRange.isSelected()){
+                if (!ExportConfigurationDialog.this.exportDataInRange.isSelected()) {
                     ExportConfigurationDialog.this.exportTimeTo.setText(String.valueOf(
                             ExportConfigurationDialog.this.exportData.getLogReader().getSizeMicroseconds()));
                 }
@@ -98,18 +93,18 @@ public class ExportConfigurationDialog extends JDialog {
         });
     }
 
-    private void initGuiElements(){
+    private void initGuiElements() {
         initFormatList();
         initSampleSlider();
     }
 
-    private void initFormatList(){
-        for(ExportFormatFactory.ExportFormatType type : ExportFormatFactory.ExportFormatType.values()){
+    private void initFormatList() {
+        for (ExportFormatFactory.ExportFormatType type : ExportFormatFactory.ExportFormatType.values()) {
             this.exportFormat.addItem(new FormatItem(type.getExportFormat().getFormatName(), type.name()));
         }
     }
 
-    private void initSampleSlider(){
+    private void initSampleSlider() {
         Dictionary<Integer, JLabel> labels = new Hashtable<Integer, JLabel>();
         labels.put(1, new JLabel("0.1"));
         labels.put(10, new JLabel("1"));
@@ -117,33 +112,29 @@ public class ExportConfigurationDialog extends JDialog {
         this.samplesPerSecond.setLabelTable(labels);
     }
 
-    private double getSamplesPerSecond(){
+    private double getSamplesPerSecond() {
         int value = this.samplesPerSecond.getValue();
-        if(value <= 10){
-            return (double)value/10;
-        }
-        else if (value == 20){
+        if (value <= 10) {
+            return (double) value / 10;
+        } else if (value == 20) {
             return Double.MAX_VALUE;
-        }
-        else {
+        } else {
             return value - 9;
         }
     }
 
-    private void setSamplesPerSecond(double value){
-        if(Double.MAX_VALUE == value){
+    private void setSamplesPerSecond(double value) {
+        if (Double.MAX_VALUE == value) {
             this.samplesPerSecond.setValue(20);
-        }
-        else if (value <= 1){
-            this.samplesPerSecond.setValue((int)(value*10));
-        }
-        else {
-            this.samplesPerSecond.setValue((int)value + 9);
+        } else if (value <= 1) {
+            this.samplesPerSecond.setValue((int) (value * 10));
+        } else {
+            this.samplesPerSecond.setValue((int) value + 9);
         }
         updateForSamplesPerSecond();
     }
 
-    private void updateForExportDataInRange(){
+    private void updateForExportDataInRange() {
         if (exportDataInRange.isSelected()) {
             this.exportTimeFrom.setText(
                     String.valueOf(
@@ -167,17 +158,16 @@ public class ExportConfigurationDialog extends JDialog {
         }
     }
 
-    private void updateForSamplesPerSecond(){
-        if(getSamplesPerSecond() == Double.MAX_VALUE){
+    private void updateForSamplesPerSecond() {
+        if (getSamplesPerSecond() == Double.MAX_VALUE) {
             this.samplesPerSecondValue.setText("max");
-        }
-        else {
+        } else {
             this.samplesPerSecondValue.setText(
                     String.format("%.1f", getSamplesPerSecond()));
         }
     }
 
-    public void display(ExportData exportData){
+    public void display(ExportData exportData) {
         this.exportData = exportData;
         updateDialogFromConfiguration();
         pack();
@@ -186,23 +176,22 @@ public class ExportConfigurationDialog extends JDialog {
 
     private void onOK() {
         this.canceled = false;
-        if(isConfigValid()){
+        if (isConfigValid()) {
             updateConfigurationFromDialog();
             dispose();
         }
     }
 
-    private boolean isConfigValid(){
-        try{
+    private boolean isConfigValid() {
+        try {
             long from = Long.parseLong(this.exportTimeFrom.getText());
             long to = Long.parseLong(this.exportTimeTo.getText());
-            if(from < 0 || to <= from || to > this.exportData.getLogReader().getSizeMicroseconds()){
+            if (from < 0 || to <= from || to > this.exportData.getLogReader().getSizeMicroseconds()) {
                 JOptionPane.showMessageDialog(this, "Export range FROM must be greater or equal to 0, TO must be greater " +
                         "than FROM and smaller than MAX.", "Error", JOptionPane.ERROR_MESSAGE);
                 return false;
             }
-        }
-        catch (NumberFormatException e){
+        } catch (NumberFormatException e) {
             JOptionPane.showMessageDialog(this, "Export range FROM and TO must be valid numbers."
                     , "Error", JOptionPane.ERROR_MESSAGE);
             return false;
@@ -213,7 +202,7 @@ public class ExportConfigurationDialog extends JDialog {
 
     private void updateConfigurationFromDialog() {
         this.exporterConfiguration.setSplitTracksByFlightMode(this.splitTrackByFlightCheckBox.isSelected());
-        FormatItem item = (FormatItem)this.exportFormat.getSelectedItem();
+        FormatItem item = (FormatItem) this.exportFormat.getSelectedItem();
         this.exporterConfiguration.setExportFormatType(ExportFormatFactory.ExportFormatType.valueOf(item.name));
 
         this.readerConfiguration.setSamplesPerSecond(getSamplesPerSecond());
@@ -222,22 +211,21 @@ public class ExportConfigurationDialog extends JDialog {
         this.readerConfiguration.setExportChartRangeOnly(this.exportDataInRange.isSelected());
     }
 
-    private long getNumberFromTextField(final JTextField field){
+    private long getNumberFromTextField(final JTextField field) {
         return Long.parseLong(field.getText());
     }
 
-    private void updateDialogFromConfiguration(){
+    private void updateDialogFromConfiguration() {
         this.splitTrackByFlightCheckBox.setSelected(this.exporterConfiguration.isSplitTracksByFlightMode());
-        if(null != this.exporterConfiguration.getExportFormatType()){
-            for(int index = 0; index < this.exportFormat.getItemCount(); index ++){
-                FormatItem item = (FormatItem)this.exportFormat.getItemAt(index);
-                if(this.exporterConfiguration.getExportFormatType().name().equals(item.name)){
+        if (null != this.exporterConfiguration.getExportFormatType()) {
+            for (int index = 0; index < this.exportFormat.getItemCount(); index++) {
+                FormatItem item = (FormatItem) this.exportFormat.getItemAt(index);
+                if (this.exporterConfiguration.getExportFormatType().name().equals(item.name)) {
                     this.exportFormat.setSelectedIndex(index);
                     break;
                 }
             }
         }
-
         setSamplesPerSecond(this.readerConfiguration.getSamplesPerSecond());
         this.exportTimeFrom.setText(String.valueOf(0));
         this.exportTimeTo.setText(String.valueOf(this.exportData.getLogReader().getSizeMicroseconds()));
