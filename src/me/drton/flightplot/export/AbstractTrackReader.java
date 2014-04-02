@@ -63,9 +63,9 @@ public abstract class AbstractTrackReader implements TrackReader {
 
     private void initFromConfig() throws IOException, FormatErrorException {
         this.timeGap = (long) Math.floor(1000000 / this.configuration.getSamplesPerSecond());
-        if (this.configuration.getTimeFrom() > 0) {
-            this.reader.seek(this.reader.getStartMicroseconds() + this.configuration.getTimeFrom());
+        if (this.configuration.getTimeFromInSeconds() > 0) {
+            this.reader.seek(this.reader.getStartMicroseconds() + this.configuration.getTimeFromInSeconds() * 1000000);
         }
-        this.endTime = this.reader.getStartMicroseconds() + this.configuration.getTimeTo();
+        this.endTime = this.reader.getStartMicroseconds() + this.configuration.getTimeToInSeconds() * 1000000;
     }
 }

@@ -3,6 +3,8 @@ package me.drton.flightplot.export;
 import javax.swing.*;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
+import javax.swing.event.DocumentEvent;
+import javax.swing.event.DocumentListener;
 import java.awt.event.*;
 import java.util.Dictionary;
 import java.util.Hashtable;
@@ -19,6 +21,9 @@ public class ExportConfigurationDialog extends JDialog {
     private JTextField exportTimeTo;
     private JTextField exportTimeFrom;
     private JCheckBox exportDataInRange;
+
+    private String exportTimeToHold = null;
+    private String exportTimeFromHold = null;
 
     private boolean canceled;
     private ExporterConfiguration exporterConfiguration = new ExporterConfiguration();
@@ -85,10 +90,39 @@ public class ExportConfigurationDialog extends JDialog {
         maxTimeValue.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseClicked(MouseEvent mouseEvent) {
-                if (!ExportConfigurationDialog.this.exportDataInRange.isSelected()) {
-                    ExportConfigurationDialog.this.exportTimeTo.setText(String.valueOf(
-                            ExportConfigurationDialog.this.exportData.getLogReader().getSizeMicroseconds()));
-                }
+                setMaxExportTimeTo();
+            }
+        });
+        exportTimeFrom.addKeyListener(new KeyListener() {
+            @Override
+            public void keyTyped(KeyEvent keyEvent) {
+                exportTimeFromHold = exportTimeFrom.getText();
+            }
+
+            @Override
+            public void keyPressed(KeyEvent keyEvent) {
+                exportTimeFromHold = exportTimeFrom.getText();
+            }
+
+            @Override
+            public void keyReleased(KeyEvent keyEvent) {
+                exportTimeFromHold = exportTimeFrom.getText();
+            }
+        });
+        exportTimeTo.addKeyListener(new KeyListener() {
+            @Override
+            public void keyTyped(KeyEvent keyEvent) {
+                exportTimeToHold = exportTimeTo.getText();
+            }
+
+            @Override
+            public void keyPressed(KeyEvent keyEvent) {
+                exportTimeToHold = exportTimeTo.getText();
+            }
+
+            @Override
+            public void keyReleased(KeyEvent keyEvent) {
+                exportTimeToHold = exportTimeTo.getText();
             }
         });
     }
@@ -137,24 +171,35 @@ public class ExportConfigurationDialog extends JDialog {
     private void updateForExportDataInRange() {
         if (exportDataInRange.isSelected()) {
             this.exportTimeFrom.setText(
-                    String.valueOf(
-                            Math.max(this.exportData.getChartRangeFrom()
-                                    - this.exportData.getLogReader().getStartMicroseconds()
-                                    , 0)
-                    )
+                    String.valueOf(this.exportData.getChartRangeFromInSeconds())
             );
             this.exportTimeTo.setText(
-                    String.valueOf(
-                            Math.min(this.exportData.getChartRangeTo()
-                                    - this.exportData.getLogReader().getStartMicroseconds()
-                                    , this.exportData.getLogReader().getSizeMicroseconds())
-                    )
+                    String.valueOf(this.exportData.getChartRangeToInSeconds())
             );
             this.exportTimeFrom.setEnabled(false);
             this.exportTimeTo.setEnabled(false);
         } else {
+            if(null == this.exportTimeFromHold){
+                this.exportTimeFrom.setText(String.valueOf(0));
+            }
+            else {
+                this.exportTimeFrom.setText(this.exportTimeFromHold);
+            }
+            if(null == exportTimeToHold){
+                this.exportTimeTo.setText(String.valueOf(this.exportData.getLogSizeInSeconds()));
+            }
+            else {
+                this.exportTimeTo.setText(this.exportTimeToHold);
+            }
             this.exportTimeFrom.setEnabled(true);
             this.exportTimeTo.setEnabled(true);
+        }
+    }
+
+    private void setMaxExportTimeTo() {
+        if (!this.exportDataInRange.isSelected()) {
+            this.exportTimeTo.setText(String.valueOf(this.exportData.getLogSizeInSeconds()));
+            this.exportTimeToHold = String.valueOf(this.exportData.getLogSizeInSeconds());
         }
     }
 
@@ -186,7 +231,7 @@ public class ExportConfigurationDialog extends JDialog {
         try {
             long from = Long.parseLong(this.exportTimeFrom.getText());
             long to = Long.parseLong(this.exportTimeTo.getText());
-            if (from < 0 || to <= from || to > this.exportData.getLogReader().getSizeMicroseconds()) {
+            if (from < 0 || to <= from || to > this.exportData.getLogSizeInSeconds()) {
                 JOptionPane.showMessageDialog(this, "Export range FROM must be greater or equal to 0, TO must be greater " +
                         "than FROM and smaller than MAX.", "Error", JOptionPane.ERROR_MESSAGE);
                 return false;
@@ -206,8 +251,8 @@ public class ExportConfigurationDialog extends JDialog {
         this.exporterConfiguration.setExportFormatType(ExportFormatFactory.ExportFormatType.valueOf(item.name));
 
         this.readerConfiguration.setSamplesPerSecond(getSamplesPerSecond());
-        this.readerConfiguration.setTimeTo(getNumberFromTextField(this.exportTimeTo));
-        this.readerConfiguration.setTimeFrom(getNumberFromTextField(this.exportTimeFrom));
+        this.readerConfiguration.setTimeToInSeconds(getNumberFromTextField(this.exportTimeTo));
+        this.readerConfiguration.setTimeFromInSeconds(getNumberFromTextField(this.exportTimeFrom));
         this.readerConfiguration.setExportChartRangeOnly(this.exportDataInRange.isSelected());
     }
 
@@ -227,9 +272,7 @@ public class ExportConfigurationDialog extends JDialog {
             }
         }
         setSamplesPerSecond(this.readerConfiguration.getSamplesPerSecond());
-        this.exportTimeFrom.setText(String.valueOf(0));
-        this.exportTimeTo.setText(String.valueOf(this.exportData.getLogReader().getSizeMicroseconds()));
-        this.maxTimeValue.setText(String.format(" (max: %d)", this.exportData.getLogReader().getSizeMicroseconds()));
+        this.maxTimeValue.setText(String.format(" (max: %d)", this.exportData.getLogSizeInSeconds()));
         this.exportDataInRange.setSelected(this.readerConfiguration.isExportChartRangeOnly());
         updateForExportDataInRange();
     }

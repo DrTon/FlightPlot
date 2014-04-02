@@ -12,8 +12,8 @@ public class ReaderConfiguration {
     private boolean exportChartRangeOnly;
     private final static String EXPORT_CHART_RANGE_ONLY_SETTING = "exportChartRangeOnly";
 
-    private long timeFrom;
-    private long timeTo;
+    private long timeFromInSeconds;
+    private long timeToInSeconds;
 
     public void saveConfiguration(Preferences preferences) {
         preferences.putDouble(SAMPLES_PER_SECOND_SETTING, this.samplesPerSecond);
@@ -33,20 +33,20 @@ public class ReaderConfiguration {
         this.samplesPerSecond = samplesPerSecond;
     }
 
-    public long getTimeFrom() {
-        return timeFrom;
+    public long getTimeFromInSeconds() {
+        return timeFromInSeconds;
     }
 
-    public void setTimeFrom(long timeFrom) {
-        this.timeFrom = timeFrom;
+    public void setTimeFromInSeconds(long timeFromInSeconds) {
+        this.timeFromInSeconds = timeFromInSeconds;
     }
 
-    public long getTimeTo() {
-        return timeTo;
+    public long getTimeToInSeconds() {
+        return timeToInSeconds;
     }
 
-    public void setTimeTo(long timeTo) {
-        this.timeTo = timeTo;
+    public void setTimeToInSeconds(long timeToInSeconds) {
+        this.timeToInSeconds = timeToInSeconds;
     }
 
     public boolean isExportChartRangeOnly() {

@@ -10,16 +10,24 @@ public class ExportData {
     private long chartRangeTo;
     private LogReader logReader;
 
-    public long getChartRangeFrom() {
-        return chartRangeFrom;
+    public long getChartRangeToInSeconds() {
+        return (long) Math.min(
+                Math.ceil((chartRangeTo - this.logReader.getStartMicroseconds()) / 1000000)
+                , getLogSizeInSeconds());
+    }
+
+    public long getChartRangeFromInSeconds() {
+        return (long) Math.max(
+                Math.ceil((chartRangeFrom - this.logReader.getStartMicroseconds()) / 1000000)
+                , 0);
+    }
+
+    public long getLogSizeInSeconds() {
+        return (long) Math.ceil(this.logReader.getSizeMicroseconds() / 1000000);
     }
 
     public void setChartRangeFrom(long chartRangeFrom) {
         this.chartRangeFrom = chartRangeFrom;
-    }
-
-    public long getChartRangeTo() {
-        return chartRangeTo;
     }
 
     public void setChartRangeTo(long chartRangeTo) {
