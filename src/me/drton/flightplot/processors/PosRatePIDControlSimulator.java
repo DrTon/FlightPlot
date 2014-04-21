@@ -94,7 +94,7 @@ public class PosRatePIDControlSimulator extends PlotProcessor {
                 double force = delayLine.getOutput(time, lpf.getOutput(time, 0.0));
                 if (Double.isNaN(force))
                     force = 0.0;
-                double acc = force * thrustK - drag * rate * rate;
+                double acc = force * thrustK - drag * Math.abs(rate) * rate;
                 rate += acc * dt;
                 pos += rate * dt;
                 double posSPRate = 0.0;
