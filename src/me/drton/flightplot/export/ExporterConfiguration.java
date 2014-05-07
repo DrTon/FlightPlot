@@ -23,7 +23,11 @@ public class ExporterConfiguration {
         this.splitTracksByFlightMode = preferences.getBoolean(SPLIT_TRACK_BY_FLIGHT_MODE_SETTING, false);
         String formatType = preferences.get(EXPORT_FORMAT_TYPE_SETTING, null);
         if (null != formatType) {
-            this.exportFormatType = ExportFormatFactory.ExportFormatType.valueOf(formatType);
+            try {
+                this.exportFormatType = ExportFormatFactory.ExportFormatType.valueOf(formatType);
+            } catch (IllegalArgumentException e) {
+                this.exportFormatType = null;
+            }
         }
     }
 

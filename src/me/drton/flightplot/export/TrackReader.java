@@ -23,5 +23,6 @@ public interface TrackReader {
      */
     void reset() throws IOException, FormatErrorException;
 
-    void setConfiguration(ReaderConfiguration configuration);
+    void setConfiguration(ReaderConfiguration configuration) throws ConfigurationException;
+
 }

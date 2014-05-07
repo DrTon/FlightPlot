@@ -1,5 +1,6 @@
 package me.drton.flightplot;
 
+import me.drton.flightplot.export.ExportData;
 import me.drton.flightplot.export.ExportManager;
 import me.drton.flightplot.processors.PlotProcessor;
 import me.drton.flightplot.processors.ProcessorsList;
@@ -592,8 +593,15 @@ public class FlightPlot {
                     JOptionPane.ERROR_MESSAGE);
             return;
         }
+
         try {
-            boolean exportStarted = this.exportManager.export(this.logReader, new Runnable() {
+            ExportData data = new ExportData();
+            Range timeAxisRange = jFreeChart.getXYPlot().getDomainAxis().getRange();
+            data.setChartRangeFrom((long) (timeAxisRange.getLowerBound() * 1000000));
+            data.setChartRangeTo((long) (timeAxisRange.getUpperBound() * 1000000));
+            data.setLogReader(this.logReader);
+
+            boolean exportStarted = this.exportManager.export(data, new Runnable() {
                 @Override
                 public void run() {
                     showExportTrackStatusMessage(FlightPlot.this.exportManager.getLastStatusMessage());
@@ -604,7 +612,7 @@ public class FlightPlot {
             }
         } catch (Exception e) {
             e.printStackTrace();
-            showExportTrackStatusMessage("Track reader could not be opened.");
+            showExportTrackStatusMessage("Track could not be exported.");
         }
     }
 
