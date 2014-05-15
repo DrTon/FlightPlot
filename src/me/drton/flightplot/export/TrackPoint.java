@@ -10,6 +10,7 @@ public class TrackPoint {
     public final long time;     /// unix time in milliseconds
     public FlightMode flightMode = FlightMode.MANUAL;  /// flight mode
 
+    // TODO: make flight mode mandatory?
     public TrackPoint(double lat, double lon, float alt, long time) {
         this.lat = lat;
         this.lon = lon;
