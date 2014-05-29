@@ -19,7 +19,6 @@ public class PositionEstimator extends PlotProcessor {
     private String[] param_Fields_Att;
     private double[][] param_W_GPS;
     private double param_W_Baro;
-    private double[] param_W_Acc;
     private double param_W_Acc_Bias;
     /*
     private String[] param_Fields_Flow;
@@ -38,7 +37,6 @@ public class PositionEstimator extends PlotProcessor {
     private double corrFlowW;
     private double[] flowAng;
     */
-    private double[] corrAcc;   // X, Y, Z
     private double corrBaro;
     private double[] wGPS;
     private double baro;
@@ -63,10 +61,8 @@ public class PositionEstimator extends PlotProcessor {
         params.put("Fields Acc", "IMU.AccX IMU.AccY IMU.AccZ");
         params.put("Fields Att", "ATT.Roll ATT.Pitch ATT.Yaw");
         params.put("Delay GPS", 0.1);
-        params.put("W XY Acc", 20.0);
         params.put("W XY GPS P", 1.0);
         params.put("W XY GPS V", 2.0);
-        params.put("W Z Acc", 20.0);
         params.put("W Z Baro", 0.5);
         params.put("W Z GPS P", 0.005);
         params.put("W Acc Bias", 0.05);
@@ -90,9 +86,8 @@ public class PositionEstimator extends PlotProcessor {
         timePrev = Double.NaN;
         gpsInited = false;
         baroInited = false;
-        est = new double[3][3];
-        corrGPS = new double[3][3];
-        corrAcc = new double[]{0.0, 0.0, 0.0};
+        est = new double[3][2];
+        corrGPS = new double[3][2];
         corrBaro = 0.0;
         wGPS = new double[3];
         accBias = new double[]{0.0, 0.0, 0.0};
@@ -117,10 +112,6 @@ public class PositionEstimator extends PlotProcessor {
         param_W_GPS[1][1] = param_W_GPS[0][1];
         param_W_GPS[2][0] = (Double) parameters.get("W Z GPS P");
         param_W_Baro = (Double) parameters.get("W Z Baro");
-        param_W_Acc = new double[3];
-        param_W_Acc[0] = (Double) parameters.get("W XY Acc");
-        param_W_Acc[1] = param_W_Acc[0];
-        param_W_Acc[2] = (Double) parameters.get("W Z Acc");
         param_W_Acc_Bias = (Double) parameters.get("W Acc Bias");
         /*
         param_Fields_Flow = ((String) parameters.get("Fields Flow")).split(WHITESPACE_RE);
@@ -151,6 +142,7 @@ public class PositionEstimator extends PlotProcessor {
             if (show[i]) {
                 addSeries(axisName);
                 addSeries("V" + axisName);
+                addSeries("CorrGPS_V_" + axisName);
             }
             if (offsetsStr.length > i) {
                 offsets[i] = Double.parseDouble(offsetsStr[i]);
@@ -204,23 +196,25 @@ public class PositionEstimator extends PlotProcessor {
                 est[2][0] = -alt;
                 baroOffset = alt - baro;
             }
-            double[] gpsXY = positionProjector.project(lat, lon);
-            gps[0][0] = gpsXY[0];
-            gps[1][0] = gpsXY[1];
-            gps[2][0] = -alt;
-            for (int axis = 0; axis < 3; axis++) {
-                gps[axis][1] = velGPSNum[axis].doubleValue();
-            }
-            for (int axis = 0; axis < 3; axis++) {
-                for (int posVel = 0; posVel < 2; posVel++) {
-                    corrGPS[axis][posVel] = gps[axis][posVel] -
-                            delayLinesGPS[axis][posVel].getOutput(time, est[axis][posVel]);
+            if (gpsInited) {
+                double[] gpsXY = positionProjector.project(lat, lon);
+                gps[0][0] = gpsXY[0];
+                gps[1][0] = gpsXY[1];
+                gps[2][0] = -alt;
+                for (int axis = 0; axis < 3; axis++) {
+                    gps[axis][1] = velGPSNum[axis].doubleValue();
                 }
+                for (int axis = 0; axis < 3; axis++) {
+                    for (int posVel = 0; posVel < 2; posVel++) {
+                        corrGPS[axis][posVel] = gps[axis][posVel] -
+                                delayLinesGPS[axis][posVel].getOutput(time, est[axis][posVel]);
+                    }
+                }
+                wGPS[0] = 2.0 / Math.max(2.0, eph);
+                wGPS[1] = wGPS[0];
+                wGPS[2] = 4.0 / Math.max(4.0, epv);
+                act = true;
             }
-            wGPS[0] = 2.0 / Math.max(2.0, eph);
-            wGPS[1] = wGPS[0];
-            wGPS[2] = 4.0 / Math.max(4.0, epv);
-            act = true;
         }
         // Flow
         /*
@@ -291,15 +285,14 @@ public class PositionEstimator extends PlotProcessor {
                 accNED.set(2, accNED.get(2) + G);
                 for (int axis = 0; axis < 3; axis++) {
                     accBias[axis] += b.get(axis);
-                    corrAcc[axis] = accNED.get(axis) - est[axis][2];
                 }
-                predict(est, dt);
+                accNED = accNED.transpose();
+                predict(est, dt, new double[]{accNED.get(0), accNED.get(1), accNED.get(2)});
                 for (int axis = 0; axis < 3; axis++) {
                     correct(est[axis], dt, 0, corrGPS[axis][0], param_W_GPS[axis][0] * wGPS[axis]);
                     correct(est[axis], dt, 1, corrGPS[axis][1], param_W_GPS[axis][1] * wGPS[axis]);
                     //correct(estX, dt, 1, corrFlow[0], param_W_Flow * corrFlowW);
                     //correct(estY, dt, 1, corrFlow[1], param_W_Flow * corrFlowW);
-                    correct(est[axis], dt, 2, corrAcc[axis], param_W_Acc[axis]);
                 }
                 correct(est[2], dt, 0, corrBaro, param_W_Baro);
                 if (gpsInited && baroInited) {
@@ -308,6 +301,7 @@ public class PositionEstimator extends PlotProcessor {
                         if (show[axis]) {
                             addPoint(seriesIdx++, time, est[axis][0] * scales[axis] + offsets[axis]);
                             addPoint(seriesIdx++, time, est[axis][1] * scales[axis]);
+                            addPoint(seriesIdx++, time, corrGPS[axis][1]);
                         }
                     }
                 }
@@ -316,10 +310,10 @@ public class PositionEstimator extends PlotProcessor {
         }
     }
 
-    private void predict(double[][] q, double dt) {
+    private void predict(double[][] q, double dt, double[] acc) {
         for (int axis = 0; axis < 3; axis++) {
-            q[axis][0] += q[axis][1] * dt + q[axis][2] * dt * dt / 2.0;
-            q[axis][1] += q[axis][2] * dt;
+            q[axis][0] += q[axis][1] * dt + acc[axis] * dt * dt / 2.0;
+            q[axis][1] += acc[axis] * dt;
         }
     }
 
@@ -330,9 +324,6 @@ public class PositionEstimator extends PlotProcessor {
         q[i] += ewdt;
         if (i == 0) {
             q[1] += w * ewdt;
-            q[2] += w * w * ewdt / 3.0;
-        } else if (i == 1) {
-            q[2] += w * ewdt;
         }
     }
 }
