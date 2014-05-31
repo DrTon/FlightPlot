@@ -4,7 +4,9 @@ import me.drton.flightplot.processors.tools.RotationConversion;
 import me.drton.jmavlib.geo.GlobalPositionProjector;
 import me.drton.jmavlib.geo.LatLonAlt;
 import me.drton.jmavlib.processing.DelayLine;
-import org.ejml.simple.SimpleMatrix;
+import org.la4j.matrix.Matrix;
+import org.la4j.vector.Vector;
+import org.la4j.vector.dense.BasicVector;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -43,10 +45,10 @@ public class PositionEstimator extends PlotProcessor {
     private double baro;
     private double baroOffset;
     private double[][] gps;     // [axis][order]
-    private SimpleMatrix acc = new SimpleMatrix(3, 1);
-    private SimpleMatrix rot;
-    private GlobalPositionProjector positionProjector = new GlobalPositionProjector();
-    private double[] accBias;
+    private Vector acc;
+    private Matrix rot;
+    private GlobalPositionProjector positionProjector;
+    private Vector accBias;
     private DelayLine<double[][]> delayLineGPS;
     private boolean gpsInited;
     private boolean baroInited;
@@ -91,7 +93,8 @@ public class PositionEstimator extends PlotProcessor {
         corrGPS = new double[3][2];
         corrBaro = 0.0;
         wGPS = new double[3];
-        accBias = new double[]{0.0, 0.0, 0.0};
+        acc = new BasicVector(3);
+        accBias = new BasicVector(3);
         gps = new double[3][2];
         baro = 0.0;
         baroOffset = 0.0;
@@ -101,7 +104,7 @@ public class PositionEstimator extends PlotProcessor {
         flowAng = new double[]{0.0, 0.0};
         */
         delayLineGPS = new DelayLine<double[][]>();
-        positionProjector.reset();
+        positionProjector = new GlobalPositionProjector();
         param_Fields_GPS = ((String) parameters.get("Fields GPS")).split(WHITESPACE_RE);
         param_Fields_Acc = ((String) parameters.get("Fields Acc")).split(WHITESPACE_RE);
         param_Fields_Att = ((String) parameters.get("Fields Att")).split(WHITESPACE_RE);
@@ -259,9 +262,10 @@ public class PositionEstimator extends PlotProcessor {
         Number accY = (Number) update.get(param_Fields_Acc[1]);
         Number accZ = (Number) update.get(param_Fields_Acc[2]);
         if (accX != null && accY != null && accZ != null) {
-            acc.set(0, 0, accX.doubleValue() - accBias[0]);
-            acc.set(1, 0, accY.doubleValue() - accBias[1]);
-            acc.set(2, 0, accZ.doubleValue() - accBias[2]);
+            acc.set(0, accX.doubleValue());
+            acc.set(1, accY.doubleValue());
+            acc.set(2, accZ.doubleValue());
+            acc.subtract(accBias);
             act = true;
         }
         if (act) {
@@ -270,20 +274,17 @@ public class PositionEstimator extends PlotProcessor {
                 double dBaro = corrGPS[2][0] * param_W_GPS[2][0] * wGPS[2] * dt;
                 baroOffset -= dBaro;
                 corrBaro += dBaro;
-                SimpleMatrix accBiasCorrV = new SimpleMatrix(3, 1);
+                Vector accBiasCorrV = new BasicVector(3);
                 for (int axis = 0; axis < 3; axis++) {
                     double wPos = param_W_GPS[axis][0] * param_W_GPS[axis][0] * wGPS[axis] * wGPS[axis];
                     double wVel = param_W_GPS[axis][1] * wGPS[axis];
                     accBiasCorrV.set(axis, -corrGPS[axis][0] * wPos - corrGPS[axis][1] * wVel);
                 }
                 accBiasCorrV.set(2, -corrBaro * param_W_Baro * param_W_Baro);
-                SimpleMatrix b = rot.transpose().mult(accBiasCorrV).scale(param_W_Acc_Bias * dt);
-                SimpleMatrix accNED = rot.mult(acc);
+                Vector b = rot.transpose().multiply(accBiasCorrV).multiply(param_W_Acc_Bias * dt);
+                Vector accNED = rot.multiply(acc);
                 accNED.set(2, accNED.get(2) + G);
-                for (int axis = 0; axis < 3; axis++) {
-                    accBias[axis] += b.get(axis);
-                }
-                accNED = accNED.transpose();
+                accBias.addInPlace(b);
                 predict(est, dt, new double[]{accNED.get(0), accNED.get(1), accNED.get(2)});
                 for (int axis = 0; axis < 3; axis++) {
                     correct(est[axis], dt, 0, corrGPS[axis][0], param_W_GPS[axis][0] * wGPS[axis]);
