@@ -1,6 +1,6 @@
 package me.drton.flightplot.export;
 
-import me.drton.flightplot.LogReader;
+import me.drton.jmavlib.log.LogReader;
 
 /**
  * Created by ada on 04.02.14.
@@ -11,15 +11,12 @@ public class ExportData {
     private LogReader logReader;
 
     public long getChartRangeToInSeconds() {
-        return (long) Math.min(
-                Math.ceil((chartRangeTo - this.logReader.getStartMicroseconds()) / 1000000)
-                , getLogSizeInSeconds());
+        return (long) Math.min(Math.ceil((chartRangeTo - this.logReader.getStartMicroseconds()) / 1000000),
+                getLogSizeInSeconds());
     }
 
     public long getChartRangeFromInSeconds() {
-        return (long) Math.max(
-                Math.ceil((chartRangeFrom - this.logReader.getStartMicroseconds()) / 1000000)
-                , 0);
+        return (long) Math.max(Math.ceil((chartRangeFrom - this.logReader.getStartMicroseconds()) / 1000000), 0);
     }
 
     public long getLogSizeInSeconds() {

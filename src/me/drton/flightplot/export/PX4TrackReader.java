@@ -1,7 +1,7 @@
 package me.drton.flightplot.export;
 
-import me.drton.flightplot.FormatErrorException;
-import me.drton.flightplot.PX4LogReader;
+import me.drton.jmavlib.log.FormatErrorException;
+import me.drton.jmavlib.log.PX4LogReader;
 
 import java.io.EOFException;
 import java.io.IOException;
@@ -50,8 +50,7 @@ public class PX4TrackReader extends AbstractTrackReader {
                 Double lat = (Double) data.get(GPS_LAT);
                 Double lon = (Double) data.get(GPS_LON);
                 Float alt = (Float) data.get(GPS_ALT);
-                if (fixType != null && fixType >= REQUIRED_FIXTYPE
-                        && lat != null && lon != null && alt != null) {
+                if (fixType != null && fixType >= REQUIRED_FIXTYPE && lat != null && lon != null && alt != null) {
                     TrackPoint point = new TrackPoint(lat, lon, alt, time);
                     point.flightMode = lastFlightMode;
                     data.clear();
@@ -77,6 +76,4 @@ public class PX4TrackReader extends AbstractTrackReader {
         }
         return null;
     }
-
-
 }

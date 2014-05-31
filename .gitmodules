@@ -1,0 +1,3 @@
+[submodule "jMAVlib"]
+	path = jMAVlib
+	url = https://github.com/DrTon/jMAVlib.git

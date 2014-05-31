@@ -1,8 +1,8 @@
 package me.drton.flightplot.processors;
 
-import me.drton.flightplot.processors.tools.DelayLine;
 import me.drton.flightplot.processors.tools.LowPassFilter;
 import me.drton.flightplot.processors.tools.PID;
+import me.drton.jmavlib.processing.DelayLine;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -17,7 +17,7 @@ public class PosRatePIDControlSimulator extends PlotProcessor {
     private double thrustK;
     private double accScale;
     private double drag;
-    private DelayLine delayLine = new DelayLine();
+    private DelayLine<Double> delayLine = new DelayLine<Double>();
     private LowPassFilter lpf = new LowPassFilter();
     private PID pidPos = new PID();
     private PID pidRate = new PID();
@@ -91,9 +91,10 @@ public class PosRatePIDControlSimulator extends PlotProcessor {
         if (update.containsKey("ATT.Roll")) {   // Act only on attitude updates
             if (!Double.isNaN(timePrev)) {
                 double dt = time - timePrev;
-                double force = delayLine.getOutput(time, lpf.getOutput(time, 0.0));
-                if (Double.isNaN(force))
+                Double force = delayLine.getOutput(time, lpf.getOutput(time, 0.0));
+                if (force == null) {
                     force = 0.0;
+                }
                 double acc = force * thrustK - drag * Math.abs(rate) * rate;
                 rate += acc * dt;
                 pos += rate * dt;
@@ -112,8 +113,9 @@ public class PosRatePIDControlSimulator extends PlotProcessor {
                 lpf.setInput(control);
                 addPoint(0, time, pos);
                 addPoint(1, time, rate);
-                if (accScale != 0.0)
+                if (accScale != 0.0) {
                     addPoint(2, time, acc * accScale);
+                }
                 addPoint(3, time, control);
                 addPoint(4, time, posSP);
             }

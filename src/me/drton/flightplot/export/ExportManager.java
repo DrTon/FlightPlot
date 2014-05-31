@@ -1,7 +1,7 @@
 package me.drton.flightplot.export;
 
-import me.drton.flightplot.FormatErrorException;
 import me.drton.flightplot.PreferencesUtil;
+import me.drton.jmavlib.log.FormatErrorException;
 
 import javax.swing.*;
 import javax.swing.filechooser.FileNameExtensionFilter;
@@ -56,8 +56,9 @@ public class ExportManager {
 
     private File getExportDestination(ExportFormat exportFormat) {
         JFileChooser fc = new JFileChooser();
-        if (lastExportDirectory != null)
+        if (lastExportDirectory != null) {
             fc.setCurrentDirectory(lastExportDirectory);
+        }
         FileNameExtensionFilter extensionFilter = new FileNameExtensionFilter(exportFormat.getFileExtensionName(),
                 exportFormat.getFileExtension());
         fc.setFileFilter(extensionFilter);
@@ -67,8 +68,9 @@ public class ExportManager {
             lastExportDirectory = fc.getCurrentDirectory();
             String exportFileName = fc.getSelectedFile().toString();
             String exportFileExtension = extensionFilter.getExtensions()[0];
-            if (extensionFilter == fc.getFileFilter() && !exportFileName.toLowerCase().endsWith(exportFileExtension))
+            if (extensionFilter == fc.getFileFilter() && !exportFileName.toLowerCase().endsWith(exportFileExtension)) {
                 exportFileName += exportFileExtension;
+            }
             File exportFile = new File(exportFileName);
             if (!exportFile.exists()) {
                 return exportFile;

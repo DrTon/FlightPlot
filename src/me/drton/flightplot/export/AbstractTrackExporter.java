@@ -1,6 +1,6 @@
 package me.drton.flightplot.export;
 
-import me.drton.flightplot.FormatErrorException;
+import me.drton.jmavlib.log.FormatErrorException;
 
 import java.io.File;
 import java.io.FileWriter;

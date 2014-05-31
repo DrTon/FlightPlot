@@ -5,6 +5,9 @@ import me.drton.flightplot.export.ExportManager;
 import me.drton.flightplot.processors.PlotProcessor;
 import me.drton.flightplot.processors.ProcessorsList;
 import me.drton.flightplot.processors.Simple;
+import me.drton.jmavlib.log.FormatErrorException;
+import me.drton.jmavlib.log.LogReader;
+import me.drton.jmavlib.log.PX4LogReader;
 import org.jfree.chart.ChartFactory;
 import org.jfree.chart.ChartPanel;
 import org.jfree.chart.JFreeChart;
@@ -145,8 +148,9 @@ public class FlightPlot {
             public void run() {
                 StringBuilder fieldsValue = new StringBuilder();
                 for (String field : fieldsListDialog.getSelectedFields()) {
-                    if (fieldsValue.length() > 0)
+                    if (fieldsValue.length() > 0) {
                         fieldsValue.append(" ");
+                    }
                     fieldsValue.append(field);
                 }
                 PlotProcessor processor = new Simple();
@@ -198,8 +202,9 @@ public class FlightPlot {
         processorsList.addKeyListener(new KeyAdapter() {
             @Override
             public void keyTyped(KeyEvent e) {
-                if (e.getKeyChar() == KeyEvent.VK_ENTER)
+                if (e.getKeyChar() == KeyEvent.VK_ENTER) {
                     showAddProcessorDialog(true);
+                }
             }
         });
         processorsList.addMouseListener(new MouseAdapter() {
@@ -255,8 +260,9 @@ public class FlightPlot {
         if ("comboBoxEdited".equals(e.getActionCommand())) {
             // Save preset
             String presetTitle = presetComboBox.getSelectedItem().toString();
-            if (presetTitle.isEmpty())
+            if (presetTitle.isEmpty()) {
                 return;
+            }
             Preset preset = formatPreset(presetTitle);
             boolean addNew = true;
             for (int i = 0; i < presetComboBox.getItemCount(); i++) {
@@ -290,8 +296,9 @@ public class FlightPlot {
 
     private void onDeletePreset() {
         int i = presetComboBox.getSelectedIndex();
-        if (i >= 0)
+        if (i >= 0) {
             presetComboBox.removeItemAt(i);
+        }
         presetComboBox.setSelectedIndex(0);
     }
 
@@ -305,11 +312,13 @@ public class FlightPlot {
         preferencesUtil.loadWindowPreferences(addProcessorDialog, preferences.node("AddProcessorDialog"), -1, -1);
         preferencesUtil.loadWindowPreferences(logInfo.getFrame(), preferences.node("LogInfoFrame"), 600, 600);
         String logDirectoryStr = preferences.get("LogDirectory", null);
-        if (logDirectoryStr != null)
+        if (logDirectoryStr != null) {
             lastLogDirectory = new File(logDirectoryStr);
+        }
         String presetDirectoryStr = preferences.get("PresetDirectory", null);
-        if (presetDirectoryStr != null)
+        if (presetDirectoryStr != null) {
             lastPresetDirectory = new File(presetDirectoryStr);
+        }
         Preferences presets = preferences.node("Presets");
         presetComboBox.addItem("");
         for (String p : presets.childrenNames()) {
@@ -330,10 +339,12 @@ public class FlightPlot {
         preferencesUtil.saveWindowPreferences(fieldsListDialog, preferences.node("FieldsListDialog"));
         preferencesUtil.saveWindowPreferences(addProcessorDialog, preferences.node("AddProcessorDialog"));
         preferencesUtil.saveWindowPreferences(logInfo.getFrame(), preferences.node("LogInfoFrame"));
-        if (lastLogDirectory != null)
+        if (lastLogDirectory != null) {
             preferences.put("LogDirectory", lastLogDirectory.getAbsolutePath());
-        if (lastPresetDirectory != null)
+        }
+        if (lastPresetDirectory != null) {
             preferences.put("PresetDirectory", lastPresetDirectory.getAbsolutePath());
+        }
         Preferences presetsPref = preferences.node("Presets");
         for (int i = 0; i < presetComboBox.getItemCount(); i++) {
             Object object = presetComboBox.getItemAt(i);
@@ -494,8 +505,9 @@ public class FlightPlot {
 
     public void showOpenLogDialog() {
         JFileChooser fc = new JFileChooser();
-        if (lastLogDirectory != null)
+        if (lastLogDirectory != null) {
             fc.setCurrentDirectory(lastLogDirectory);
+        }
         fc.setFileFilter(logExtensionFilter);
         fc.setDialogTitle("Open Log");
         int returnVal = fc.showDialog(mainFrame, "Open");
@@ -535,8 +547,9 @@ public class FlightPlot {
 
     public void showImportPresetDialog() {
         JFileChooser fc = new JFileChooser();
-        if (lastPresetDirectory != null)
+        if (lastPresetDirectory != null) {
             fc.setCurrentDirectory(lastPresetDirectory);
+        }
         fc.setFileFilter(presetExtensionFilter);
         fc.setDialogTitle("Import Preset");
         int returnVal = fc.showDialog(mainFrame, "Import");
@@ -549,8 +562,9 @@ public class FlightPlot {
                 int n = 0;
                 while (n < b.length) {
                     int r = fileInputStream.read(b, n, b.length - n);
-                    if (r <= 0)
+                    if (r <= 0) {
                         throw new Exception("Read error");
+                    }
                     n += r;
                 }
                 Preset preset = Preset.unpackJSONObject(new JSONObject(new String(b, Charset.forName("utf8"))));
@@ -565,16 +579,18 @@ public class FlightPlot {
 
     public void showExportPresetDialog() {
         JFileChooser fc = new JFileChooser();
-        if (lastPresetDirectory != null)
+        if (lastPresetDirectory != null) {
             fc.setCurrentDirectory(lastPresetDirectory);
+        }
         fc.setFileFilter(presetExtensionFilter);
         fc.setDialogTitle("Export Preset");
         int returnVal = fc.showDialog(mainFrame, "Export");
         if (returnVal == JFileChooser.APPROVE_OPTION) {
             lastPresetDirectory = fc.getCurrentDirectory();
             String fileName = fc.getSelectedFile().toString();
-            if (presetExtensionFilter == fc.getFileFilter() && !fileName.toLowerCase().endsWith(".fplot"))
+            if (presetExtensionFilter == fc.getFileFilter() && !fileName.toLowerCase().endsWith(".fplot")) {
                 fileName += ".fplot";
+            }
             try {
                 Preset preset = formatPreset(presetComboBox.getSelectedItem().toString());
                 FileWriter fileWriter = new FileWriter(new File(fileName));
@@ -668,8 +684,9 @@ public class FlightPlot {
                 } catch (EOFException e) {
                     break;
                 }
-                if (t > timeStop)
+                if (t > timeStop) {
                     break;
+                }
                 for (PlotProcessor processor : processors) {
                     processor.process(t * 0.000001, data);
                 }
@@ -743,10 +760,11 @@ public class FlightPlot {
 
     private static String formatParameterValue(Object value) {
         String valueStr;
-        if (value instanceof Double)
+        if (value instanceof Double) {
             valueStr = doubleNumberFormat.format(value);
-        else
+        } else {
             valueStr = value.toString();
+        }
         return valueStr;
     }
 

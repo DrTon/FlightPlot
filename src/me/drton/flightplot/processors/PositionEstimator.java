@@ -1,8 +1,9 @@
 package me.drton.flightplot.processors;
 
-import me.drton.flightplot.processors.tools.DelayLine;
-import me.drton.flightplot.processors.tools.GlobalPositionProjector;
 import me.drton.flightplot.processors.tools.RotationConversion;
+import me.drton.jmavlib.geo.GlobalPositionProjector;
+import me.drton.jmavlib.geo.LatLonAlt;
+import me.drton.jmavlib.processing.DelayLine;
 import org.ejml.simple.SimpleMatrix;
 
 import java.util.HashMap;
@@ -46,7 +47,7 @@ public class PositionEstimator extends PlotProcessor {
     private SimpleMatrix rot;
     private GlobalPositionProjector positionProjector = new GlobalPositionProjector();
     private double[] accBias;
-    private DelayLine[][] delayLinesGPS;
+    private DelayLine<double[][]> delayLineGPS;
     private boolean gpsInited;
     private boolean baroInited;
     private boolean[] show;
@@ -99,7 +100,7 @@ public class PositionEstimator extends PlotProcessor {
         corrFlowW = 0.0;
         flowAng = new double[]{0.0, 0.0};
         */
-        delayLinesGPS = new DelayLine[3][2];
+        delayLineGPS = new DelayLine<double[][]>();
         positionProjector.reset();
         param_Fields_GPS = ((String) parameters.get("Fields GPS")).split(WHITESPACE_RE);
         param_Fields_Acc = ((String) parameters.get("Fields Acc")).split(WHITESPACE_RE);
@@ -121,21 +122,15 @@ public class PositionEstimator extends PlotProcessor {
         param_Flow_Offs_Y = (Double) parameters.get("Flow Offs Y");
         param_Flow_Q_Min = (Double) parameters.get("Flow Q Min");
         */
-        double delayGPS = (Double) parameters.get("Delay GPS");
-        for (int axis = 0; axis < 3; axis++) {
-            for (int posVel = 0; posVel < 2; posVel++) {
-                delayLinesGPS[axis][posVel] = new DelayLine();
-                delayLinesGPS[axis][posVel].setDelay(delayGPS);
-                delayLinesGPS[axis][posVel].getOutput(0.0, 0.0);
-            }
-        }
+        delayLineGPS.setDelay((Double) parameters.get("Delay GPS"));
         show = new boolean[]{false, false, false};
         offsets = new double[]{0.0, 0.0, 0.0};
         scales = new double[]{1.0, 1.0, 1.0};
         String showStr = (String) parameters.get("Show");
         String[] offsetsStr = ((String) parameters.get("Offsets")).split(WHITESPACE_RE);
-        if (!(Boolean) parameters.get("Z Downside"))
+        if (!(Boolean) parameters.get("Z Downside")) {
             scales[2] = -1.0;
+        }
         for (int i = 0; i < 3; i++) {
             String axisName = "XYZ".substring(i, i + 1);
             show[i] = showStr.contains(axisName);
@@ -192,22 +187,24 @@ public class PositionEstimator extends PlotProcessor {
             double alt = altNum.doubleValue();
             if (!gpsInited && baroInited) {
                 gpsInited = true;
-                positionProjector.init(lat, lon);
+                positionProjector.init(new LatLonAlt(lat, lon, alt));
                 est[2][0] = -alt;
                 baroOffset = alt - baro;
             }
             if (gpsInited) {
-                double[] gpsXY = positionProjector.project(lat, lon);
-                gps[0][0] = gpsXY[0];
-                gps[1][0] = gpsXY[1];
-                gps[2][0] = -alt;
+                double[] gpsProj = positionProjector.project(new LatLonAlt(lat, lon, alt));
+                gps[0][0] = gpsProj[0];
+                gps[1][0] = gpsProj[1];
+                gps[2][0] = gpsProj[2];
                 for (int axis = 0; axis < 3; axis++) {
                     gps[axis][1] = velGPSNum[axis].doubleValue();
                 }
-                for (int axis = 0; axis < 3; axis++) {
-                    for (int posVel = 0; posVel < 2; posVel++) {
-                        corrGPS[axis][posVel] = gps[axis][posVel] -
-                                delayLinesGPS[axis][posVel].getOutput(time, est[axis][posVel]);
+                double[][] outOld = delayLineGPS.getOutput(time, est);
+                if (outOld != null) {
+                    for (int axis = 0; axis < 3; axis++) {
+                        for (int posVel = 0; posVel < 2; posVel++) {
+                            corrGPS[axis][posVel] = gps[axis][posVel] - outOld[axis][posVel];
+                        }
                     }
                 }
                 wGPS[0] = 2.0 / Math.max(2.0, eph);
@@ -319,8 +316,9 @@ public class PositionEstimator extends PlotProcessor {
 
     private void correct(double[] q, double dt, int i, double e, double w) {
         double ewdt = w * e * dt;
-        if (Double.isNaN(ewdt))
+        if (Double.isNaN(ewdt)) {
             return;
+        }
         q[i] += ewdt;
         if (i == 0) {
             q[1] += w * ewdt;
