@@ -169,7 +169,7 @@
   <component name="VcsDirectoryMappings">
     <mapping directory="" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/jMAVlib" vcs="Git" />
-    <mapping directory="$PROJECT_DIR$/jMAVlib/la4j" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/la4j" vcs="Git" />
   </component>
   <component name="libraryTable">
     <library name="lib">

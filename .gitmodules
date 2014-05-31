@@ -1,3 +1,6 @@
 [submodule "jMAVlib"]
 	path = jMAVlib
 	url = https://github.com/DrTon/jMAVlib.git
+[submodule "la4j"]
+	path = la4j
+	url = https://github.com/vkostyukov/la4j.git

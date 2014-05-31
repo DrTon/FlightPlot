@@ -5,7 +5,7 @@
     <content url="file://$MODULE_DIR$">
       <sourceFolder url="file://$MODULE_DIR$/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/jMAVlib/src" isTestSource="false" />
-      <sourceFolder url="file://$MODULE_DIR$/jMAVlib/la4j/src/main/java" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/la4j/src/main/java" isTestSource="false" />
     </content>
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />
