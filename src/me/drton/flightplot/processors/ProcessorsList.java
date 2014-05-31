@@ -25,6 +25,7 @@ public class ProcessorsList {
         addProcessorClass(NEDFromBodyProjection.class);
         addProcessorClass(Integral.class);
         addProcessorClass(Battery.class);
+        addProcessorClass(PositionEstimatorKF.class);
     }
 
     private void addProcessorClass(Class<? extends PlotProcessor> processorClass) {
