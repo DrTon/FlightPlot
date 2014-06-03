@@ -25,23 +25,33 @@ public class PositionEstimatorKF extends PlotProcessor {
     private String[] param_Fields_Acc;
     private String[] param_Fields_Att;
     private double param_Var_Acc;
+    private double param_Var_Acc_Bias;
     private double param_Var_Baro;
     private double param_Var_Baro_Offs;
     private double param_Var_GPS_VH;
     private double param_Var_GPS_VV;
     private double param_Delay_GPS;
+    private double param_EPH_Max;
 
     private double timePrev;
 
-    /*     0      1      2      3      4      5      6
-       x:  x      y      z      vx     vy     vz     baro_offs
+    /*     0      1      2      3      4      5      6      7      8     9
+       x:  x      y      z      vx     vy     vz     abx    aby    abz   baro_offs
        z:  gps_x  gps_y  gps_z  gps_vx gps_vy gps_vz baro
 
        baro_offs = baro + z
      */
 
+    private static final int X_S_IDX = 0;
+    private static final int Y_S_IDX = 1;
     private static final int Z_S_IDX = 2;
-    private static final int BARO_OFFS_S_IDX = 6;
+    private static final int VX_S_IDX = 3;
+    private static final int VY_S_IDX = 4;
+    private static final int VZ_S_IDX = 5;
+    private static final int ABX_S_IDX = 6;
+    private static final int ABY_S_IDX = 7;
+    private static final int ABZ_S_IDX = 8;
+    private static final int BARO_OFFS_S_IDX = 9;
     private static final int BARO_O_IDX = 6;
 
     private Matrix I;         // unity matrix
@@ -79,11 +89,13 @@ public class PositionEstimatorKF extends PlotProcessor {
         params.put("Fields Acc", "IMU.AccX IMU.AccY IMU.AccZ");
         params.put("Fields Att", "ATT.Roll ATT.Pitch ATT.Yaw");
         params.put("Delay GPS", 0.1);
-        params.put("Var Acc", 1.0);
+        params.put("Var Acc", 0.5);
+        params.put("Var Acc Bias", 0.02);
         params.put("Var Baro", 1.0);
-        params.put("Var Baro Offs", 0.1);
+        params.put("Var Baro Offs", 0.02);
         params.put("Var GPS VH", 1.0);
-        params.put("Var GPS VV", 1.0);
+        params.put("Var GPS VV", 5.0);
+        params.put("EPH Max", 5.0);
         params.put("Show", "XYZ");
         params.put("Offsets", "0.0 0.0 0.0");
         params.put("Z Downside", false);
@@ -94,17 +106,19 @@ public class PositionEstimatorKF extends PlotProcessor {
     public void init() {
         super.init();
         timePrev = Double.NaN;
-        I = new Basic2DMatrix(7, 7);
-        x = new BasicVector(7);
+        I = new Basic2DMatrix(10, 10);
+        x = new BasicVector(10);
         y = new BasicVector(7);
-        P = new Basic2DMatrix(7, 7);
-        F = new Basic2DMatrix(7, 7);
-        H = new Basic2DMatrix(7, 7);
+        P = new Basic2DMatrix(10, 10);
+        F = new Basic2DMatrix(10, 10);
+        H = new Basic2DMatrix(7, 10);
         z = new BasicVector(7);
         R = new Basic2DMatrix(7, 7);
 
-        for (int i = 0; i < 7; i++) {
-            P.set(i, i, 1.0);
+        for (int i = 0; i < 10; i++) {
+            if (i < 6) {
+                P.set(i, i, 1.0);
+            }
             I.set(i, i, 1.0);
             F.set(i, i, 1.0);
         }
@@ -128,10 +142,12 @@ public class PositionEstimatorKF extends PlotProcessor {
         param_Fields_Att = ((String) parameters.get("Fields Att")).split(WHITESPACE_RE);
         param_Field_Baro = (String) parameters.get("Field Baro");
         param_Var_Acc = (Double) parameters.get("Var Acc");
+        param_Var_Acc_Bias = (Double) parameters.get("Var Acc Bias");
         param_Var_Baro = (Double) parameters.get("Var Baro");
         param_Var_Baro_Offs = (Double) parameters.get("Var Baro Offs");
         param_Var_GPS_VH = (Double) parameters.get("Var GPS VH");
         param_Var_GPS_VV = (Double) parameters.get("Var GPS VV");
+        param_EPH_Max = (Double) parameters.get("EPH Max");
 
         R.set(0, 0, 1.0);
         R.set(1, 1, 1.0);
@@ -190,7 +206,7 @@ public class PositionEstimatorKF extends PlotProcessor {
             if (!baroInited) {
                 baroInited = true;
                 // Set initial baro offset
-                x.set(6, baro);
+                x.set(BARO_OFFS_S_IDX, baro);
             }
             z.set(BARO_O_IDX, baro);
             baroUpdated = true;
@@ -218,13 +234,21 @@ public class PositionEstimatorKF extends PlotProcessor {
                 positionProjector.init(new LatLonAlt(lat, lon, alt));
                 gpsRefAlt = alt + z.get(2);
             }
-            if (gpsInited && (time < 110 || time > 120)) {
-                double[] gpsXY = positionProjector.project(new LatLonAlt(lat, lon, alt));
-                z.set(0, gpsXY[0]);
-                z.set(1, gpsXY[1]);
+            if (gpsInited) {
+                double[] gpsXYZ = positionProjector.project(new LatLonAlt(lat, lon, alt));
+                z.set(0, gpsXYZ[0]);
+                z.set(1, gpsXYZ[1]);
                 z.set(2, -(alt - gpsRefAlt));
                 for (int axis = 0; axis < 3; axis++) {
                     z.set(3 + axis, velGPSNum[axis].doubleValue());
+                }
+                if (time - gpsLast > gpsTimeout && Math.sqrt(P.get(0, 0) + P.get(1, 1)) > param_EPH_Max) {
+                    // Reset position estimate
+                    for (int axis = 0; axis < 3; axis++) {
+                        x.set(X_S_IDX + axis, z.get(axis));
+                        x.set(VX_S_IDX + axis, z.get(3 + axis));
+                        xBuffer.clear();
+                    }
                 }
                 gpsLast = time;
                 gpsUpdated = true;
@@ -245,25 +269,31 @@ public class PositionEstimatorKF extends PlotProcessor {
             if (!Double.isNaN(timePrev)) {
                 double dt = time - timePrev;
 
-                F.set(0, 3, dt);
-                F.set(1, 4, dt);
-                F.set(2, 5, dt);
+                for (int i = 0; i < 3; i++) {
+                    F.set(X_S_IDX + i, VX_S_IDX + i, dt);
+
+                    for (int j = 0; j < 3; j++) {
+                        F.set(VX_S_IDX + i, ABX_S_IDX + j, -dt * rot.get(i, j));
+                    }
+                }
 
                 Vector accNED = rot.multiply(acc);
                 accNED.set(2, accNED.get(2) + G);
 
-                Vector u = new BasicVector(7);
+                Vector u = new BasicVector(10);
                 u.set(3, accNED.get(0) * dt);
                 u.set(4, accNED.get(1) * dt);
                 u.set(5, accNED.get(2) * dt);
 
                 // Process noise
-                Matrix Q = new Basic2DMatrix(7, 7);
+                Matrix Q = new Basic2DMatrix(10, 10);
                 for (int i = 0; i < 3; i++) {
                     Q.set(i, i, dt * dt * dt * dt / 4.0 * param_Var_Acc * param_Var_Acc);
                     Q.set(3 + i, i, dt * dt * dt / 2.0 * param_Var_Acc * param_Var_Acc);
                     Q.set(i, 3 + i, dt * dt * dt / 2.0 * param_Var_Acc * param_Var_Acc);
                     Q.set(3 + i, 3 + i, dt * dt * param_Var_Acc * param_Var_Acc);
+
+                    Q.set(6 + i, 6 + i, dt * dt * param_Var_Acc_Bias * param_Var_Acc_Bias);
                 }
                 Q.set(BARO_OFFS_S_IDX, BARO_OFFS_S_IDX, dt * dt * param_Var_Baro_Offs * param_Var_Baro_Offs);
 
@@ -299,7 +329,7 @@ public class PositionEstimatorKF extends PlotProcessor {
                 }
                 // Baro
                 if (baroUpdated) {
-                    y.set(BARO_OFFS_S_IDX, y_new.get(BARO_OFFS_S_IDX));
+                    y.set(BARO_O_IDX, y_new.get(BARO_O_IDX));
                 }
 
                 // Correction
@@ -315,10 +345,10 @@ public class PositionEstimatorKF extends PlotProcessor {
                 int seriesIdx = 0;
                 for (int i = 0; i < 3; i++) {
                     if (show[i]) {
-                        addPoint(seriesIdx++, time, x.get(i) * scales[i]);
+                        addPoint(seriesIdx++, time, x.get(i) * scales[i] + offsets[i]);
                         addPoint(seriesIdx++, time, x.get(i + 3) * scales[i]);
-                        addPoint(seriesIdx++, time, Math.sqrt(P.get(i, i) / dt));
-                        addPoint(seriesIdx++, time, Math.sqrt(P.get(i + 3, i + 3) / dt));
+                        addPoint(seriesIdx++, time, Math.sqrt(P.get(i, i) / dt) * scales[i]);
+                        addPoint(seriesIdx++, time, Math.sqrt(P.get(i + 3, i + 3) / dt) * scales[i]);
                     }
                 }
             }
@@ -330,11 +360,10 @@ public class PositionEstimatorKF extends PlotProcessor {
         int i = xBuffer.size() - 1;
         DelayLine.Tick<Vector> tick = null;
         while (i >= 0) {
-            tick = xBuffer.get(i);
+            tick = xBuffer.get(i--);
             if (tick.time <= time) {
                 break;
             }
-            i--;
         }
         return tick != null ? tick.value : null;
     }
@@ -350,16 +379,9 @@ public class PositionEstimatorKF extends PlotProcessor {
 
         // Gain
         Matrix K = P.multiply(H.transpose()).multiply(S.withInverter(inverter).inverse());
-/*
-        System.out.println("x:\n" + x);
-        System.out.println("P:\n" + P);
-        System.out.println("y:\n" + y);
-        System.out.println("H:\n" + H);
-        System.out.println("S:\n" + S);
-        System.out.println("K:\n" + K);
-*/
+
         // Correction
-        x = x.add(K.multiply(y));
+        x.addInPlace(K.multiply(y));
         P = I.subtract(K.multiply(H)).multiply(P);
     }
 }
