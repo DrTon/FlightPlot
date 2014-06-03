@@ -8,6 +8,7 @@ import org.la4j.matrix.Matrix;
 import org.la4j.vector.Vector;
 import org.la4j.vector.dense.BasicVector;
 
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -63,7 +64,7 @@ public class PositionEstimator extends PlotProcessor {
         params.put("Field Baro", "SENS.BaroAlt");
         params.put("Fields Acc", "IMU.AccX IMU.AccY IMU.AccZ");
         params.put("Fields Att", "ATT.Roll ATT.Pitch ATT.Yaw");
-        params.put("Delay GPS", 0.1);
+        params.put("Delay GPS", 0.2);
         params.put("W XY GPS P", 1.0);
         params.put("W XY GPS V", 2.0);
         params.put("W Z Baro", 0.5);
@@ -202,7 +203,7 @@ public class PositionEstimator extends PlotProcessor {
                 for (int axis = 0; axis < 3; axis++) {
                     gps[axis][1] = velGPSNum[axis].doubleValue();
                 }
-                double[][] outOld = delayLineGPS.getOutput(time, est);
+                double[][] outOld = delayLineGPS.getOutput(time);
                 if (outOld != null) {
                     for (int axis = 0; axis < 3; axis++) {
                         for (int posVel = 0; posVel < 2; posVel++) {
@@ -293,6 +294,9 @@ public class PositionEstimator extends PlotProcessor {
                     //correct(estY, dt, 1, corrFlow[1], param_W_Flow * corrFlowW);
                 }
                 correct(est[2], dt, 0, corrBaro, param_W_Baro);
+
+                delayLineGPS.getOutput(time, deepCopy(est));
+
                 if (gpsInited && baroInited) {
                     int seriesIdx = 0;
                     for (int axis = 0; axis < 3; axis++) {
@@ -324,5 +328,17 @@ public class PositionEstimator extends PlotProcessor {
         if (i == 0) {
             q[1] += w * ewdt;
         }
+    }
+
+    public static double[][] deepCopy(double[][] original) {
+        if (original == null) {
+            return null;
+        }
+
+        final double[][] result = new double[original.length][];
+        for (int i = 0; i < original.length; i++) {
+            result[i] = Arrays.copyOf(original[i], original[i].length);
+        }
+        return result;
     }
 }
