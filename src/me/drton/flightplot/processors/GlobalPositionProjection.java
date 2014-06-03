@@ -1,6 +1,7 @@
 package me.drton.flightplot.processors;
 
-import me.drton.flightplot.processors.tools.GlobalPositionProjector;
+import me.drton.jmavlib.geo.GlobalPositionProjector;
+import me.drton.jmavlib.geo.LatLonAlt;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -26,8 +27,8 @@ public class GlobalPositionProjection extends PlotProcessor {
         positionProjector.reset();
         param_Fields = ((String) parameters.get("Fields")).split(WHITESPACE_RE);
         String[] ref = ((String) parameters.get("Ref")).split(WHITESPACE_RE);
-        if (ref.length == 2) {
-            positionProjector.init(Double.parseDouble(ref[0]), Double.parseDouble(ref[1]));
+        if (ref.length >= 2) {
+            positionProjector.init(new LatLonAlt(Double.parseDouble(ref[0]), Double.parseDouble(ref[1]), 0.0));
         }
         addSeries("X");
         addSeries("Y");
@@ -39,14 +40,13 @@ public class GlobalPositionProjection extends PlotProcessor {
         Number latNum = (Number) update.get(param_Fields[0]);
         Number lonNum = (Number) update.get(param_Fields[1]);
         if (latNum != null && lonNum != null) {
-            double lat = latNum.doubleValue();
-            double lon = lonNum.doubleValue();
+            LatLonAlt latLonAlt = new LatLonAlt(latNum.doubleValue(), lonNum.doubleValue(), 0.0);
             if (!positionProjector.isInited()) {
-                positionProjector.init(lat, lon);
+                positionProjector.init(latLonAlt);
             }
-            double[] xy = positionProjector.project(lat, lon);
-            addPoint(0, time, xy[0]);
-            addPoint(1, time, xy[1]);
+            double[] xyz = positionProjector.project(latLonAlt);
+            addPoint(0, time, xyz[0]);
+            addPoint(1, time, xyz[1]);
         }
     }
 }

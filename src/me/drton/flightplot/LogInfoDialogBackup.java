@@ -1,5 +1,7 @@
 package me.drton.flightplot;
 
+import me.drton.jmavlib.log.LogReader;
+
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
 import java.awt.event.ActionEvent;

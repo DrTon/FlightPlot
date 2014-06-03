@@ -2,7 +2,10 @@ package me.drton.flightplot.processors;
 
 import me.drton.flightplot.processors.tools.LowPassFilter;
 import me.drton.flightplot.processors.tools.RotationConversion;
-import org.ejml.simple.SimpleMatrix;
+import org.la4j.matrix.Matrix;
+import org.la4j.matrix.dense.Basic2DMatrix;
+import org.la4j.vector.Vector;
+import org.la4j.vector.dense.BasicVector;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -19,8 +22,8 @@ public class NEDFromBodyProjection extends PlotProcessor {
     private double[] param_Att_Offsets;
     private boolean[] show;
     private LowPassFilter[] lowPassFilters;
-    private SimpleMatrix r;
-    private SimpleMatrix v;
+    private Matrix r;
+    private Vector v;
 
     @Override
     public Map<String, Object> getDefaultParameters() {
@@ -48,8 +51,8 @@ public class NEDFromBodyProjection extends PlotProcessor {
         String showStr = ((String) parameters.get("Show")).toUpperCase();
         show = new boolean[]{false, false, false};
         lowPassFilters = new LowPassFilter[3];
-        v = new SimpleMatrix(3, 1);
-        r = new SimpleMatrix(3, 3);
+        v = new BasicVector(3);
+        r = new Basic2DMatrix(3, 3);
         param_Att_Offsets = new double[3];
         for (int i = 0; i < 3; i++) {
             if (attOffsStr.length > i) {
@@ -79,8 +82,9 @@ public class NEDFromBodyProjection extends PlotProcessor {
             // Update rotation matrix
             r = RotationConversion.rotationMatrixByEulerAngles(roll.doubleValue() + param_Att_Offsets[0],
                     pitch.doubleValue() + param_Att_Offsets[1], yaw.doubleValue() + param_Att_Offsets[2]);
-            if (param_Backward)
+            if (param_Backward) {
                 r = r.transpose();
+            }
             act = true;
         }
         for (int i = 0; i < 3; i++) {
@@ -92,7 +96,7 @@ public class NEDFromBodyProjection extends PlotProcessor {
             }
         }
         if (act) {
-            SimpleMatrix vNED = r.mult(v);
+            Vector vNED = r.multiply(v);
             for (int i = 0; i < 3; i++) {
                 if (show[i]) {
                     double out = lowPassFilters[i].getOutput(time, vNED.get(i));
