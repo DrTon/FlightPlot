@@ -1,6 +1,6 @@
 package me.drton.flightplot.processors;
 
-import me.drton.flightplot.processors.tools.RotationConversion;
+import me.drton.jmavlib.conversion.RotationConversion;
 import me.drton.jmavlib.geo.GlobalPositionProjector;
 import me.drton.jmavlib.geo.LatLonAlt;
 import me.drton.jmavlib.processing.DelayLine;

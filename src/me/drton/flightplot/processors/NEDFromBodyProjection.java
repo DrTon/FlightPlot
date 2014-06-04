@@ -1,7 +1,7 @@
 package me.drton.flightplot.processors;
 
 import me.drton.flightplot.processors.tools.LowPassFilter;
-import me.drton.flightplot.processors.tools.RotationConversion;
+import me.drton.jmavlib.conversion.RotationConversion;
 import org.la4j.matrix.Matrix;
 import org.la4j.matrix.dense.Basic2DMatrix;
 import org.la4j.vector.Vector;
