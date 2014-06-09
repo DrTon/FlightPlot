@@ -16,7 +16,7 @@ public class PX4TrackReader extends AbstractTrackReader {
     private static final String GPS_LON = "GPS.Lon";
     private static final String GPS_LAT = "GPS.Lat";
     private static final String GPS_ALT = "GPS.Alt";
-    private static final String GPS_FIXTYPE = "GPS.FixType";
+    private static final String GPS_FIXTYPE[] = {"GPS.FixType", "GPS.Fix"};
     private static final String STAT_MAINSTATE = "STAT.MainState";
     private static final int REQUIRED_FIXTYPE = 3;
 
@@ -46,7 +46,7 @@ public class PX4TrackReader extends AbstractTrackReader {
             }
             if (timeGPS != null) {
                 long time = timeGPS / 1000;
-                Integer fixType = (Integer) data.get(GPS_FIXTYPE);
+                Integer fixType = (Integer) getValue(data, GPS_FIXTYPE);
                 Double lat = (Double) data.get(GPS_LAT);
                 Double lon = (Double) data.get(GPS_LON);
                 Float alt = (Float) data.get(GPS_ALT);
@@ -56,6 +56,15 @@ public class PX4TrackReader extends AbstractTrackReader {
                     data.clear();
                     return point;
                 }
+            }
+        }
+        return null;
+    }
+
+    private Object getValue(Map<String, Object> data, String[] params) {
+        for (String paramName : params) {
+            if (null != data.get(paramName)) {
+                return data.get(paramName);
             }
         }
         return null;
