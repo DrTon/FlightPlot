@@ -99,9 +99,13 @@ public class PosRatePIDControlSimulator extends PlotProcessor {
                 rate += acc * dt;
                 pos += rate * dt;
                 double posSPRate = 0.0;
-                if (time > startTime && posSP < startSP) {
+                double sign = Math.signum(startSPRate);
+                if (time > startTime && (posSP - startSP) * sign < 0) {
                     posSPRate = startSPRate;
                     posSP += startSPRate * dt;
+                    if ((posSP - startSP) * sign > 0) {
+                        posSP = startSP;
+                    }
                 }
                 double rateSP;
                 if (useRateSP) {
