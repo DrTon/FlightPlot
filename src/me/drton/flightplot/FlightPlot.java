@@ -7,7 +7,9 @@ import me.drton.flightplot.processors.ProcessorsList;
 import me.drton.flightplot.processors.Simple;
 import me.drton.jmavlib.log.FormatErrorException;
 import me.drton.jmavlib.log.LogReader;
+import me.drton.jmavlib.log.MAVLinkLogReader;
 import me.drton.jmavlib.log.PX4LogReader;
+import me.drton.jmavlib.mavlink.MAVLinkSchema;
 import org.jfree.chart.ChartFactory;
 import org.jfree.chart.ChartPanel;
 import org.jfree.chart.JFreeChart;
@@ -70,12 +72,11 @@ public class FlightPlot {
     private XYSeriesCollection dataset;
     private JFreeChart jFreeChart;
     private ProcessorsList processorsTypesList;
-    private File lastLogDirectory = null;
     private File lastPresetDirectory = null;
     private AddProcessorDialog addProcessorDialog;
     private FieldsListDialog fieldsListDialog;
     private LogInfo logInfo;
-    private FileNameExtensionFilter logExtensionFilter = new FileNameExtensionFilter("PX4 Logs (*.bin)", "bin");
+    private JFileChooser openLogFileChooser;
     private FileNameExtensionFilter presetExtensionFilter = new FileNameExtensionFilter("FlightPlot Presets (*.fplot)",
             "fplot");
     private AtomicBoolean invokeProcessFile = new AtomicBoolean(false);
@@ -112,6 +113,8 @@ public class FlightPlot {
 
     public FlightPlot() {
         preferences = Preferences.userRoot().node(appName);
+
+        // Main Frame
         mainFrame = new JFrame(appNameAndVersion);
         mainFrame.setContentPane(mainPanel);
         mainFrame.setDefaultCloseOperation(WindowConstants.DO_NOTHING_ON_CLOSE);
@@ -143,6 +146,8 @@ public class FlightPlot {
         Collections.sort(processors);
         addProcessorDialog = new AddProcessorDialog(processors.toArray(new String[processors.size()]));
         addProcessorDialog.pack();
+
+        // Fields List Dialog
         fieldsListDialog = new FieldsListDialog(new Runnable() {
             @Override
             public void run() {
@@ -163,7 +168,10 @@ public class FlightPlot {
                 processFile();
             }
         });
+        // Log Info Dialog
         logInfo = new LogInfo();
+
+        // Buttons
         addProcessorButton.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
@@ -193,6 +201,8 @@ public class FlightPlot {
                 logInfo.setVisible(true);
             }
         });
+
+        // Processors List Dialog
         processorsList.addListSelectionListener(new ListSelectionListener() {
             @Override
             public void valueChanged(ListSelectionEvent e) {
@@ -215,21 +225,25 @@ public class FlightPlot {
                 }
             }
         });
-        parameterChangedListener = new TableModelListener() {
-            @Override
-            public void tableChanged(TableModelEvent e) {
-                if (e.getType() == TableModelEvent.UPDATE) {
-                    int row = e.getFirstRow();
-                    onParameterChanged(row);
-                }
-            }
-        };
-        parametersTableModel.addTableModelListener(parameterChangedListener);
+
+        // Open Log Dialog
+        FileNameExtensionFilter[] logExtensionfilters = new FileNameExtensionFilter[]{
+                new FileNameExtensionFilter("PX4 Logs (*.bin)", "bin"),
+                new FileNameExtensionFilter("MAVLink Logs (*.mavlink)", "mavlink")};
+        openLogFileChooser = new JFileChooser();
+        for (FileNameExtensionFilter filter : logExtensionfilters) {
+            openLogFileChooser.addChoosableFileFilter(filter);
+        }
+        openLogFileChooser.setFileFilter(logExtensionfilters[0]);
+        openLogFileChooser.setDialogTitle("Open Log");
+
+        // Load Preferences
         try {
             loadPreferences();
         } catch (BackingStoreException e) {
             e.printStackTrace();
         }
+
         presetComboBox.setMaximumRowCount(20);
         presetComboBox.addActionListener(new ActionListener() {
             @Override
@@ -313,7 +327,8 @@ public class FlightPlot {
         preferencesUtil.loadWindowPreferences(logInfo.getFrame(), preferences.node("LogInfoFrame"), 600, 600);
         String logDirectoryStr = preferences.get("LogDirectory", null);
         if (logDirectoryStr != null) {
-            lastLogDirectory = new File(logDirectoryStr);
+            File dir = new File(logDirectoryStr);
+            openLogFileChooser.setCurrentDirectory(dir);
         }
         String presetDirectoryStr = preferences.get("PresetDirectory", null);
         if (presetDirectoryStr != null) {
@@ -339,6 +354,7 @@ public class FlightPlot {
         preferencesUtil.saveWindowPreferences(fieldsListDialog, preferences.node("FieldsListDialog"));
         preferencesUtil.saveWindowPreferences(addProcessorDialog, preferences.node("AddProcessorDialog"));
         preferencesUtil.saveWindowPreferences(logInfo.getFrame(), preferences.node("LogInfoFrame"));
+        File lastLogDirectory = openLogFileChooser.getCurrentDirectory();
         if (lastLogDirectory != null) {
             preferences.put("LogDirectory", lastLogDirectory.getAbsolutePath());
         }
@@ -409,9 +425,11 @@ public class FlightPlot {
                 }
             }
         });
+
         // Processors list
         processorsListModel = new DefaultListModel();
         processorsList = new JList(processorsListModel);
+
         // Parameters table
         parametersTableModel = new DefaultTableModel() {
             @Override
@@ -458,6 +476,17 @@ public class FlightPlot {
         };
         parametersTable.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_ENTER, 0), "startEditing");
         parametersTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+
+        parameterChangedListener = new TableModelListener() {
+            @Override
+            public void tableChanged(TableModelEvent e) {
+                if (e.getType() == TableModelEvent.UPDATE) {
+                    int row = e.getFirstRow();
+                    onParameterChanged(row);
+                }
+            }
+        };
+        parametersTableModel.addTableModelListener(parameterChangedListener);
     }
 
     private void createMenuBar() {
@@ -504,16 +533,9 @@ public class FlightPlot {
     }
 
     public void showOpenLogDialog() {
-        JFileChooser fc = new JFileChooser();
-        if (lastLogDirectory != null) {
-            fc.setCurrentDirectory(lastLogDirectory);
-        }
-        fc.setFileFilter(logExtensionFilter);
-        fc.setDialogTitle("Open Log");
-        int returnVal = fc.showDialog(mainFrame, "Open");
+        int returnVal = openLogFileChooser.showDialog(mainFrame, "Open");
         if (returnVal == JFileChooser.APPROVE_OPTION) {
-            lastLogDirectory = fc.getCurrentDirectory();
-            File file = fc.getSelectedFile();
+            File file = openLogFileChooser.getSelectedFile();
             logFileName = file.getPath();
             mainFrame.setTitle(appNameAndVersion + " - " + logFileName);
             if (logReader != null) {
@@ -527,7 +549,11 @@ public class FlightPlot {
             long logStart = 0;
             long logSize = 1000000;
             try {
-                logReader = new PX4LogReader(logFileName);
+                if (logFileName.endsWith(".bin")) {
+                    logReader = new PX4LogReader(logFileName);
+                } else if (logFileName.endsWith(".mavlink")) {
+                    logReader = new MAVLinkLogReader(logFileName, new MAVLinkSchema("common.xml"));
+                }
                 logInfo.updateInfo(logReader);
                 logStart = logReader.getStartMicroseconds();
                 logSize = logReader.getSizeMicroseconds();
