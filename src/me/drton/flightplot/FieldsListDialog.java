@@ -11,26 +11,6 @@ public class FieldsListDialog extends JDialog {
     private JTable fieldsTable;
     private JButton buttonClose;
     private DefaultTableModel fieldsTableModel;
-    private static Map<String, String> formatNames = new HashMap<String, String>();
-
-    static {
-        formatNames.put("b", "int8");
-        formatNames.put("B", "uint8");
-        formatNames.put("L", "int32 * 1e-7 (lat/lon)");
-        formatNames.put("i", "int32");
-        formatNames.put("I", "uint32");
-        formatNames.put("q", "int64");
-        formatNames.put("Q", "uint64");
-        formatNames.put("f", "float");
-        formatNames.put("c", "int16 * 1e-2");
-        formatNames.put("C", "uint16 * 1e-2");
-        formatNames.put("e", "int32 * 1e-2");
-        formatNames.put("E", "uint32 * 1e-2");
-        formatNames.put("n", "char[4]");
-        formatNames.put("N", "char[16]");
-        formatNames.put("Z", "char[64]");
-        formatNames.put("M", "uint8 (mode)");
-    }
 
     public FieldsListDialog(final Runnable callbackAdd) {
         setContentPane(contentPane);
@@ -74,11 +54,7 @@ public class FieldsListDialog extends JDialog {
         List<String> fieldsList = new ArrayList<String>(fields.keySet());
         Collections.sort(fieldsList);
         for (String field : fieldsList) {
-            String formatChar = fields.get(field);
-            String formatName = formatNames.get(formatChar);
-            if (formatName == null)
-                formatName = formatChar;
-            fieldsTableModel.addRow(new Object[]{field, formatName});
+            fieldsTableModel.addRow(new Object[]{field, fields.get(field)});
         }
     }
 
