@@ -25,6 +25,8 @@
         <javac2 destdir="out/production/FlightPlot" includeantruntime="false" debug="true">
             <classpath refid="libsclasspath"/>
             <src path="src"/>
+            <src path="jMAVlib/src"/>
+            <src path="la4j/src/main/java"/>
         </javac2>
     </target>
 
@@ -39,20 +41,6 @@
             <zipgroupfileset dir="lib" includes="jfreechart-*.jar"/>
             <zipgroupfileset dir="lib" includes="jcommon-*.jar"/>
             <zipgroupfileset dir="lib" includes="forms_rt.jar"/>
-            <zipgroupfileset dir="lib" includes="ejml-*.jar"/>
-        </jar>
-    </target>
-
-    <target name="flightplot-lib" description="Link classes and JARs for FlightPlot lib" depends="compile">
-        <jar id="flightplot-lib" jarfile="out/production/flightplot-lib.jar">
-            <fileset dir="out/production/FlightPlot">
-                <include name="me/drton/flightplot/BinaryLogReader.class"/>
-                <include name="me/drton/flightplot/FormatErrorException.class"/>
-                <include name="me/drton/flightplot/LogReader.class"/>
-                <include name="me/drton/flightplot/PX4LogMessage.class"/>
-                <include name="me/drton/flightplot/PX4LogMessageDescription.class"/>
-                <include name="me/drton/flightplot/PX4LogReader.class"/>
-            </fileset>
         </jar>
     </target>
 
