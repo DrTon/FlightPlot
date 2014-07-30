@@ -44,8 +44,8 @@ public class LogInfo {
                     "Length, s", String.format(Locale.ROOT, "%.3f", logReader.getSizeMicroseconds() * 1e-6)});
             infoTableModel.addRow(new Object[]{"Updates count", logReader.getSizeUpdates()});
             Map<String, Object> ver = logReader.getVersion();
-            infoTableModel.addRow(new Object[]{"Hardware Version", ver.get("Arch")});
-            infoTableModel.addRow(new Object[]{"Firmware Version", ver.get("FwGit")});
+            infoTableModel.addRow(new Object[]{"Hardware Version", ver.get("HW")});
+            infoTableModel.addRow(new Object[]{"Firmware Version", ver.get("FW")});
             Map<String, Object> parameters = logReader.getParameters();
             List<String> keys = new ArrayList<String>(parameters.keySet());
             Collections.sort(keys);

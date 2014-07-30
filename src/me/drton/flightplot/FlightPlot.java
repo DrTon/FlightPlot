@@ -65,7 +65,6 @@ public class FlightPlot {
     private static String version = "0.2.5";
     private static String appNameAndVersion = appName + " v." + version;
     private final Preferences preferences;
-    private String logFileName = null;
     private LogReader logReader = null;
     private XYSeriesCollection dataset;
     private JFreeChart jFreeChart;
@@ -75,7 +74,7 @@ public class FlightPlot {
     private AddProcessorDialog addProcessorDialog;
     private FieldsListDialog fieldsListDialog;
     private LogInfo logInfo;
-    private FileNameExtensionFilter logExtensionFilter = new FileNameExtensionFilter("PX4 Logs (*.bin)", "bin");
+    private FileNameExtensionFilter logExtensionFilter = new FileNameExtensionFilter("PX4/APM Logs (*.bin)", "bin");
     private FileNameExtensionFilter presetExtensionFilter = new FileNameExtensionFilter("FlightPlot Presets (*.fplot)",
             "fplot");
     private AtomicBoolean invokeProcessFile = new AtomicBoolean(false);
@@ -514,7 +513,7 @@ public class FlightPlot {
         if (returnVal == JFileChooser.APPROVE_OPTION) {
             lastLogDirectory = fc.getCurrentDirectory();
             File file = fc.getSelectedFile();
-            logFileName = file.getPath();
+            String logFileName = file.getPath();
             mainFrame.setTitle(appNameAndVersion + " - " + logFileName);
             if (logReader != null) {
                 try {
