@@ -62,7 +62,7 @@ public class FlightPlot {
     private JButton logInfoButton;
 
     private static String appName = "FlightPlot";
-    private static String version = "0.2.6";
+    private static String version = "0.2.7";
     private static String appNameAndVersion = appName + " v." + version;
     private final Preferences preferences;
     private LogReader logReader = null;
