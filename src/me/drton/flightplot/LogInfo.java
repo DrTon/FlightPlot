@@ -4,6 +4,8 @@ import me.drton.jmavlib.log.LogReader;
 
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
 import java.util.*;
 
 /**
@@ -16,11 +18,14 @@ public class LogInfo {
     private DefaultTableModel infoTableModel;
     private JTable parametersTable;
     private DefaultTableModel parametersTableModel;
+    private DateFormat dateFormat;
 
     public LogInfo() {
         mainFrame = new JFrame("Log Info");
         mainFrame.setContentPane(mainPanel);
         mainFrame.pack();
+        dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS");
+        dateFormat.setTimeZone(TimeZone.getTimeZone("GMT"));
     }
 
     public JFrame getFrame() {
@@ -42,6 +47,13 @@ public class LogInfo {
             infoTableModel.addRow(new Object[]{"Format", logReader.getFormat()});
             infoTableModel.addRow(new Object[]{
                     "Length, s", String.format(Locale.ROOT, "%.3f", logReader.getSizeMicroseconds() * 1e-6)});
+            String startTimeStr = "";
+            if (logReader.getUTCTimeReferenceMicroseconds() > 0) {
+                startTimeStr = dateFormat.format(
+                        new Date((logReader.getStartMicroseconds() + logReader.getUTCTimeReferenceMicroseconds()) / 1000)) + " UTC";
+            }
+            infoTableModel.addRow(new Object[]{
+                    "Start Time", startTimeStr});
             infoTableModel.addRow(new Object[]{"Updates count", logReader.getSizeUpdates()});
             Map<String, Object> ver = logReader.getVersion();
             infoTableModel.addRow(new Object[]{"Hardware Version", ver.get("HW")});
