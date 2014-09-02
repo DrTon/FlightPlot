@@ -13,7 +13,9 @@ import me.drton.jmavlib.mavlink.MAVLinkSchema;
 import org.jfree.chart.ChartFactory;
 import org.jfree.chart.ChartPanel;
 import org.jfree.chart.JFreeChart;
+import org.jfree.chart.axis.DateAxis;
 import org.jfree.chart.axis.NumberAxis;
+import org.jfree.chart.axis.ValueAxis;
 import org.jfree.chart.event.ChartChangeEvent;
 import org.jfree.chart.event.ChartChangeEventType;
 import org.jfree.chart.event.ChartChangeListener;
@@ -62,12 +64,12 @@ public class FlightPlot {
     private JComboBox presetComboBox;
     private JButton deletePresetButton;
     private JButton logInfoButton;
+    private JRadioButtonMenuItem[] timeModeItems;
 
     private static String appName = "FlightPlot";
-    private static String version = "0.2.5";
+    private static String version = "0.2.8";
     private static String appNameAndVersion = appName + " v." + version;
     private final Preferences preferences;
-    private String logFileName = null;
     private LogReader logReader = null;
     private XYSeriesCollection dataset;
     private JFreeChart jFreeChart;
@@ -82,6 +84,12 @@ public class FlightPlot {
     private AtomicBoolean invokeProcessFile = new AtomicBoolean(false);
     private ExportManager exportManager = new ExportManager();
     private PreferencesUtil preferencesUtil = new PreferencesUtil();
+    private NumberAxis domainAxisSeconds;
+    private DateAxis domainAxisDate;
+    private int timeMode = 0;
+    private static final int TIME_MODE_LOG_START = 0;
+    private static final int TIME_MODE_BOOT = 1;
+    private static final int TIME_MODE_GPS = 2;
 
     private static final NumberFormat doubleNumberFormat = NumberFormat.getInstance(Locale.ROOT);
 
@@ -228,7 +236,7 @@ public class FlightPlot {
 
         // Open Log Dialog
         FileNameExtensionFilter[] logExtensionfilters = new FileNameExtensionFilter[]{
-                new FileNameExtensionFilter("PX4 Logs (*.bin)", "bin"),
+                new FileNameExtensionFilter("PX4/APM Logs (*.bin)", "bin"),
                 new FileNameExtensionFilter("MAVLink Logs (*.mavlink)", "mavlink")};
         openLogFileChooser = new JFileChooser();
         for (FileNameExtensionFilter filter : logExtensionfilters) {
@@ -342,6 +350,8 @@ public class FlightPlot {
                 presetComboBox.addItem(preset);
             }
         }
+        timeMode = Integer.parseInt(preferences.get("TimeMode", "0"));
+        timeModeItems[timeMode].setSelected(true);
         this.exportManager.loadPreferences(preferences.node("ExportManager"));
     }
 
@@ -369,6 +379,7 @@ public class FlightPlot {
                 preset.pack(presetsPref);
             }
         }
+        preferences.put("TimeMode", Integer.toString(timeMode));
         this.exportManager.savePreferences(preferences.node("ExportManager"));
     }
 
@@ -403,16 +414,42 @@ public class FlightPlot {
         dataset = new XYSeriesCollection();
         jFreeChart = ChartFactory.createXYLineChart("", "", "", null, PlotOrientation.VERTICAL, true, true, false);
         jFreeChart.getXYPlot().setDataset(dataset);
+
+        // Set plot colors
         XYPlot plot = jFreeChart.getXYPlot();
         plot.setBackgroundPaint(Color.WHITE);
         plot.setDomainGridlinePaint(Color.LIGHT_GRAY);
         plot.setRangeGridlinePaint(Color.LIGHT_GRAY);
-        NumberAxis domainAxis = (NumberAxis) plot.getDomainAxis();
-        domainAxis.setAutoRangeIncludesZero(false);
-        domainAxis.setLowerMargin(0.0);
-        domainAxis.setUpperMargin(0.0);
+
+        // Domain (X) axis - seconds
+        domainAxisSeconds = new NumberAxis("T") {
+            // Use default auto range to adjust range
+            protected void autoAdjustRange() {
+                setRange(getDefaultAutoRange());
+            }
+        };
+        //domainAxisSeconds.setAutoRangeIncludesZero(false);
+        domainAxisSeconds.setLowerMargin(0.0);
+        domainAxisSeconds.setUpperMargin(0.0);
+
+        // Domain (X) axis - date
+        domainAxisDate = new DateAxis("T") {
+            // Use default auto range to adjust range
+            protected void autoAdjustRange() {
+                setRange(getDefaultAutoRange());
+            }
+        };
+        domainAxisDate.setTimeZone(TimeZone.getTimeZone("GMT"));
+        domainAxisDate.setLowerMargin(0.0);
+        domainAxisDate.setUpperMargin(0.0);
+
+        // Use seconds by default
+        plot.setDomainAxis(domainAxisSeconds);
+
+        // Range (Y) axis
         NumberAxis rangeAxis = (NumberAxis) plot.getRangeAxis();
         rangeAxis.setAutoRangeIncludesZero(false);
+
         chartPanel = new ChartPanel(jFreeChart);
         chartPanel.setMouseWheelEnabled(true);
         chartPanel.setMouseZoomable(true, false);
@@ -490,7 +527,8 @@ public class FlightPlot {
     }
 
     private void createMenuBar() {
-        JMenu newMenu = new JMenu("File");
+        // File menu
+        JMenu fileMenu = new JMenu("File");
         JMenuItem fileOpenItem = new JMenuItem("Open Log...");
         JMenuItem importPresetItem = new JMenuItem("Import Preset...");
         JMenuItem exportPresetItem = new JMenuItem("Export Preset...");
@@ -519,13 +557,84 @@ public class FlightPlot {
                 exportTrack();
             }
         });
-        newMenu.add(fileOpenItem);
-        newMenu.add(importPresetItem);
-        newMenu.add(exportPresetItem);
-        newMenu.add(exportTrack);
+        fileMenu.add(fileOpenItem);
+        fileMenu.add(importPresetItem);
+        fileMenu.add(exportPresetItem);
+        fileMenu.add(exportTrack);
+
+        // View menu
+        JMenu viewMenu = new JMenu("View");
+        timeModeItems = new JRadioButtonMenuItem[3];
+        timeModeItems[TIME_MODE_LOG_START] = new JRadioButtonMenuItem("Log Start Time");
+        timeModeItems[TIME_MODE_BOOT] = new JRadioButtonMenuItem("Boot Time");
+        timeModeItems[TIME_MODE_GPS] = new JRadioButtonMenuItem("GPS Time");
+        ButtonGroup timeModeGroup = new ButtonGroup();
+        for (JRadioButtonMenuItem item : timeModeItems) {
+            timeModeGroup.add(item);
+            item.addActionListener(new ActionListener() {
+                @Override
+                public void actionPerformed(ActionEvent e) {
+                    onTimeModeChanged();
+                    processFile();
+                }
+            });
+            viewMenu.add(item);
+        }
+
+        // Menu bar
         JMenuBar menuBar = new JMenuBar();
-        menuBar.add(newMenu);
+        menuBar.add(fileMenu);
+        menuBar.add(viewMenu);
         mainFrame.setJMenuBar(menuBar);
+    }
+
+    private void onTimeModeChanged() {
+        int timeModeOld = timeMode;
+        for (int i = 0; i < timeModeItems.length; i++) {
+            if (timeModeItems[i].isSelected()) {
+                timeMode = i;
+                break;
+            }
+        }
+
+        long timeOffset = 0;
+        long logStart = 0;
+        long logSize = 1000000;
+        Range rangeOld = new Range(0.0, 1.0);
+
+        if (logReader != null) {
+            timeOffset = getTimeOffset(timeMode);
+            logStart = logReader.getStartMicroseconds() + timeOffset;
+            logSize = logReader.getSizeMicroseconds();
+            rangeOld = getLogRange(timeModeOld);
+        }
+
+        ValueAxis domainAxis = selectDomainAxis(timeMode);
+        // Set axis type according to selected time mode
+        jFreeChart.getXYPlot().setDomainAxis(domainAxis);
+
+        if (domainAxis == domainAxisDate) {
+            // DateAxis uses ms instead of seconds
+            domainAxis.setRange(rangeOld.getLowerBound() * 1e3 + timeOffset * 1e-3,
+                    rangeOld.getUpperBound() * 1e3 + timeOffset * 1e-3);
+            domainAxis.setDefaultAutoRange(new Range(logStart * 1e-3, (logStart + logSize) * 1e-3));
+        } else {
+            domainAxis.setRange(rangeOld.getLowerBound() + timeOffset * 1e-6,
+                    rangeOld.getUpperBound() + timeOffset * 1e-6);
+            domainAxis.setDefaultAutoRange(new Range(logStart * 1e-6, (logStart + logSize) * 1e-6));
+        }
+    }
+
+    private Range getLogRange(int tm) {
+        Range range = selectDomainAxis(tm).getRange();
+        if (tm == TIME_MODE_GPS) {
+            long timeOffset = getTimeOffset(tm);
+            return new Range((range.getLowerBound() * 1e3 - timeOffset) * 1e-6,
+                    (range.getUpperBound() * 1e3 - timeOffset) * 1e-6);
+        } else {
+            long timeOffset = getTimeOffset(tm);
+            return new Range(range.getLowerBound() - timeOffset * 1e-6, range.getUpperBound() - timeOffset * 1e-6);
+        }
     }
 
     public void setStatus(String status) {
@@ -536,7 +645,7 @@ public class FlightPlot {
         int returnVal = openLogFileChooser.showDialog(mainFrame, "Open");
         if (returnVal == JFileChooser.APPROVE_OPTION) {
             File file = openLogFileChooser.getSelectedFile();
-            logFileName = file.getPath();
+            String logFileName = file.getPath();
             mainFrame.setTitle(appNameAndVersion + " - " + logFileName);
             if (logReader != null) {
                 try {
@@ -546,8 +655,6 @@ public class FlightPlot {
                 }
                 logReader = null;
             }
-            long logStart = 0;
-            long logSize = 1000000;
             try {
                 if (logFileName.endsWith(".bin")) {
                     logReader = new PX4LogReader(logFileName);
@@ -555,16 +662,13 @@ public class FlightPlot {
                     logReader = new MAVLinkLogReader(logFileName, new MAVLinkSchema("common.xml"));
                 }
                 logInfo.updateInfo(logReader);
-                logStart = logReader.getStartMicroseconds();
-                logSize = logReader.getSizeMicroseconds();
             } catch (Exception e) {
                 logReader = null;
                 setStatus("Error: " + e);
                 e.printStackTrace();
             }
             fieldsListDialog.setFieldsList(logReader.getFields());
-            Range timeRange = new Range(logStart / 1000000.0, (logStart + logSize) / 1000000.0);
-            jFreeChart.getXYPlot().getDomainAxis().setDefaultAutoRange(timeRange);
+            onTimeModeChanged();
             jFreeChart.getXYPlot().getDomainAxis().setAutoRange(true);
             jFreeChart.getXYPlot().getRangeAxis().setAutoRange(true);
             processFile();
@@ -683,17 +787,50 @@ public class FlightPlot {
         }
     }
 
+    private long getTimeOffset(int tm) {
+        // Set time offset according t selected time mode
+        long timeOffset = 0;
+        if (tm == TIME_MODE_GPS) {
+            // GPS time
+            timeOffset = logReader.getUTCTimeReferenceMicroseconds();
+            if (timeOffset < 0) {
+                timeOffset = 0;
+            }
+        } else if (tm == TIME_MODE_LOG_START) {
+            // Log start time
+            timeOffset = -logReader.getStartMicroseconds();
+        }
+        return timeOffset;
+    }
+
+    private ValueAxis selectDomainAxis(int tm) {
+        if (tm == TIME_MODE_GPS) {
+            return domainAxisDate;
+        } else {
+            return domainAxisSeconds;
+        }
+    }
+
     private void generateSeries() throws IOException, FormatErrorException {
         dataset.removeAllSeries();
         PlotProcessor[] processors = new PlotProcessor[processorsListModel.size()];
-        Range timeAxisRange = jFreeChart.getXYPlot().getDomainAxis().getRange();
+
+        // Update time offset according to selected time mode
+        long timeOffset = getTimeOffset(timeMode);
+
+        // Displayed log range in seconds of native log time
+        Range range = getLogRange(timeMode);
+
         // Process some extra data in hidden areas
-        long timeStart = (long) ((timeAxisRange.getLowerBound() - timeAxisRange.getLength()) * 1000000);
-        long timeStop = (long) ((timeAxisRange.getUpperBound() + timeAxisRange.getLength()) * 1000000);
+        long timeStart = (long) ((range.getLowerBound() - range.getLength()) * 1e6);
+        long timeStop = (long) ((range.getUpperBound() + range.getLength()) * 1e6);
         timeStart = Math.max(logReader.getStartMicroseconds(), timeStart);
         timeStop = Math.min(logReader.getStartMicroseconds() + logReader.getSizeMicroseconds(), timeStop);
+
+        double timeScale = (selectDomainAxis(timeMode) == domainAxisDate) ? 1e-3 : 1e-6;
+
         int displayPixels = 2000;
-        double skip = timeAxisRange.getLength() / displayPixels;
+        double skip = range.getLength() / displayPixels;
         if (processors.length > 0) {
             for (int i = 0; i < processorsListModel.size(); i++) {
                 processors[i] = (PlotProcessor) processorsListModel.get(i);
@@ -714,7 +851,7 @@ public class FlightPlot {
                     break;
                 }
                 for (PlotProcessor processor : processors) {
-                    processor.process(t * 0.000001, data);
+                    processor.process((t + timeOffset) * timeScale, data);
                 }
             }
             for (PlotProcessor processor : processors) {
