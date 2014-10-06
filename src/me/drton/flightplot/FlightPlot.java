@@ -163,7 +163,7 @@ public class FlightPlot {
                 }
                 PlotProcessor processor = new Simple();
                 processor.getParameters().put("Fields", fieldsValue.toString());
-                processor.setTitle("New");
+                processor.setTitle(fieldsValue.toString());
                 processorsListModel.addElement(processor);
                 processorsList.setSelectedValue(processor, true);
                 processorsList.repaint();
