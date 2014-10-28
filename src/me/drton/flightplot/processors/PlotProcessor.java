@@ -13,6 +13,7 @@ import java.util.Map;
 public abstract class PlotProcessor {
     protected static final String WHITESPACE_RE = "[ \t]+";
     private double skipOut = 0.0;
+    private double timeScale = 1.0;
     private XYSeriesCollection seriesCollection;
     private List<Double> lastUpdates;
     private List<Double> lastValues;
@@ -32,6 +33,10 @@ public abstract class PlotProcessor {
 
     public void setSkipOut(double skipOut) {
         this.skipOut = skipOut;
+    }
+
+    public void setTimeScale(double timeScale) {
+        this.timeScale = timeScale;
     }
 
     public String getTitle() {
@@ -113,11 +118,11 @@ public abstract class PlotProcessor {
         }
         Double lastValue = lastValues.get(seriesIdx);
         if (lastValue != null && lastUpdate != null && time - lastUpdate > skipOut * 2) {
-            seriesCollection.getSeries(seriesIdx).add(lastUpdate, lastValue);
+            seriesCollection.getSeries(seriesIdx).add(lastUpdate * timeScale, lastValue);
         }
         lastValues.set(seriesIdx, null);
         lastUpdates.set(seriesIdx, time);
-        seriesCollection.getSeries(seriesIdx).add(time, value);
+        seriesCollection.getSeries(seriesIdx).add(time * timeScale, value);
     }
 
     public abstract void process(double time, Map<String, Object> update);

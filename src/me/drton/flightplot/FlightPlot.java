@@ -802,7 +802,7 @@ public class FlightPlot {
         timeStart = Math.max(logReader.getStartMicroseconds(), timeStart);
         timeStop = Math.min(logReader.getStartMicroseconds() + logReader.getSizeMicroseconds(), timeStop);
 
-        double timeScale = (selectDomainAxis(timeMode) == domainAxisDate) ? 1e-3 : 1e-6;
+        double timeScale = (selectDomainAxis(timeMode) == domainAxisDate) ? 1000.0 : 1.0;
 
         int displayPixels = 2000;
         double skip = range.getLength() / displayPixels;
@@ -811,6 +811,7 @@ public class FlightPlot {
                 processors[i] = (PlotProcessor) processorsListModel.get(i);
                 processors[i].init();
                 processors[i].setSkipOut(skip);
+                processors[i].setTimeScale(timeScale);
             }
             logReader.seek(timeStart);
             Map<String, Object> data = new HashMap<String, Object>();
@@ -826,7 +827,7 @@ public class FlightPlot {
                     break;
                 }
                 for (PlotProcessor processor : processors) {
-                    processor.process((t + timeOffset) * timeScale, data);
+                    processor.process((t + timeOffset) * 1e-6, data);
                 }
             }
             for (PlotProcessor processor : processors) {
