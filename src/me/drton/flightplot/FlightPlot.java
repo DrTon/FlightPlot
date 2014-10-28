@@ -17,6 +17,7 @@ import org.jfree.chart.axis.ValueAxis;
 import org.jfree.chart.event.ChartChangeEvent;
 import org.jfree.chart.event.ChartChangeEventType;
 import org.jfree.chart.event.ChartChangeListener;
+import org.jfree.chart.plot.DefaultDrawingSupplier;
 import org.jfree.chart.plot.PlotOrientation;
 import org.jfree.chart.plot.XYPlot;
 import org.jfree.data.Range;
@@ -398,6 +399,7 @@ public class FlightPlot {
         dataset = new XYSeriesCollection();
         jFreeChart = ChartFactory.createXYLineChart("", "", "", null, PlotOrientation.VERTICAL, true, true, false);
         jFreeChart.getXYPlot().setDataset(dataset);
+        jFreeChart.getXYPlot().setDrawingSupplier(new ChartDrawingSupplier());
 
         // Set plot colors
         XYPlot plot = jFreeChart.getXYPlot();
@@ -937,6 +939,45 @@ public class FlightPlot {
             parametersTableModel.setValueAt(formatParameterValue(selectedProcessor.getParameters().get(key)), row, 1);
             parametersTableModel.addTableModelListener(parameterChangedListener);
             processFile();
+        }
+    }
+
+    private static class ChartDrawingSupplier extends DefaultDrawingSupplier {
+        public Paint[] paintSequence;
+        public int paintIndex;
+        public int fillPaintIndex;
+
+        {
+            paintSequence = new Paint[]{
+                    Color.RED,
+                    Color.GREEN,
+                    Color.BLUE,
+                    Color.CYAN,
+                    Color.MAGENTA,
+                    Color.BLACK,
+                    Color.LIGHT_GRAY,
+                    Color.ORANGE,
+                    Color.RED.darker(),
+                    Color.GREEN.darker(),
+                    Color.BLUE.darker(),
+                    Color.CYAN.darker(),
+                    Color.MAGENTA.darker(),
+                    Color.ORANGE.darker(),
+            };
+        }
+
+        @Override
+        public Paint getNextPaint() {
+            Paint result = paintSequence[paintIndex % paintSequence.length];
+            paintIndex++;
+            return result;
+        }
+
+        @Override
+        public Paint getNextFillPaint() {
+            Paint result = paintSequence[fillPaintIndex % paintSequence.length];
+            fillPaintIndex++;
+            return result;
         }
     }
 }
