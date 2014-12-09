@@ -90,6 +90,7 @@ public class PositionEstimator extends PlotProcessor {
         timePrev = Double.NaN;
         gpsInited = false;
         baroInited = false;
+        rot = null;
         est = new double[3][2];
         corrGPS = new double[3][2];
         corrBaro = 0.0;
@@ -270,7 +271,7 @@ public class PositionEstimator extends PlotProcessor {
             act = true;
         }
         if (act) {
-            if (!Double.isNaN(timePrev)) {
+            if (!Double.isNaN(timePrev) && rot != null) {
                 double dt = time - timePrev;
                 double dBaro = corrGPS[2][0] * param_W_GPS[2][0] * wGPS[2] * dt;
                 baroOffset -= dBaro;
