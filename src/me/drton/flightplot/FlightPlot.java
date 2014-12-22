@@ -17,10 +17,10 @@ import org.jfree.chart.axis.ValueAxis;
 import org.jfree.chart.event.ChartChangeEvent;
 import org.jfree.chart.event.ChartChangeEventType;
 import org.jfree.chart.event.ChartChangeListener;
-import org.jfree.chart.plot.DefaultDrawingSupplier;
 import org.jfree.chart.plot.PlotOrientation;
 import org.jfree.chart.plot.XYPlot;
 import org.jfree.data.Range;
+import org.jfree.data.general.Series;
 import org.jfree.data.xy.XYSeries;
 import org.jfree.data.xy.XYSeriesCollection;
 import org.json.JSONObject;
@@ -72,6 +72,7 @@ public class FlightPlot {
     private LogReader logReader = null;
     private XYSeriesCollection dataset;
     private JFreeChart jFreeChart;
+    private ColorSupplier colorSupplier = new ColorSupplier();
     private ProcessorsList processorsTypesList;
     private File lastLogDirectory = null;
     private File lastPresetDirectory = null;
@@ -101,7 +102,7 @@ public class FlightPlot {
 
     public static void main(String[] args)
             throws ClassNotFoundException, UnsupportedLookAndFeelException, InstantiationException,
-                   IllegalAccessException {
+            IllegalAccessException {
         SwingUtilities.invokeLater(new Runnable() {
             @Override
             public void run() {
@@ -171,7 +172,8 @@ public class FlightPlot {
             }
         });
         openLogButton.addActionListener(new ActionListener() {
-            @Override public void actionPerformed(ActionEvent e) {
+            @Override
+            public void actionPerformed(ActionEvent e) {
                 showOpenLogDialog();
             }
         });
@@ -384,7 +386,6 @@ public class FlightPlot {
         dataset = new XYSeriesCollection();
         jFreeChart = ChartFactory.createXYLineChart("", "", "", null, PlotOrientation.VERTICAL, true, true, false);
         jFreeChart.getXYPlot().setDataset(dataset);
-        jFreeChart.getXYPlot().setDrawingSupplier(new ChartDrawingSupplier());
 
         // Set plot colors
         XYPlot plot = jFreeChart.getXYPlot();
@@ -837,6 +838,8 @@ public class FlightPlot {
             for (PlotProcessor processor : processors) {
                 for (XYSeries series : (List<XYSeries>) processor.getSeriesCollection().getSeries()) {
                     dataset.addSeries(series);
+                    jFreeChart.getXYPlot().getRendererForDataset(dataset).setSeriesPaint(dataset.indexOf(series),
+                            processor.getSeriesPaint(processor.getSeriesCollection().indexOf(series), colorSupplier));
                 }
             }
         }
@@ -944,42 +947,4 @@ public class FlightPlot {
         }
     }
 
-    private static class ChartDrawingSupplier extends DefaultDrawingSupplier {
-        public Paint[] paintSequence;
-        public int paintIndex;
-        public int fillPaintIndex;
-
-        {
-            paintSequence = new Paint[]{
-                    Color.RED,
-                    Color.GREEN,
-                    Color.BLUE,
-                    Color.CYAN,
-                    Color.MAGENTA,
-                    Color.BLACK,
-                    Color.LIGHT_GRAY,
-                    Color.ORANGE,
-                    Color.RED.darker(),
-                    Color.GREEN.darker(),
-                    Color.BLUE.darker(),
-                    Color.CYAN.darker(),
-                    Color.MAGENTA.darker(),
-                    Color.ORANGE.darker(),
-            };
-        }
-
-        @Override
-        public Paint getNextPaint() {
-            Paint result = paintSequence[paintIndex % paintSequence.length];
-            paintIndex++;
-            return result;
-        }
-
-        @Override
-        public Paint getNextFillPaint() {
-            Paint result = paintSequence[fillPaintIndex % paintSequence.length];
-            fillPaintIndex++;
-            return result;
-        }
-    }
 }

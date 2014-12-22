@@ -1,9 +1,12 @@
 package me.drton.flightplot.processors;
 
+import me.drton.flightplot.ColorSupplier;
 import org.jfree.data.xy.XYSeries;
 import org.jfree.data.xy.XYSeriesCollection;
 
+import java.awt.*;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -17,6 +20,7 @@ public abstract class PlotProcessor {
     private XYSeriesCollection seriesCollection;
     private List<Double> lastUpdates;
     private List<Double> lastValues;
+    private Map<Integer, Paint> seriesPaint = new HashMap<Integer, Paint>();
 
     private String title;
     protected Map<String, Object> parameters;
@@ -138,5 +142,15 @@ public abstract class PlotProcessor {
     @Override
     public String toString() {
         return title + " [" + getProcessorType() + "]";
+    }
+
+
+    public Paint getSeriesPaint(int seriesIndex, ColorSupplier supplier) {
+        Paint paint = seriesPaint.get(seriesIndex);
+        if (null == paint) {
+            paint = supplier.getNextPaint();
+            seriesPaint.put(seriesIndex, paint);
+        }
+        return paint;
     }
 }
