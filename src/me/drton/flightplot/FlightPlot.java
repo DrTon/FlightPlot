@@ -17,11 +17,9 @@ import org.jfree.chart.axis.ValueAxis;
 import org.jfree.chart.event.ChartChangeEvent;
 import org.jfree.chart.event.ChartChangeEventType;
 import org.jfree.chart.event.ChartChangeListener;
-import org.jfree.chart.plot.Plot;
 import org.jfree.chart.plot.PlotOrientation;
 import org.jfree.chart.plot.XYPlot;
 import org.jfree.data.Range;
-import org.jfree.data.general.Series;
 import org.jfree.data.xy.XYSeries;
 import org.jfree.data.xy.XYSeriesCollection;
 import org.json.JSONObject;
@@ -32,12 +30,13 @@ import javax.swing.event.ListSelectionListener;
 import javax.swing.event.TableModelEvent;
 import javax.swing.event.TableModelListener;
 import javax.swing.filechooser.FileNameExtensionFilter;
+import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.TableCellEditor;
+import javax.swing.table.TableCellRenderer;
 import java.awt.*;
 import java.awt.event.*;
 import java.io.*;
-import java.lang.reflect.InvocationTargetException;
 import java.nio.charset.Charset;
 import java.text.NumberFormat;
 import java.util.*;
@@ -366,6 +365,7 @@ public class FlightPlot {
                 if (processor != null) {
                     processor.setTitle(pp.getTitle());
                     processor.setParameters(pp.getParameters());
+                    // TODO: initialize colors (prepare processor)
                     processorsListModel.addElement(processor);
                 }
             } catch (Exception e) {
@@ -488,6 +488,7 @@ public class FlightPlot {
         parametersTable.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_ENTER, 0), "startEditing");
         parametersTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         parametersTable.getColumnModel().getColumn(1).setCellEditor(new ParamValueTableCellEditor());
+        parametersTable.getColumnModel().getColumn(1).setCellRenderer(new ParamValueTableCellRenderer());
     }
 
     private void createMenuBar() {
@@ -914,14 +915,16 @@ public class FlightPlot {
         }
     }
 
-    private static String formatParameterValue(Object value) {
-        String valueStr;
+    private static Object formatParameterValue(Object value) {
+        Object returnValue;
         if (value instanceof Double) {
-            valueStr = doubleNumberFormat.format(value);
+            returnValue = doubleNumberFormat.format(value);
+        } else if (value instanceof Paint) {
+            returnValue = value;
         } else {
-            valueStr = value.toString();
+            returnValue = value.toString();
         }
-        return valueStr;
+        return returnValue;
     }
 
     private void showProcessorParameters() {
@@ -958,7 +961,7 @@ public class FlightPlot {
         }
     }
 
-    private static class ParamValueTableCellEditor extends AbstractCellEditor implements TableCellEditor {
+    private class ParamValueTableCellEditor extends AbstractCellEditor implements TableCellEditor {
         private TableCellEditor editor;
 
         @Override
@@ -972,10 +975,8 @@ public class FlightPlot {
 
         @Override
         public Component getTableCellEditorComponent(JTable table, Object value, boolean isSelected, int row, int column) {
-            if (value instanceof Paint) {
-                // TODO: color picker
-                //editor = ...
-                return new DefaultCellEditor(new JTextField()).getTableCellEditorComponent(table, "color", isSelected, row, column);
+            if (value instanceof Color) {
+                editor = new ColorParamTableCellEditor();
             } else if (value instanceof String) {
                 editor = new DefaultCellEditor(new JTextField());
             } else if (value instanceof Boolean) {
@@ -983,6 +984,81 @@ public class FlightPlot {
             }
 
             return editor.getTableCellEditorComponent(table, value, isSelected, row, column);
+        }
+    }
+
+    private class ColorParamTableCellEditor extends AbstractCellEditor implements TableCellEditor, ActionListener {
+        private Color color;
+        private JComboBox select;
+
+        public ColorParamTableCellEditor() {
+            select = new JComboBox();
+            select.addActionListener(this);
+            select.setRenderer(new ColorCellRenderer());
+            for (Paint paint : colorSupplier.paintSequence) {
+                select.addItem(paint);
+            }
+        }
+
+        @Override
+        public Object getCellEditorValue() {
+            return color;
+        }
+
+        @Override
+        public Component getTableCellEditorComponent(JTable table, Object value, boolean isSelected, int row, int column) {
+            color = (Color) value;
+            select.setSelectedItem(color);
+            return select;
+        }
+
+        @Override
+        public void actionPerformed(ActionEvent actionEvent) {
+            color = (Color)colorSupplier.paintSequence[select.getSelectedIndex()];
+        }
+
+        private class ColorCellRenderer extends JLabel implements ListCellRenderer {
+            boolean setBg = false;
+
+            public ColorCellRenderer() {
+                setOpaque(true);
+                setPreferredSize(new Dimension(0, 15));
+            }
+
+            @Override
+            public void setBackground(Color bg) {
+                if (!setBg) {
+                    return;
+                }
+                super.setBackground(bg);
+            }
+
+            public Component getListCellRendererComponent(JList list, Object value, int index, boolean isSelected, boolean cellHasFocus) {
+                setBg = true;
+                setText("");
+                setBackground((Color) value);
+                setBg = false;
+                return this;
+            }
+        }
+    }
+
+    private class ParamValueTableCellRenderer extends JLabel implements TableCellRenderer {
+        private DefaultTableCellRenderer defaultTableCellRenderer = new DefaultTableCellRenderer();
+
+        public ParamValueTableCellRenderer() {
+            setOpaque(true);
+        }
+
+        public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected
+                , boolean hasFocus, int row, int column) {
+            if(value instanceof Color) {
+                setBackground((Color) value);
+            }
+            else  {
+                return defaultTableCellRenderer.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
+            }
+            return this;
         }
     }
 

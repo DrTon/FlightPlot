@@ -14,7 +14,7 @@ import java.util.Map;
  */
 public abstract class PlotProcessor {
     protected static final String WHITESPACE_RE = "[ \t]+";
-    protected final static String PARAM_PAINT_PREFIX = "paint_";
+    protected final static String PARAM_PAINT_PREFIX = "Color_";
 
     private double skipOut = 0.0;
     private double timeScale = 1.0;
