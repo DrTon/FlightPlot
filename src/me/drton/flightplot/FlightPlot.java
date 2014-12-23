@@ -17,6 +17,7 @@ import org.jfree.chart.axis.ValueAxis;
 import org.jfree.chart.event.ChartChangeEvent;
 import org.jfree.chart.event.ChartChangeEventType;
 import org.jfree.chart.event.ChartChangeListener;
+import org.jfree.chart.plot.Plot;
 import org.jfree.chart.plot.PlotOrientation;
 import org.jfree.chart.plot.XYPlot;
 import org.jfree.data.Range;
@@ -32,9 +33,11 @@ import javax.swing.event.TableModelEvent;
 import javax.swing.event.TableModelListener;
 import javax.swing.filechooser.FileNameExtensionFilter;
 import javax.swing.table.DefaultTableModel;
+import javax.swing.table.TableCellEditor;
 import java.awt.*;
 import java.awt.event.*;
 import java.io.*;
+import java.lang.reflect.InvocationTargetException;
 import java.nio.charset.Charset;
 import java.text.NumberFormat;
 import java.util.*;
@@ -150,7 +153,7 @@ public class FlightPlot {
                 }
                 PlotProcessor processor = new Simple();
                 processor.getParameters().put("Fields", fieldsValue.toString());
-                processor.setTitle(fieldsValue.toString());
+                prepareProcessor(processor, fieldsValue.toString());
                 processorsListModel.addElement(processor);
                 processorsList.setSelectedValue(processor, true);
                 processorsList.repaint();
@@ -484,6 +487,7 @@ public class FlightPlot {
         };
         parametersTable.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_ENTER, 0), "startEditing");
         parametersTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        parametersTable.getColumnModel().getColumn(1).setCellEditor(new ParamValueTableCellEditor());
     }
 
     private void createMenuBar() {
@@ -839,7 +843,7 @@ public class FlightPlot {
                 for (XYSeries series : (List<XYSeries>) processor.getSeriesCollection().getSeries()) {
                     dataset.addSeries(series);
                     jFreeChart.getXYPlot().getRendererForDataset(dataset).setSeriesPaint(dataset.indexOf(series),
-                            processor.getSeriesPaint(processor.getSeriesCollection().indexOf(series), colorSupplier));
+                            processor.getSeriesPaint(processor.getSeriesCollection().indexOf(series)));
                 }
             }
         }
@@ -876,7 +880,7 @@ public class FlightPlot {
                 }
                 processor.setParameters(parameters);
             }
-            processor.setTitle(title);
+            prepareProcessor(processor, title);
             int idx = processorsListModel.indexOf(origProcessor);
             processorsListModel.set(idx, processor);
             processorsList.setSelectedValue(processor, true);
@@ -884,7 +888,7 @@ public class FlightPlot {
         } else {
             try {
                 PlotProcessor processor = processorsTypesList.getProcessorInstance(processorType);
-                processor.setTitle(title);
+                prepareProcessor(processor, title);
                 processorsListModel.addElement(processor);
                 processorsList.setSelectedValue(processor, true);
             } catch (Exception e) {
@@ -893,6 +897,12 @@ public class FlightPlot {
             }
         }
         processFile();
+    }
+
+    private void prepareProcessor(PlotProcessor processor, String title) {
+        processor.setTitle(title);
+        processor.init();
+        processor.updatePaint(colorSupplier);
     }
 
     private void removeSelectedProcessor() {
@@ -936,14 +946,43 @@ public class FlightPlot {
             Object value = parametersTableModel.getValueAt(row, 1);
             try {
                 selectedProcessor.setParameter(key, value);
+                prepareProcessor(selectedProcessor, selectedProcessor.getTitle());
                 updatePresetEdited(true);
             } catch (Exception e) {
                 setStatus("Error: " + e);
             }
             parametersTableModel.removeTableModelListener(parameterChangedListener);
-            parametersTableModel.setValueAt(formatParameterValue(selectedProcessor.getParameters().get(key)), row, 1);
+            showProcessorParameters(); // refresh all parameters because changing one param might influence others (e.g. color)
             parametersTableModel.addTableModelListener(parameterChangedListener);
             processFile();
+        }
+    }
+
+    private static class ParamValueTableCellEditor extends AbstractCellEditor implements TableCellEditor {
+        private TableCellEditor editor;
+
+        @Override
+        public Object getCellEditorValue() {
+            if (editor != null) {
+                return editor.getCellEditorValue();
+            }
+
+            return null;
+        }
+
+        @Override
+        public Component getTableCellEditorComponent(JTable table, Object value, boolean isSelected, int row, int column) {
+            if (value instanceof Paint) {
+                // TODO: color picker
+                //editor = ...
+                return new DefaultCellEditor(new JTextField()).getTableCellEditorComponent(table, "color", isSelected, row, column);
+            } else if (value instanceof String) {
+                editor = new DefaultCellEditor(new JTextField());
+            } else if (value instanceof Boolean) {
+                editor = new DefaultCellEditor(new JCheckBox());
+            }
+
+            return editor.getTableCellEditorComponent(table, value, isSelected, row, column);
         }
     }
 

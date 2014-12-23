@@ -6,7 +6,6 @@ import org.jfree.data.xy.XYSeriesCollection;
 
 import java.awt.*;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -15,12 +14,13 @@ import java.util.Map;
  */
 public abstract class PlotProcessor {
     protected static final String WHITESPACE_RE = "[ \t]+";
+    protected final static String PARAM_PAINT_PREFIX = "paint_";
+
     private double skipOut = 0.0;
     private double timeScale = 1.0;
     private XYSeriesCollection seriesCollection;
     private List<Double> lastUpdates;
     private List<Double> lastValues;
-    private Map<Integer, Paint> seriesPaint = new HashMap<Integer, Paint>();
 
     private String title;
     protected Map<String, Object> parameters;
@@ -77,7 +77,7 @@ public abstract class PlotProcessor {
 
     private static Object castValue(Object valueOld, Object valueNewObj) {
         String valueNewStr = valueNewObj.toString();
-        Object valueNew = null;
+        Object valueNew = valueNewObj;
         if (valueOld instanceof String) {
             valueNew = valueNewStr;
         } else if (valueOld instanceof Double) {
@@ -145,12 +145,34 @@ public abstract class PlotProcessor {
     }
 
 
-    public Paint getSeriesPaint(int seriesIndex, ColorSupplier supplier) {
-        Paint paint = seriesPaint.get(seriesIndex);
-        if (null == paint) {
+    public Paint getSeriesPaint(int seriesIndex) {
+        String key = PARAM_PAINT_PREFIX + seriesIndex;
+        return (Paint)parameters.get(key);
+    }
+
+    public void setSeriesDefaultPaint(int seriesIndex, ColorSupplier supplier) {
+        String key = PARAM_PAINT_PREFIX + seriesIndex;
+        Object paint = parameters.get(key);
+        if (!(paint instanceof Paint)) {
             paint = supplier.getNextPaint();
-            seriesPaint.put(seriesIndex, paint);
+            parameters.put(key, paint);
         }
-        return paint;
+    }
+
+    public void updatePaint(ColorSupplier supplier) {
+        // remove colors for removed series
+        for(int index = 0; ; index ++) {
+            String key = PARAM_PAINT_PREFIX + index;
+            if(index >= seriesCollection.getSeriesCount() && parameters.containsKey(key)) {
+                parameters.remove(key);
+            } else if(!parameters.containsKey(key)) {
+                break;
+            }
+        }
+
+        // fill series with default colors
+        for (XYSeries series : (List<XYSeries>) seriesCollection.getSeries()) {
+            setSeriesDefaultPaint(seriesCollection.indexOf(series), supplier);
+        }
     }
 }
