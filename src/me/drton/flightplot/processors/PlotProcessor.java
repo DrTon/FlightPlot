@@ -5,7 +5,9 @@ import org.jfree.data.xy.XYSeries;
 import org.jfree.data.xy.XYSeriesCollection;
 
 import java.awt.*;
+import java.awt.image.ColorModel;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -57,10 +59,29 @@ public abstract class PlotProcessor {
         return parameters;
     }
 
+    public Map<String, String> getSerializedParameters() {
+        Map<String, String> result = new HashMap<String, String>();
+        for(Map.Entry<String, Object> param : parameters.entrySet()) {
+            result.put(param.getKey(), serializeValue(param.getValue()));
+        }
+        return result;
+    }
+
     public void setParameter(String key, Object value) {
         Object oldValue = parameters.get(key);
         if (oldValue != null) {
             parameters.put(key, castValue(oldValue, value));
+        }
+    }
+
+    public void setSerializedParameters(Map<String, String> params) {
+        for (Map.Entry<String, String> entry : params.entrySet()) {
+            String key = entry.getKey();
+            Object oldValue = parameters.get(key);
+            Object newValue = params.get(key);
+            if (oldValue != null) {
+                parameters.put(key, castValue(oldValue, newValue));
+            }
         }
     }
 
@@ -70,7 +91,7 @@ public abstract class PlotProcessor {
             Object oldValue = parameters.get(key);
             Object newValue = params.get(key);
             if (oldValue != null) {
-                parameters.put(key, castValue(oldValue, newValue));
+                parameters.put(key, newValue);
             }
         }
     }
@@ -94,8 +115,21 @@ public abstract class PlotProcessor {
                 valueNew = false;
             else
                 valueNew = true;
+        } else if (valueOld instanceof Color && valueNewObj instanceof String) {
+            valueNew = new Color(Integer.parseInt(valueNewStr));
+        } else if (valueOld instanceof Color && valueNewObj instanceof Color) {
+            valueNew = valueNewObj;
         }
         return valueNew;
+    }
+
+    private static String serializeValue(Object value) {
+        if(value instanceof Color) {
+            return String.valueOf(((Color) value).getRGB());
+        }
+        else {
+            return value.toString();
+        }
     }
 
     protected int addSeries() {

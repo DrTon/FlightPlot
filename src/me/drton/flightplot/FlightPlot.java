@@ -363,9 +363,9 @@ public class FlightPlot {
             try {
                 PlotProcessor processor = processorsTypesList.getProcessorInstance(pp.getProcessorType());
                 if (processor != null) {
-                    processor.setTitle(pp.getTitle());
-                    processor.setParameters(pp.getParameters());
-                    // TODO: initialize colors (prepare processor)
+                    prepareProcessor(processor, pp.getTitle());
+                    processor.setSerializedParameters(pp.getParameters());
+                    // TODO: update colors for series
                     processorsListModel.addElement(processor);
                 }
             } catch (Exception e) {
@@ -869,6 +869,7 @@ public class FlightPlot {
         if (origProcessor != null) {
             // Edit processor
             PlotProcessor processor = origProcessor;
+            prepareProcessor(processor, title);
             if (!origProcessor.getProcessorType().equals(processorType)) {
                 // Processor type changed, replace instance
                 Map<String, Object> parameters = origProcessor.getParameters();
@@ -881,7 +882,6 @@ public class FlightPlot {
                 }
                 processor.setParameters(parameters);
             }
-            prepareProcessor(processor, title);
             int idx = processorsListModel.indexOf(origProcessor);
             processorsListModel.set(idx, processor);
             processorsList.setSelectedValue(processor, true);
@@ -919,7 +919,7 @@ public class FlightPlot {
         Object returnValue;
         if (value instanceof Double) {
             returnValue = doubleNumberFormat.format(value);
-        } else if (value instanceof Paint) {
+        } else if (value instanceof Color) {
             returnValue = value;
         } else {
             returnValue = value.toString();

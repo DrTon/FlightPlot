@@ -15,9 +15,9 @@ import java.util.prefs.Preferences;
 public class ProcessorPreset {
     private String title;
     private String processorType;
-    private Map<String, Object> parameters;
+    private Map<String, String> parameters;
 
-    public ProcessorPreset(String title, String processorType, Map<String, Object> parameters) {
+    public ProcessorPreset(String title, String processorType, Map<String, String> parameters) {
         this.title = title;
         this.processorType = processorType;
         this.parameters = parameters;
@@ -26,7 +26,7 @@ public class ProcessorPreset {
     public ProcessorPreset(PlotProcessor processor) {
         this.title = processor.getTitle();
         this.processorType = processor.getProcessorType();
-        this.parameters = processor.getParameters();
+        this.parameters = processor.getSerializedParameters();
     }
 
     public String getTitle() {
@@ -45,11 +45,11 @@ public class ProcessorPreset {
         this.processorType = processorType;
     }
 
-    public Map<String, Object> getParameters() {
+    public Map<String, String> getParameters() {
         return parameters;
     }
 
-    public void setParameters(Map<String, Object> parameters) {
+    public void setParameters(Map<String, String> parameters) {
         this.parameters = parameters;
     }
 
@@ -58,8 +58,8 @@ public class ProcessorPreset {
         p.clear();
         p.put("ProcessorType", processorType);
         Preferences params = p.node("Parameters");
-        for (Map.Entry<String, Object> entry : parameters.entrySet()) {
-            params.put(entry.getKey(), entry.getValue().toString());
+        for (Map.Entry<String, String> entry : parameters.entrySet()) {
+            params.put(entry.getKey(), entry.getValue());
         }
     }
 
@@ -68,7 +68,7 @@ public class ProcessorPreset {
         if (processorType == null)
             return null;
         Preferences paramsPref = preferences.node("Parameters");
-        Map<String, Object> params = new HashMap<String, Object>();
+        Map<String, String> params = new HashMap<String, String>();
         for (String key : paramsPref.keys()) {
             String v = paramsPref.get(key, null);
             if (v != null)
@@ -87,10 +87,10 @@ public class ProcessorPreset {
 
     public static ProcessorPreset unpackJSONObject(JSONObject json) throws IOException {
         JSONObject jsonParameters = json.getJSONObject("Parameters");
-        Map<String, Object> parameters = new HashMap<String, Object>();
+        Map<String, String> parameters = new HashMap<String, String>();
         for (Object key : jsonParameters.keySet()) {
             String keyStr = (String) key;
-            parameters.put(keyStr, jsonParameters.get(keyStr));
+            parameters.put(keyStr, jsonParameters.get(keyStr).toString());
         }
         return new ProcessorPreset(json.getString("Title"), json.getString("ProcessorType"), parameters);
     }
