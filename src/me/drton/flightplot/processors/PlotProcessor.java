@@ -24,8 +24,9 @@ public abstract class PlotProcessor {
     private List<Double> lastUpdates;
     private List<Double> lastValues;
 
-    private String title;
+    protected String title;
     protected Map<String, Object> parameters;
+    protected Map<Integer, String> seriesFields;
 
     protected PlotProcessor() {
         this.parameters = getDefaultParameters();
@@ -33,6 +34,7 @@ public abstract class PlotProcessor {
 
     public void init() {
         seriesCollection = new XYSeriesCollection();
+        seriesFields = new HashMap<Integer, String>();
         lastUpdates = new ArrayList<Double>();
         lastValues = new ArrayList<Double>();
     }
@@ -134,7 +136,8 @@ public abstract class PlotProcessor {
 
     protected int addSeries() {
         int idx = seriesCollection.getSeriesCount();
-        seriesCollection.addSeries(new XYSeries(getTitle(), false));
+        seriesCollection.addSeries(new XYSeries(title, false));
+        seriesFields.put(idx, title);
         lastUpdates.add(null);
         lastValues.add(null);
         return idx;
@@ -143,6 +146,7 @@ public abstract class PlotProcessor {
     protected int addSeries(String label) {
         int idx = seriesCollection.getSeriesCount();
         seriesCollection.addSeries(new XYSeries(title + ":" + label, false));
+        seriesFields.put(idx, label);
         lastUpdates.add(null);
         lastValues.add(null);
         return idx;
@@ -188,7 +192,7 @@ public abstract class PlotProcessor {
         String key = PARAM_PAINT_PREFIX + seriesIndex;
         Object paint = parameters.get(key);
         if (!(paint instanceof Paint)) {
-            paint = supplier.getNextPaint();
+            paint = supplier.getNextPaint(seriesFields.get(seriesIndex));
             parameters.put(key, paint);
         }
     }
@@ -208,5 +212,13 @@ public abstract class PlotProcessor {
         for (XYSeries series : (List<XYSeries>) seriesCollection.getSeries()) {
             setSeriesDefaultPaint(seriesCollection.indexOf(series), supplier);
         }
+    }
+
+    public String getFieldForPaint(String key) {
+        if(key.startsWith(PARAM_PAINT_PREFIX)) {
+            int index = Integer.parseInt(key.substring(PARAM_PAINT_PREFIX.length()));
+            return seriesFields.get(index);
+        }
+        return null;
     }
 }

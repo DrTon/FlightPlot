@@ -327,6 +327,8 @@ public class FlightPlot {
         }
         timeMode = Integer.parseInt(preferences.get("TimeMode", "0"));
         timeModeItems[timeMode].setSelected(true);
+        Preferences paintForFields = preferences.node("PaintForFields");
+        colorSupplier.loadPaintForFields(paintForFields);
         this.exportManager.loadPreferences(preferences.node("ExportManager"));
     }
 
@@ -354,6 +356,8 @@ public class FlightPlot {
             }
         }
         preferences.put("TimeMode", Integer.toString(timeMode));
+        Preferences paintForFields = preferences.node("PaintForFields");
+        colorSupplier.savePaintForFields(paintForFields);
         this.exportManager.savePreferences(preferences.node("ExportManager"));
     }
 
@@ -956,6 +960,10 @@ public class FlightPlot {
                 selectedProcessor.setParameter(key, value);
                 prepareProcessor(selectedProcessor, selectedProcessor.getTitle());
                 updatePresetEdited(true);
+
+                if (value instanceof Color) {
+                    colorSupplier.updatePaintForField(selectedProcessor.getFieldForPaint(key), (Color) value);
+                }
             } catch (Exception e) {
                 setStatus("Error: " + e);
             }
@@ -1019,7 +1027,7 @@ public class FlightPlot {
 
         @Override
         public void actionPerformed(ActionEvent actionEvent) {
-            color = (Color)colorSupplier.paintSequence[select.getSelectedIndex()];
+            color = (Color) colorSupplier.paintSequence[select.getSelectedIndex()];
         }
 
         private class ColorCellRenderer extends JLabel implements ListCellRenderer {
@@ -1057,10 +1065,9 @@ public class FlightPlot {
 
         public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected
                 , boolean hasFocus, int row, int column) {
-            if(value instanceof Color) {
+            if (value instanceof Color) {
                 setBackground((Color) value);
-            }
-            else  {
+            } else {
                 return defaultTableCellRenderer.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
             }
             return this;
