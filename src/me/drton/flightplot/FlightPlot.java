@@ -363,9 +363,14 @@ public class FlightPlot {
             try {
                 PlotProcessor processor = processorsTypesList.getProcessorInstance(pp.getProcessorType());
                 if (processor != null) {
-                    prepareProcessor(processor, pp.getTitle());
                     processor.setSerializedParameters(pp.getParameters());
-                    // TODO: update colors for series
+                    prepareProcessor(processor, pp.getTitle());
+                    // setting the parameters a second time after prepare ensures that all the color params will be set
+                    // TODO: processor parameter handling in general should be revised
+                    // - more clear separation between GUI, memory and storage (preferences)
+                    // - provide type information per parameter (to get rid of the current casting mechanism)
+                    // - use serialization to store parameters that supports versioning (e.g. protobuf)
+                    processor.setSerializedParameters(pp.getParameters());
                     processorsListModel.addElement(processor);
                 }
             } catch (Exception e) {
