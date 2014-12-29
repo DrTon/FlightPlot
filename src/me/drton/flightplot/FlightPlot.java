@@ -124,22 +124,7 @@ public class FlightPlot {
         mainFrame = new JFrame(appNameAndVersion);
         mainFrame.setContentPane(mainPanel);
         mainFrame.setDefaultCloseOperation(WindowConstants.DO_NOTHING_ON_CLOSE);
-        if (OSValidator.isMac()) {
-            // Do it via separate class to avoid loading Mac classes
-            new AppleQuitHandler(new Runnable() {
-                @Override
-                public void run() {
-                    onQuit();
-                }
-            });
-        } else {
-            mainFrame.addWindowListener(new WindowAdapter() {
-                @Override
-                public void windowClosing(WindowEvent e) {
-                    onQuit();
-                }
-            });
-        }
+
         mainFrame.addWindowListener(new WindowAdapter() {
             @Override
             public void windowClosing(WindowEvent e) {
