@@ -18,6 +18,7 @@
         <pathelement location="lib/annotations.jar"/>
         <pathelement location="lib/asm4-all.jar"/>
         <pathelement location="lib/jdom.jar"/>
+        <pathelement location="lib/AppleJavaExtensions.jar"/>
     </path>
     <taskdef name="javac2" classname="com.intellij.ant.Javac2" classpathref="javac2.class.path"/>
 
