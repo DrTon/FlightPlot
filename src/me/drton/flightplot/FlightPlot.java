@@ -503,38 +503,55 @@ public class FlightPlot {
     private void createMenuBar() {
         // File menu
         JMenu fileMenu = new JMenu("File");
+
         JMenuItem fileOpenItem = new JMenuItem("Open Log...");
-        JMenuItem importPresetItem = new JMenuItem("Import Preset...");
-        JMenuItem exportPresetItem = new JMenuItem("Export Preset...");
-        JMenuItem exportTrack = new JMenuItem("Export Track...");
         fileOpenItem.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
                 showOpenLogDialog();
             }
         });
+        fileMenu.add(fileOpenItem);
+
+        JMenuItem importPresetItem = new JMenuItem("Import Preset...");
         importPresetItem.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
                 showImportPresetDialog();
             }
         });
+        fileMenu.add(importPresetItem);
+
+        JMenuItem exportPresetItem = new JMenuItem("Export Preset...");
         exportPresetItem.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
                 showExportPresetDialog();
             }
         });
-        exportTrack.addActionListener(new ActionListener() {
+        fileMenu.add(exportPresetItem);
+
+        JMenuItem exportTrackItem = new JMenuItem("Export Track...");
+        exportTrackItem.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
                 exportTrack();
             }
         });
-        fileMenu.add(fileOpenItem);
-        fileMenu.add(importPresetItem);
-        fileMenu.add(exportPresetItem);
-        fileMenu.add(exportTrack);
+        fileMenu.add(exportTrackItem);
+
+        if (!OSValidator.isMac()) {
+            fileMenu.add(new JPopupMenu.Separator());
+            JMenuItem exitItem = new JMenuItem("Exit");
+            exitItem.setAccelerator(KeyStroke.getKeyStroke('Q', Toolkit.getDefaultToolkit().getMenuShortcutKeyMask()));
+            exitItem.addActionListener(new ActionListener() {
+                @Override
+                public void actionPerformed(ActionEvent actionEvent) {
+                    onQuit();
+                }
+            });
+            fileMenu.add(exitItem);
+        }
 
         // View menu
         JMenu viewMenu = new JMenu("View");
