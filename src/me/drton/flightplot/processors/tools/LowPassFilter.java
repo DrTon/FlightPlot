@@ -8,20 +8,20 @@ public class LowPassFilter {
     private double valueFiltered = 0.0;
     private double tLast = Double.NaN;
     private double f = 1.0;
-    private double rc = f / 2 / Math.PI;
+    private double rc_inv = f / 2 / Math.PI;
 
     public void setF(double f) {
         this.f = f;
-        this.rc = f / 2 / Math.PI;
+        this.rc_inv = f / 2 / Math.PI;
     }
 
     public void setT(double t) {
         if (t == 0.0) {
             this.f = 0.0;
-            this.rc = 0.0;
+            this.rc_inv = 0.0;
         } else {
             this.f = 1 / t;
-            this.rc = f / 2 / Math.PI;
+            this.rc_inv = f / 2 / Math.PI;
         }
     }
 
@@ -30,7 +30,7 @@ public class LowPassFilter {
     }
 
     public double getOutput(double t, double in) {
-        if (rc == 0.0) {
+        if (rc_inv == 0.0) {
             this.valueFiltered = in;
             return in;
         } else {
@@ -41,7 +41,7 @@ public class LowPassFilter {
                 return in;
             } else {
                 double dt = t - tLast;
-                this.valueFiltered += (1.0 - Math.exp(-dt * rc)) * (inLast - valueFiltered);
+                this.valueFiltered += (1.0 - Math.exp(-dt * rc_inv)) * (inLast - valueFiltered);
                 this.inLast = in;
                 this.tLast = t;
                 return valueFiltered;
