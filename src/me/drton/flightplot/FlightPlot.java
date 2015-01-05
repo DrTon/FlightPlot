@@ -66,7 +66,7 @@ public class FlightPlot {
     private JRadioButtonMenuItem[] timeModeItems;
 
     private static String appName = "FlightPlot";
-    private static String version = "0.2.10";
+    private static String version = "0.2.11";
     private static String appNameAndVersion = appName + " v." + version;
     private final Preferences preferences;
     private LogReader logReader = null;
@@ -78,7 +78,7 @@ public class FlightPlot {
     private AddProcessorDialog addProcessorDialog;
     private FieldsListDialog fieldsListDialog;
     private LogInfo logInfo;
-    private FileNameExtensionFilter logExtensionFilter = new FileNameExtensionFilter("PX4/APM Logs (*.bin)", "bin");
+    private FileNameExtensionFilter logExtensionFilter = new FileNameExtensionFilter("PX4/APM Logs (*.bin, *.px4log)", "bin", "px4log");
     private FileNameExtensionFilter presetExtensionFilter = new FileNameExtensionFilter("FlightPlot Presets (*.fplot)",
             "fplot");
     private AtomicBoolean invokeProcessFile = new AtomicBoolean(false);
