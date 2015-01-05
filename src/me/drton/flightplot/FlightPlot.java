@@ -66,7 +66,7 @@ public class FlightPlot {
     private JRadioButtonMenuItem[] timeModeItems;
 
     private static String appName = "FlightPlot";
-    private static String version = "0.2.10";
+    private static String version = "0.2.11";
     private static String appNameAndVersion = appName + " v." + version;
     private final Preferences preferences;
     private LogReader logReader = null;
