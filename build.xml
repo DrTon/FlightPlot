@@ -23,7 +23,7 @@
     <taskdef name="javac2" classname="com.intellij.ant.Javac2" classpathref="javac2.class.path"/>
 
     <target name="compile" description="Compile java sources" depends="make_dirs">
-        <javac2 destdir="out/production/FlightPlot" includeantruntime="false" debug="true">
+        <javac2 destdir="out/production/FlightPlot" includeantruntime="false" debug="true" target="1.6" source="1.6">
             <classpath refid="libsclasspath"/>
             <src path="src"/>
             <src path="jMAVlib/src"/>
