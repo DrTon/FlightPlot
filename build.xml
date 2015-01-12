@@ -53,6 +53,13 @@
                 />
     </target>
 
+    <target name="zip_artifacts" description="Zip build artifacts for distribution" depends="flightplot_mac_os_app">
+        <zip destfile="out/production/flightplot.jar.zip" basedir="out/production" includes="flightplot.jar" />
+        <zip destfile="out/production/flightplot.app.zip">
+            <zipfileset dir="out/production" includes="FlightPlot.app/**/*" filemode="755" />
+        </zip>
+    </target>
+
     <target name="clean" description="Clean up">
         <delete dir="out/production"/>
     </target>
