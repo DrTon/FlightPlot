@@ -15,6 +15,7 @@ public class BinaryOperator extends PlotProcessor {
     protected double param_InScale1;
     protected double param_InScale2;
     protected double param_OutScale;
+    protected double param_OutOffset;
     protected LowPassFilter lowPassFilter;
 
     @Override
@@ -26,6 +27,7 @@ public class BinaryOperator extends PlotProcessor {
         params.put("InScale2", 1.0);
         params.put("Field2", "BATT.V");
         params.put("OutScale", 1.0);
+        params.put("OutOffset", 0.0);
         params.put("LPF", 0.0);
         return params;
     }
@@ -39,6 +41,7 @@ public class BinaryOperator extends PlotProcessor {
         param_InScale2 = (Double) parameters.get("InScale2");
         param_Field2 = ((String) parameters.get("Field2"));
         param_OutScale = (Double) parameters.get("OutScale");
+        param_OutOffset = (Double) parameters.get("OutOffset");
         lowPassFilter = new LowPassFilter();
         lowPassFilter.setF((Double) parameters.get("LPF"));
         addSeries();
@@ -58,16 +61,16 @@ public class BinaryOperator extends PlotProcessor {
 
             switch (param_Operator.charAt(0)) {
                 case '*':
-                    s = d1 * d2;
+                    s = param_InScale1 * d1 * param_InScale2 * d2;
                     break;
                 case '/':
-                    s = d1 / d2;
+                    s = param_InScale1 * d1 / (param_InScale2 * d2);
                     break;
                 case '+':
                     s = param_InScale1 * d1 + param_InScale2 * d2;
                     break;
                 case '-':
-                    s = param_InScale1 * d1 + param_InScale2 * d2;
+                    s = param_InScale1 * d1 - param_InScale2 * d2;
                     break;
                 default:
             }
@@ -76,6 +79,6 @@ public class BinaryOperator extends PlotProcessor {
         }
 
         s = lowPassFilter.getOutput(time, s);
-        addPoint(0, time, s * param_OutScale);
+        addPoint(0, time, (s * param_OutScale) + param_OutOffset);
     }
 }
