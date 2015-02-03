@@ -1009,13 +1009,12 @@ public class FlightPlot {
         }
     }
 
-    private class ColorParamTableCellEditor extends AbstractCellEditor implements TableCellEditor, ActionListener {
+    private class ColorParamTableCellEditor extends AbstractCellEditor implements TableCellEditor {
         private Color color;
         private JComboBox select;
 
         public ColorParamTableCellEditor() {
             select = new JComboBox();
-            select.addActionListener(this);
             select.setRenderer(new ColorCellRenderer());
             for (Paint paint : colorSupplier.paintSequence) {
                 select.addItem(paint);
@@ -1036,11 +1035,6 @@ public class FlightPlot {
             color = (Color) value;
             select.setSelectedItem(color);
             return select;
-        }
-
-        @Override
-        public void actionPerformed(ActionEvent actionEvent) {
-
         }
 
         private class ColorCellRenderer extends JLabel implements ListCellRenderer {
