@@ -36,6 +36,7 @@ import javax.swing.table.TableCellEditor;
 import javax.swing.table.TableCellRenderer;
 import java.awt.*;
 import java.awt.event.*;
+import java.awt.image.ColorModel;
 import java.io.*;
 import java.nio.charset.Charset;
 import java.text.NumberFormat;
@@ -990,13 +991,20 @@ public class FlightPlot {
         public Component getTableCellEditorComponent(JTable table, Object value, boolean isSelected, int row, int column) {
             if (value instanceof Color) {
                 editor = new ColorParamTableCellEditor();
+                //((ColorParamTableCellEditor)editor).getComponent().addActionListener(new ActionDelegate());
             } else if (value instanceof String) {
                 editor = new DefaultCellEditor(new JTextField());
-            } else if (value instanceof Boolean) {
-                editor = new DefaultCellEditor(new JCheckBox());
+                ((JTextField)((DefaultCellEditor) editor).getComponent()).addActionListener(new ActionDelegate());
             }
 
             return editor.getTableCellEditorComponent(table, value, isSelected, row, column);
+        }
+
+        private class ActionDelegate implements ActionListener{
+            @Override
+            public void actionPerformed(ActionEvent actionEvent) {
+                ParamValueTableCellEditor.this.stopCellEditing();
+            }
         }
     }
 
@@ -1011,6 +1019,10 @@ public class FlightPlot {
             for (Paint paint : colorSupplier.paintSequence) {
                 select.addItem(paint);
             }
+        }
+
+        public JComboBox getComponent() {
+            return select;
         }
 
         @Override
