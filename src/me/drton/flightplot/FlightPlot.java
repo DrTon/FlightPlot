@@ -25,6 +25,7 @@ import org.jfree.data.xy.XYSeriesCollection;
 import org.json.JSONObject;
 
 import javax.swing.*;
+import javax.swing.border.Border;
 import javax.swing.event.ListSelectionEvent;
 import javax.swing.event.ListSelectionListener;
 import javax.swing.event.TableModelEvent;
@@ -991,7 +992,7 @@ public class FlightPlot {
         public Component getTableCellEditorComponent(JTable table, Object value, boolean isSelected, int row, int column) {
             if (value instanceof Color) {
                 editor = new ColorParamTableCellEditor();
-                //((ColorParamTableCellEditor)editor).getComponent().addActionListener(new ActionDelegate());
+                ((ColorParamTableCellEditor)editor).getComponent().addActionListener(new ActionDelegate());
             } else if (value instanceof String) {
                 editor = new DefaultCellEditor(new JTextField());
                 ((JTextField)((DefaultCellEditor) editor).getComponent()).addActionListener(new ActionDelegate());
@@ -1027,7 +1028,7 @@ public class FlightPlot {
 
         @Override
         public Object getCellEditorValue() {
-            return color;
+            return (Color) colorSupplier.paintSequence[select.getSelectedIndex()];
         }
 
         @Override
@@ -1039,7 +1040,7 @@ public class FlightPlot {
 
         @Override
         public void actionPerformed(ActionEvent actionEvent) {
-            color = (Color) colorSupplier.paintSequence[select.getSelectedIndex()];
+
         }
 
         private class ColorCellRenderer extends JLabel implements ListCellRenderer {
@@ -1062,7 +1063,13 @@ public class FlightPlot {
                 setBg = true;
                 setText("");
                 setBackground((Color) value);
+                setBorder(BorderFactory.createEmptyBorder());
                 setBg = false;
+
+                if(isSelected) {
+                    setBorder(BorderFactory.createLineBorder(Color.white, 2));
+                }
+
                 return this;
             }
         }
