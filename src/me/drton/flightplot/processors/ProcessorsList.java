@@ -22,7 +22,7 @@ public class ProcessorsList {
         addProcessorClass(PositionEstimator.class);
         addProcessorClass(GlobalPositionProjection.class);
         addProcessorClass(LandDetector.class);
-        addProcessorClass(BinaryOperator.class);
+        addProcessorClass(Expression.class);
         addProcessorClass(NEDFromBodyProjection.class);
         addProcessorClass(Integral.class);
         addProcessorClass(Battery.class);

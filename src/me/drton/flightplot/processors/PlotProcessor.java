@@ -27,6 +27,7 @@ public abstract class PlotProcessor {
     protected String title;
     protected Map<String, Object> parameters;
     protected Map<Integer, String> seriesFields;
+    protected Map<String, String> fieldsList;
 
     protected PlotProcessor() {
         this.parameters = getDefaultParameters();
@@ -37,6 +38,10 @@ public abstract class PlotProcessor {
         seriesFields = new HashMap<Integer, String>();
         lastUpdates = new ArrayList<Double>();
         lastValues = new ArrayList<Double>();
+    }
+
+    public void setFields(Map<String, String> fieldsList) {
+        this.fieldsList = fieldsList;
     }
 
     public void setSkipOut(double skipOut) {

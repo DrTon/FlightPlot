@@ -827,10 +827,12 @@ public class FlightPlot {
         double skip = range.getLength() / displayPixels;
         if (processors.length > 0) {
             for (int i = 0; i < processorsListModel.size(); i++) {
-                processors[i] = (PlotProcessor) processorsListModel.get(i);
-                processors[i].init();
-                processors[i].setSkipOut(skip);
-                processors[i].setTimeScale(timeScale);
+                PlotProcessor p = (PlotProcessor) processorsListModel.get(i);
+                processors[i] = p;
+                p.setFields(logReader.getFields());
+                p.init();
+                p.setSkipOut(skip);
+                p.setTimeScale(timeScale);
             }
             logReader.seek(timeStart);
             Map<String, Object> data = new HashMap<String, Object>();
@@ -966,6 +968,7 @@ public class FlightPlot {
                 }
             } catch (Exception e) {
                 setStatus("Error: " + e);
+                e.printStackTrace();
             }
             parametersTableModel.removeTableModelListener(parameterChangedListener);
             showProcessorParameters(); // refresh all parameters because changing one param might influence others (e.g. color)
