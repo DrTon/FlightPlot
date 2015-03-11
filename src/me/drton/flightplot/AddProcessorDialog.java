@@ -13,7 +13,7 @@ public class AddProcessorDialog extends JDialog {
     private JComboBox processorTypeComboBox;
     private String[] processorsTypes;
 
-    private PlotProcessor origProcessor = null;
+    private ProcessorPreset origProcessorPreset = null;
     private Runnable callback;
 
     public AddProcessorDialog(String[] processorsTypes) {
@@ -51,22 +51,22 @@ public class AddProcessorDialog extends JDialog {
         return titleField.getText();
     }
 
-    public PlotProcessor getOrigProcessor() {
-        return origProcessor;
+    public ProcessorPreset getOrigProcessorPreset() {
+        return origProcessorPreset;
     }
 
     public String getProcessorType() {
         return (String) processorTypeComboBox.getSelectedItem();
     }
 
-    public void display(Runnable callback, PlotProcessor processor) {
+    public void display(Runnable callback, ProcessorPreset processorPreset) {
         this.callback = callback;
-        if (processor != null) {
-            origProcessor = processor;
-            titleField.setText(processor.getTitle());
-            processorTypeComboBox.setSelectedItem(processor.getProcessorType());
+        if (processorPreset != null) {
+            origProcessorPreset = processorPreset;
+            titleField.setText(processorPreset.getTitle());
+            processorTypeComboBox.setSelectedItem(processorPreset.getProcessorType());
         } else {
-            origProcessor = null;
+            origProcessorPreset = null;
             titleField.setText("");
         }
         titleField.requestFocus();

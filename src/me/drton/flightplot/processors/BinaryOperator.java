@@ -34,7 +34,6 @@ public class BinaryOperator extends PlotProcessor {
 
     @Override
     public void init() {
-        super.init();
         param_InScale1 = (Double) parameters.get("InScale1");
         param_Field1 = ((String) parameters.get("Field1"));
         param_Operator = ((String) parameters.get("Operator"));

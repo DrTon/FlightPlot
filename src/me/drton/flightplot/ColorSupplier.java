@@ -3,21 +3,19 @@ package me.drton.flightplot;
 import java.awt.*;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.prefs.BackingStoreException;
-import java.util.prefs.Preferences;
 
 /**
  * Created by ada on 22.12.14.
  */
 public class ColorSupplier {
-    public Paint[] paintSequence;
+    public Color[] paintSequence;
     public int paintIndex;
     public int fillPaintIndex;
 
-    private Map<String, Paint> paintForFields = new HashMap<String, Paint>();
+    private Map<String, Color> paintForFields = new HashMap<String, Color>();
 
     {
-        paintSequence = new Paint[]{
+        paintSequence = new Color[]{
                 Color.RED,
                 Color.GREEN,
                 Color.BLUE,
@@ -35,8 +33,8 @@ public class ColorSupplier {
         };
     }
 
-    public Paint getNextPaint(String field) {
-        Paint result = paintForFields.get(field);
+    public Color getNextColor(String field) {
+        Color result = paintForFields.get(field);
         if (null == result) {
             result = paintSequence[paintIndex % paintSequence.length];
             paintForFields.put(field, result);
@@ -45,32 +43,7 @@ public class ColorSupplier {
         return result;
     }
 
-    public Paint getNextFillPaint(String field) {
-        Paint result = paintForFields.get(field);
-        if (null == result) {
-            result = paintSequence[fillPaintIndex % paintSequence.length];
-            paintForFields.put(field, result);
-            fillPaintIndex++;
-        }
-        return result;
-    }
-
-    public void updatePaintForField(String field, Paint paint) {
-        paintForFields.put(field, paint);
-    }
-
-    public void savePaintForFields(Preferences prefs) {
-        for(Map.Entry<String, Paint> entry : paintForFields.entrySet()) {
-            if(entry.getValue() instanceof Color) {
-                prefs.put(entry.getKey(), String.valueOf(((Color) entry.getValue()).getRGB()));
-            }
-        }
-    }
-
-    public void loadPaintForFields (Preferences prefs) throws BackingStoreException {
-        for(String key : prefs.keys()) {
-            int rgb = prefs.getInt(key, Color.RED.getRGB());
-            paintForFields.put(key, new Color(rgb));
-        }
+    public void updatePaintForField(String field, Color color) {
+        paintForFields.put(field, color);
     }
 }

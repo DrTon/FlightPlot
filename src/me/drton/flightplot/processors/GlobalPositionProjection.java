@@ -23,7 +23,6 @@ public class GlobalPositionProjection extends PlotProcessor {
 
     @Override
     public void init() {
-        super.init();
         positionProjector.reset();
         param_Fields = ((String) parameters.get("Fields")).split(WHITESPACE_RE);
         String[] ref = ((String) parameters.get("Ref")).split(WHITESPACE_RE);

@@ -38,7 +38,6 @@ public class LandDetector extends PlotProcessor {
 
     @Override
     public void init() {
-        super.init();
         timePrev = Double.NaN;
         landed = true;
         landDetectedTime = Double.NaN;

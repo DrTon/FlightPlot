@@ -45,7 +45,6 @@ public class PosPIDControlSimulator extends PlotProcessor {
 
     @Override
     public void init() {
-        super.init();
         propeller.reset();
         pos = 0.0;
         rate = 0.0;

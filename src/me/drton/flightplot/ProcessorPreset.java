@@ -1,13 +1,11 @@
 package me.drton.flightplot;
 
-import me.drton.flightplot.processors.PlotProcessor;
 import org.json.JSONObject;
 
+import java.awt.*;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.prefs.BackingStoreException;
-import java.util.prefs.Preferences;
 
 /**
  * User: ton Date: 22.06.13 Time: 15:08
@@ -15,18 +13,53 @@ import java.util.prefs.Preferences;
 public class ProcessorPreset {
     private String title;
     private String processorType;
-    private Map<String, String> parameters;
+    private Map<String, Object> parameters;
+    private Map<String, Color> colors;
 
-    public ProcessorPreset(String title, String processorType, Map<String, String> parameters) {
+    public ProcessorPreset(String title, String processorType, Map<String, Object> parameters, Map<String, Color> colors) {
         this.title = title;
         this.processorType = processorType;
         this.parameters = parameters;
+        this.colors = colors;
     }
 
-    public ProcessorPreset(PlotProcessor processor) {
-        this.title = processor.getTitle();
-        this.processorType = processor.getProcessorType();
-        this.parameters = processor.getSerializedParameters();
+    public static ProcessorPreset unpackJSONObject(JSONObject json) throws IOException {
+        JSONObject jsonParameters = json.getJSONObject("Parameters");
+        Map<String, Object> parametersNew = new HashMap<String, Object>();
+        for (Object key : jsonParameters.keySet()) {
+            String keyStr = (String) key;
+            parametersNew.put(keyStr, jsonParameters.get(keyStr).toString());
+        }
+        JSONObject jsonColors = json.getJSONObject("Colors");
+        Map<String, Color> colorsNew = new HashMap<String, Color>();
+        for (Object key : jsonColors.keySet()) {
+            String keyStr = (String) key;
+            colorsNew.put(keyStr, new Color(Integer.parseInt(jsonColors.get(keyStr).toString(), 16)));
+        }
+        return new ProcessorPreset(json.getString("Title"), json.getString("ProcessorType"), parametersNew, colorsNew);
+    }
+
+    private static Object castValue(Object valueOld, Object valueNewObj) {
+        String valueNewStr = valueNewObj.toString();
+        Object valueNew = valueNewObj;
+        if (valueOld instanceof String) {
+            valueNew = valueNewStr;
+        } else if (valueOld instanceof Double) {
+            valueNew = Double.parseDouble(valueNewStr);
+        } else if (valueOld instanceof Float) {
+            valueNew = Float.parseFloat(valueNewStr);
+        } else if (valueOld instanceof Integer) {
+            valueNew = Integer.parseInt(valueNewStr);
+        } else if (valueOld instanceof Long) {
+            valueNew = Long.parseLong(valueNewStr);
+        } else if (valueOld instanceof Boolean) {
+            char firstChar = valueNewStr.toLowerCase().charAt(0);
+            if (firstChar == 'f' || firstChar == 'n' || "0".equals(valueNewStr))
+                valueNew = false;
+            else
+                valueNew = true;
+        }
+        return valueNew;
     }
 
     public String getTitle() {
@@ -45,36 +78,27 @@ public class ProcessorPreset {
         this.processorType = processorType;
     }
 
-    public Map<String, String> getParameters() {
+    public Map<String, Object> getParameters() {
         return parameters;
     }
 
-    public void setParameters(Map<String, String> parameters) {
+    public void setParameters(Map<String, Object> parameters) {
         this.parameters = parameters;
     }
 
-    public void pack(Preferences preferences) throws BackingStoreException {
-        Preferences p = preferences.node(title);
-        p.clear();
-        p.put("ProcessorType", processorType);
-        Preferences params = p.node("Parameters");
-        for (Map.Entry<String, String> entry : parameters.entrySet()) {
-            params.put(entry.getKey(), entry.getValue());
+    public void setParameter(String key, String value) {
+        Object oldValue = parameters.get(key);
+        if (oldValue != null) {
+            parameters.put(key, castValue(oldValue, value));
         }
     }
 
-    public static ProcessorPreset unpack(Preferences preferences) throws BackingStoreException {
-        String processorType = preferences.get("ProcessorType", null);
-        if (processorType == null)
-            return null;
-        Preferences paramsPref = preferences.node("Parameters");
-        Map<String, String> params = new HashMap<String, String>();
-        for (String key : paramsPref.keys()) {
-            String v = paramsPref.get(key, null);
-            if (v != null)
-                params.put(key, v);
-        }
-        return new ProcessorPreset(preferences.name(), processorType, params);
+    public Map<String, Color> getColors() {
+        return colors;
+    }
+
+    public void setColors(Map<String, Color> colors) {
+        this.colors = colors;
     }
 
     public JSONObject packJSONObject() throws IOException {
@@ -82,16 +106,16 @@ public class ProcessorPreset {
         json.put("Title", title);
         json.put("ProcessorType", processorType);
         json.put("Parameters", new JSONObject(parameters));
+        Map<String, String> jsonColors = new HashMap<String, String>();
+        for (Map.Entry<String, Color> entry : colors.entrySet()) {
+            jsonColors.put(entry.getKey(), Integer.toHexString(entry.getValue().getRGB()));
+        }
+        json.put("Colors", new JSONObject(jsonColors));
         return json;
     }
 
-    public static ProcessorPreset unpackJSONObject(JSONObject json) throws IOException {
-        JSONObject jsonParameters = json.getJSONObject("Parameters");
-        Map<String, String> parameters = new HashMap<String, String>();
-        for (Object key : jsonParameters.keySet()) {
-            String keyStr = (String) key;
-            parameters.put(keyStr, jsonParameters.get(keyStr).toString());
-        }
-        return new ProcessorPreset(json.getString("Title"), json.getString("ProcessorType"), parameters);
+    @Override
+    public String toString() {
+        return title + " [" + processorType + "]";
     }
 }

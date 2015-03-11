@@ -46,7 +46,7 @@ public class Preset {
         Preferences p = preferences.node(title);
         p.clear();
         for (ProcessorPreset pp : processorPresets) {
-            pp.pack(p);
+            // TODO pp.pack(p);
         }
     }
 
@@ -54,7 +54,7 @@ public class Preset {
         String title = preferences.name();
         List<ProcessorPreset> processorPresets = new ArrayList<ProcessorPreset>();
         for (String k : preferences.childrenNames()) {
-            processorPresets.add(ProcessorPreset.unpack(preferences.node(k)));
+            // TODO processorPresets.add(ProcessorPreset.unpack(preferences.node(k)));
         }
         return new Preset(title, processorPresets);
     }

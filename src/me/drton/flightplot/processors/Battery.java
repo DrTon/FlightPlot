@@ -40,7 +40,6 @@ public class Battery extends PlotProcessor {
 
     @Override
     public void init() {
-        super.init();
         param_Field_Voltage = (String) parameters.get("Field Voltage");
         param_Field_Current = (String) parameters.get("Field Current");
         param_Field_Discharged = (String) parameters.get("Field Discharged");

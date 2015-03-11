@@ -28,7 +28,6 @@ public class Simple extends PlotProcessor {
 
     @Override
     public void init() {
-        super.init();
         param_Fields = ((String) parameters.get("Fields")).split(WHITESPACE_RE);
         param_Scale = (Double) parameters.get("Scale");
         param_Offset = (Double) parameters.get("Offset");
