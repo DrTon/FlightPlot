@@ -1,18 +1,13 @@
 package me.drton.flightplot;
 
 import java.awt.*;
-import java.util.HashMap;
-import java.util.Map;
 
 /**
  * Created by ada on 22.12.14.
  */
 public class ColorSupplier {
-    public Color[] paintSequence;
-    public int paintIndex;
-    public int fillPaintIndex;
-
-    private Map<String, Color> paintForFields = new HashMap<String, Color>();
+    private Color[] paintSequence;
+    private int[] paintUsage;
 
     {
         paintSequence = new Color[]{
@@ -31,19 +26,55 @@ public class ColorSupplier {
                 Color.MAGENTA.darker(),
                 Color.ORANGE.darker(),
         };
+
+        paintUsage = new int[paintSequence.length];
     }
 
-    public Color getNextColor(String field) {
-        Color result = paintForFields.get(field);
-        if (null == result) {
-            result = paintSequence[paintIndex % paintSequence.length];
-            paintForFields.put(field, result);
-            paintIndex++;
+    public Color[] getPaintSequence() {
+        return paintSequence;
+    }
+
+    public Color getPaint(int idx) {
+        return paintSequence[idx];
+    }
+
+    public void resetColorsUsed() {
+        for (int i = 0; i < paintSequence.length; i++) {
+            paintUsage[i] = 0;
         }
-        return result;
     }
 
-    public void updatePaintForField(String field, Color color) {
-        paintForFields.put(field, color);
+    public void markColorUsed(Color color) {
+        for (int i = 0; i < paintSequence.length; i++) {
+            if (color.equals(paintSequence[i])) {
+                markColorUsed(i);
+            }
+        }
+    }
+
+    public void markColorUsed(int color_idx) {
+        paintUsage[color_idx]++;
+    }
+
+    /**
+     * Select color with minimal usage
+     *
+     * @param field
+     * @return
+     */
+    public Color getNextColor(String field) {
+        int minUsage = -1;
+        int color_idx = 0;
+        for (int i = 0; i < paintSequence.length; i++) {
+            if (paintUsage[i] < minUsage || minUsage < 0) {
+                minUsage = paintUsage[i];
+                color_idx = i;
+            }
+            if (minUsage == 0) {
+                markColorUsed(color_idx);
+                break;
+            }
+        }
+        return paintSequence[color_idx];
     }
 }

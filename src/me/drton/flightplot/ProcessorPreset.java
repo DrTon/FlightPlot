@@ -79,7 +79,7 @@ public class ProcessorPreset {
         json.put("Parameters", new JSONObject(parameters));
         Map<String, String> jsonColors = new HashMap<String, String>();
         for (Map.Entry<String, Color> entry : colors.entrySet()) {
-            jsonColors.put(entry.getKey(), Integer.toHexString(entry.getValue().getRGB()));
+            jsonColors.put(entry.getKey(), Integer.toHexString(entry.getValue().getRGB()).substring(2, 8));
         }
         json.put("Colors", new JSONObject(jsonColors));
         return json;

@@ -30,10 +30,7 @@ import javax.swing.event.ListSelectionListener;
 import javax.swing.event.TableModelEvent;
 import javax.swing.event.TableModelListener;
 import javax.swing.filechooser.FileNameExtensionFilter;
-import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
-import javax.swing.table.TableCellEditor;
-import javax.swing.table.TableCellRenderer;
 import java.awt.*;
 import java.awt.event.*;
 import java.io.*;
@@ -85,7 +82,7 @@ public class FlightPlot {
     private LogReader logReader = null;
     private XYSeriesCollection dataset;
     private JFreeChart jFreeChart;
-    private ColorSupplier colorSupplier = new ColorSupplier();
+    private ColorSupplier colorSupplier;
     private ProcessorsList processorsTypesList;
     private File lastLogDirectory = null;
     private File lastPresetDirectory = null;
@@ -133,11 +130,13 @@ public class FlightPlot {
                 }
                 PlotProcessor processor = new Simple();
                 processor.setParameters(Collections.<String, Object>singletonMap("Fields", fieldsValue.toString()));
-                ProcessorPreset pp = new ProcessorPreset("New", processor.getProcessorType(), processor.getDefaultParameters(), null);
+                ProcessorPreset pp = new ProcessorPreset("New", processor.getProcessorType(),
+                        processor.getDefaultParameters(), Collections.<String, Color>emptyMap());
                 updatePresetParameters(pp, null);
                 processorsListModel.addElement(pp);
                 processorsList.setSelectedValue(pp, true);
                 processorsList.repaint();
+                updateUsedColors();
                 showAddProcessorDialog(true);
                 processFile();
             }
@@ -297,6 +296,7 @@ public class FlightPlot {
             Object selection = presetComboBox.getSelectedItem();
             if ("".equals(selection)) {
                 processorsListModel.clear();
+                updateUsedColors();
             }
             if (selection instanceof Preset) {
                 loadPreset((Preset) selection);
@@ -333,10 +333,14 @@ public class FlightPlot {
         }
         Preferences presets = preferences.node("Presets");
         presetComboBox.addItem("");
-        for (String p : presets.childrenNames()) {
-            Preset preset = Preset.unpack(presets.node(p));
-            if (preset != null) {
-                presetComboBox.addItem(preset);
+        for (String p : presets.keys()) {
+            try {
+                Preset preset = Preset.unpackJSONObject(new JSONObject(presets.get(p, "{}")));
+                if (preset != null) {
+                    presetComboBox.addItem(preset);
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
             }
         }
         timeMode = Integer.parseInt(preferences.get("TimeMode", "0"));
@@ -364,18 +368,25 @@ public class FlightPlot {
             Object object = presetComboBox.getItemAt(i);
             if (object instanceof Preset) {
                 Preset preset = (Preset) object;
-                preset.pack(presetsPref);
+                try {
+                    presetsPref.put(preset.getTitle(), preset.packJSONObject().toString());
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
             }
         }
         preferences.put("TimeMode", Integer.toString(timeMode));
         this.exportManager.savePreferences(preferences.node("ExportManager"));
+        preferences.sync();
     }
 
     private void loadPreset(Preset preset) {
         processorsListModel.clear();
         for (ProcessorPreset pp : preset.getProcessorPresets()) {
+            updatePresetParameters(pp, null);
             processorsListModel.addElement(pp);
         }
+        updateUsedColors();
     }
 
     private Preset formatPreset(String title) {
@@ -390,6 +401,7 @@ public class FlightPlot {
         // Chart panel
         processorsTypesList = new ProcessorsList();
         dataset = new XYSeriesCollection();
+        colorSupplier = new ColorSupplier();
         jFreeChart = ChartFactory.createXYLineChart("", "", "", null, PlotOrientation.VERTICAL, true, true, false);
         jFreeChart.getXYPlot().setDataset(dataset);
 
@@ -490,7 +502,7 @@ public class FlightPlot {
         };
         parametersTable.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_ENTER, 0), "startEditing");
         parametersTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-        parametersTable.getColumnModel().getColumn(1).setCellEditor(new ParamValueTableCellEditor());
+        parametersTable.getColumnModel().getColumn(1).setCellEditor(new ParamValueTableCellEditor(colorSupplier));
         parametersTable.getColumnModel().getColumn(1).setCellRenderer(new ParamValueTableCellRenderer());
     }
 
@@ -868,10 +880,12 @@ public class FlightPlot {
     }
 
     private void setChartColors() {
-        for (int i = 0; i < processorsListModel.size(); i++) {
-            for (Map.Entry<String, Integer> entry : seriesIndex.get(i).entrySet()) {
-                ProcessorPreset processorPreset = (ProcessorPreset) processorsListModel.get(i);
-                jFreeChart.getXYPlot().getRendererForDataset(dataset).setSeriesPaint(entry.getValue(), processorPreset.getColors().get(entry.getKey()));
+        if (dataset.getSeriesCount() > 0) {
+            for (int i = 0; i < processorsListModel.size(); i++) {
+                for (Map.Entry<String, Integer> entry : seriesIndex.get(i).entrySet()) {
+                    ProcessorPreset processorPreset = (ProcessorPreset) processorsListModel.get(i);
+                    jFreeChart.getXYPlot().getRendererForDataset(dataset).setSeriesPaint(entry.getValue(), processorPreset.getColors().get(entry.getKey()));
+                }
             }
         }
     }
@@ -913,6 +927,7 @@ public class FlightPlot {
             processorsListModel.addElement(processorPreset);
             processorsList.setSelectedValue(processorPreset, true);
         }
+        updateUsedColors();
         processFile();
     }
 
@@ -947,7 +962,18 @@ public class FlightPlot {
         if (selectedProcessor != null) {
             processorsListModel.removeElement(selectedProcessor);
             updatePresetEdited(true);
+            updateUsedColors();
             processFile();
+        }
+    }
+
+    private void updateUsedColors() {
+        colorSupplier.resetColorsUsed();
+        for (int i = 0; i < processorsListModel.size(); i++) {
+            ProcessorPreset pp = (ProcessorPreset) processorsListModel.get(i);
+            for (Color color : pp.getColors().values()) {
+                colorSupplier.markColorUsed(color);
+            }
         }
     }
 
@@ -995,113 +1021,6 @@ public class FlightPlot {
                 parametersTableModel.addTableModelListener(parameterChangedListener);
                 processFile();
             }
-        }
-    }
-
-    private class ParamValueTableCellEditor extends AbstractCellEditor implements TableCellEditor {
-        private TableCellEditor editor;
-
-        @Override
-        public Object getCellEditorValue() {
-            return editor != null ? editor.getCellEditorValue() : null;
-        }
-
-        @Override
-        public Component getTableCellEditorComponent(JTable table, Object value, boolean isSelected, int row, int column) {
-            if (value instanceof Color) {
-                editor = new ColorParamTableCellEditor();
-                ((ColorParamTableCellEditor) editor).getComponent().addActionListener(new ActionDelegate());
-            } else if (value instanceof String) {
-                editor = new DefaultCellEditor(new JTextField());
-                ((JTextField) ((DefaultCellEditor) editor).getComponent()).addActionListener(new ActionDelegate());
-            }
-
-            return editor.getTableCellEditorComponent(table, value, isSelected, row, column);
-        }
-
-        private class ActionDelegate implements ActionListener {
-            @Override
-            public void actionPerformed(ActionEvent actionEvent) {
-                ParamValueTableCellEditor.this.stopCellEditing();
-            }
-        }
-    }
-
-    private class ColorParamTableCellEditor extends AbstractCellEditor implements TableCellEditor {
-        private Color color;
-        private JComboBox select;
-
-        public ColorParamTableCellEditor() {
-            select = new JComboBox();
-            select.setRenderer(new ColorCellRenderer());
-            for (Paint paint : colorSupplier.paintSequence) {
-                select.addItem(paint);
-            }
-        }
-
-        public JComboBox getComponent() {
-            return select;
-        }
-
-        @Override
-        public Object getCellEditorValue() {
-            return colorSupplier.paintSequence[select.getSelectedIndex()];
-        }
-
-        @Override
-        public Component getTableCellEditorComponent(JTable table, Object value, boolean isSelected, int row, int column) {
-            color = (Color) value;
-            select.setSelectedItem(color);
-            return select;
-        }
-
-        private class ColorCellRenderer extends JLabel implements ListCellRenderer {
-            boolean setBg = false;
-
-            public ColorCellRenderer() {
-                setOpaque(true);
-                setPreferredSize(new Dimension(0, 15));
-            }
-
-            @Override
-            public void setBackground(Color bg) {
-                if (!setBg) {
-                    return;
-                }
-                super.setBackground(bg);
-            }
-
-            public Component getListCellRendererComponent(JList list, Object value, int index, boolean isSelected, boolean cellHasFocus) {
-                setBg = true;
-                setText("");
-                setBackground((Color) value);
-                setBorder(BorderFactory.createEmptyBorder());
-                setBg = false;
-
-                if (isSelected) {
-                    setBorder(BorderFactory.createLineBorder(Color.white, 2));
-                }
-
-                return this;
-            }
-        }
-    }
-
-    private class ParamValueTableCellRenderer extends JLabel implements TableCellRenderer {
-        private DefaultTableCellRenderer defaultTableCellRenderer = new DefaultTableCellRenderer();
-
-        public ParamValueTableCellRenderer() {
-            setOpaque(true);
-        }
-
-        public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected
-                , boolean hasFocus, int row, int column) {
-            if (value instanceof Color) {
-                setBackground((Color) value);
-            } else {
-                return defaultTableCellRenderer.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
-            }
-            return this;
         }
     }
 
