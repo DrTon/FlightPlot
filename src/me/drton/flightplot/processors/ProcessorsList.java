@@ -59,7 +59,6 @@ public class ProcessorsList {
             processor.setSkipOut(skipOut);
             processor.setParameters(processorPreset.getParameters());
             processor.init();
-            processor.setColors(processorPreset.getColors());
             return processor;
         } else {
             return null;

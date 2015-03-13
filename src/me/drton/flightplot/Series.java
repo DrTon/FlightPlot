@@ -9,7 +9,6 @@ import java.util.ArrayList;
 public class Series extends ArrayList<XYPoint> {
     private final String title;
     private final double skipOut;
-    private Color color = null;
     private Double lastTime = null;
     private Double lastValue = null;
 
@@ -22,14 +21,9 @@ public class Series extends ArrayList<XYPoint> {
         return title;
     }
 
-    public Color getColor() {
-        return color;
+    public String getFullTitle(String processorTitle) {
+        return processorTitle + (title.isEmpty() ? "" : (":" + title));
     }
-
-    public void setColor(Color color) {
-        this.color = color;
-    }
-
 
     public void addPoint(double time, double value) {
         if (lastTime != null && time - lastTime < skipOut) {

@@ -63,6 +63,7 @@ public class FlightPlot {
     private static String appName = "FlightPlot";
     private static String version = "0.2.11";
     private static String appNameAndVersion = appName + " v." + version;
+    private static String colorParamPrefix = "Color ";
     private final Preferences preferences;
     private JFrame mainFrame;
     private JLabel statusLabel;
@@ -100,6 +101,7 @@ public class FlightPlot {
     private NumberAxis domainAxisSeconds;
     private DateAxis domainAxisDate;
     private int timeMode = 0;
+    private List<Map<String, Integer>> seriesIndex = new ArrayList<Map<String, Integer>>();
 
     public FlightPlot() {
         preferences = Preferences.userRoot().node(appName);
@@ -130,8 +132,9 @@ public class FlightPlot {
                     fieldsValue.append(field);
                 }
                 PlotProcessor processor = new Simple();
-                ProcessorPreset pp = new ProcessorPreset("New", processor.getProcessorType(), processor.getDefaultParameters(), processor.getColors());
-                pp.setParameter("Fields", fieldsValue.toString());
+                processor.setParameters(Collections.<String, Object>singletonMap("Fields", fieldsValue.toString()));
+                ProcessorPreset pp = new ProcessorPreset("New", processor.getProcessorType(), processor.getDefaultParameters(), null);
+                updatePresetParameters(pp, null);
                 processorsListModel.addElement(pp);
                 processorsList.setSelectedValue(pp, true);
                 processorsList.repaint();
@@ -487,7 +490,7 @@ public class FlightPlot {
         };
         parametersTable.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_ENTER, 0), "startEditing");
         parametersTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-        //parametersTable.getColumnModel().getColumn(1).setCellEditor(new ParamValueTableCellEditor());
+        parametersTable.getColumnModel().getColumn(1).setCellEditor(new ParamValueTableCellEditor());
         parametersTable.getColumnModel().getColumn(1).setCellRenderer(new ParamValueTableCellRenderer());
     }
 
@@ -798,6 +801,7 @@ public class FlightPlot {
 
     private void generateSeries() throws IOException, FormatErrorException {
         dataset.removeAllSeries();
+        seriesIndex.clear();
         PlotProcessor[] processors = new PlotProcessor[processorsListModel.size()];
 
         // Update time offset according to selected time mode
@@ -844,20 +848,32 @@ public class FlightPlot {
                     processor.process((t + timeOffset) * 1e-6, data);
                 }
             }
-            for (int i = 0; i < processors.length; i++) {
+            for (int i = 0; i < processorsListModel.size(); i++) {
                 PlotProcessor processor = processors[i];
                 String processorTitle = ((ProcessorPreset) processorsListModel.get(i)).getTitle();
+                Map<String, Integer> processorSeriesIndex = new HashMap<String, Integer>();
+                seriesIndex.add(processorSeriesIndex);
                 for (Series series : processor.getSeriesList()) {
-                    XYSeries jseries = new XYSeries(processorTitle + (series.getTitle().isEmpty() ? "" : (":" + series.getTitle())), false);
+                    processorSeriesIndex.put(series.getTitle(), dataset.getSeriesCount());
+                    XYSeries jseries = new XYSeries(series.getFullTitle(processorTitle), false);
                     for (XYPoint point : series) {
                         jseries.add(point.x * timeScale, point.y);
                     }
                     dataset.addSeries(jseries);
-                    jFreeChart.getXYPlot().getRendererForDataset(dataset).setSeriesPaint(dataset.indexOf(jseries), series.getColor());
                 }
             }
+            setChartColors();
         }
         chartPanel.repaint();
+    }
+
+    private void setChartColors() {
+        for (int i = 0; i < processorsListModel.size(); i++) {
+            for (Map.Entry<String, Integer> entry : seriesIndex.get(i).entrySet()) {
+                ProcessorPreset processorPreset = (ProcessorPreset) processorsListModel.get(i);
+                jFreeChart.getXYPlot().getRendererForDataset(dataset).setSeriesPaint(entry.getValue(), processorPreset.getColors().get(entry.getKey()));
+            }
+        }
     }
 
     private void showAddProcessorDialog(boolean editMode) {
@@ -901,6 +917,11 @@ public class FlightPlot {
     }
 
     private void updatePresetParameters(ProcessorPreset processorPreset, Map<String, Object> parametersUpdate) {
+        if (parametersUpdate != null) {
+            // Update parameters of preset
+            processorPreset.getParameters().putAll(parametersUpdate);
+        }
+        // Construct and initialize processor to cleanup parameters list and get list of series
         PlotProcessor p;
         try {
             p = processorsTypesList.getProcessorInstance(processorPreset, 0.0);
@@ -909,18 +930,16 @@ public class FlightPlot {
             e.printStackTrace();
             return;
         }
-        if (parametersUpdate != null) {
-            // Update parameters of preset
-            p.setParameters(parametersUpdate);
-        }
         processorPreset.setParameters(p.getParameters());
-        p.init();
+        Map<String, Color> colorsNew = new HashMap<String, Color>();
         for (Series series : p.getSeriesList()) {
-            if (series.getColor() == null) {
-                series.setColor(colorSupplier.getNextColor(series.getTitle()));
+            Color color = processorPreset.getColors().get(series.getTitle());
+            if (color == null) {
+                color = colorSupplier.getNextColor(series.getTitle());
             }
+            colorsNew.put(series.getTitle(), color);
         }
-        processorPreset.setColors(p.getColors());
+        processorPreset.setColors(colorsNew);
     }
 
     private void removeSelectedProcessor() {
@@ -938,11 +957,19 @@ public class FlightPlot {
         }
         ProcessorPreset selectedProcessor = (ProcessorPreset) processorsList.getSelectedValue();
         if (selectedProcessor != null) {
+            // Parameters
             Map<String, Object> params = selectedProcessor.getParameters();
-            List<String> keys = new ArrayList<String>(params.keySet());
-            Collections.sort(keys);
-            for (String key : keys) {
+            List<String> param_keys = new ArrayList<String>(params.keySet());
+            Collections.sort(param_keys);
+            for (String key : param_keys) {
                 parametersTableModel.addRow(new Object[]{key, formatParameterValue(params.get(key))});
+            }
+            // Colors
+            Map<String, Color> colors = selectedProcessor.getColors();
+            List<String> color_keys = new ArrayList<String>(colors.keySet());
+            Collections.sort(color_keys);
+            for (String key : color_keys) {
+                parametersTableModel.addRow(new Object[]{colorParamPrefix + key, colors.get(key)});
             }
         }
     }
@@ -951,18 +978,23 @@ public class FlightPlot {
         ProcessorPreset selectedProcessor = (ProcessorPreset) processorsList.getSelectedValue();
         if (selectedProcessor != null) {
             String key = parametersTableModel.getValueAt(row, 0).toString();
-            String value = (String) parametersTableModel.getValueAt(row, 1);
-            try {
-                selectedProcessor.setParameter(key, value);
-                updatePresetParameters(selectedProcessor, Collections.<String, Object>singletonMap(key, value));
-                updatePresetEdited(true);
-            } catch (Exception e) {
-                setStatus("Error: " + e);
+            Object value = parametersTableModel.getValueAt(row, 1);
+            if (value instanceof Color) {
+                selectedProcessor.getColors().put(key.substring(colorParamPrefix.length(), key.length()), (Color) value);
+                setChartColors();
+            } else {
+                try {
+                    updatePresetParameters(selectedProcessor, Collections.<String, Object>singletonMap(key, value.toString()));
+                    updatePresetEdited(true);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    setStatus("Error: " + e);
+                }
+                parametersTableModel.removeTableModelListener(parameterChangedListener);
+                showProcessorParameters(); // refresh all parameters because changing one param might influence others (e.g. color)
+                parametersTableModel.addTableModelListener(parameterChangedListener);
+                processFile();
             }
-            parametersTableModel.removeTableModelListener(parameterChangedListener);
-            showProcessorParameters(); // refresh all parameters because changing one param might influence others (e.g. color)
-            parametersTableModel.addTableModelListener(parameterChangedListener);
-            processFile();
         }
     }
 
@@ -971,11 +1003,7 @@ public class FlightPlot {
 
         @Override
         public Object getCellEditorValue() {
-            if (editor != null) {
-                return editor.getCellEditorValue();
-            }
-
-            return null;
+            return editor != null ? editor.getCellEditorValue() : null;
         }
 
         @Override

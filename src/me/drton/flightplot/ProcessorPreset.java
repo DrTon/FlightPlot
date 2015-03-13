@@ -5,6 +5,7 @@ import org.json.JSONObject;
 import java.awt.*;
 import java.io.IOException;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
@@ -39,29 +40,6 @@ public class ProcessorPreset {
         return new ProcessorPreset(json.getString("Title"), json.getString("ProcessorType"), parametersNew, colorsNew);
     }
 
-    private static Object castValue(Object valueOld, Object valueNewObj) {
-        String valueNewStr = valueNewObj.toString();
-        Object valueNew = valueNewObj;
-        if (valueOld instanceof String) {
-            valueNew = valueNewStr;
-        } else if (valueOld instanceof Double) {
-            valueNew = Double.parseDouble(valueNewStr);
-        } else if (valueOld instanceof Float) {
-            valueNew = Float.parseFloat(valueNewStr);
-        } else if (valueOld instanceof Integer) {
-            valueNew = Integer.parseInt(valueNewStr);
-        } else if (valueOld instanceof Long) {
-            valueNew = Long.parseLong(valueNewStr);
-        } else if (valueOld instanceof Boolean) {
-            char firstChar = valueNewStr.toLowerCase().charAt(0);
-            if (firstChar == 'f' || firstChar == 'n' || "0".equals(valueNewStr))
-                valueNew = false;
-            else
-                valueNew = true;
-        }
-        return valueNew;
-    }
-
     public String getTitle() {
         return title;
     }
@@ -84,13 +62,6 @@ public class ProcessorPreset {
 
     public void setParameters(Map<String, Object> parameters) {
         this.parameters = parameters;
-    }
-
-    public void setParameter(String key, String value) {
-        Object oldValue = parameters.get(key);
-        if (oldValue != null) {
-            parameters.put(key, castValue(oldValue, value));
-        }
     }
 
     public Map<String, Color> getColors() {

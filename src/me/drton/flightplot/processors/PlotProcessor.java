@@ -29,6 +29,29 @@ public abstract class PlotProcessor {
         this.skipOut = skipOut;
     }
 
+    private static Object castValue(Object valueOld, Object valueNewObj) {
+        String valueNewStr = valueNewObj.toString();
+        Object valueNew = valueNewObj;
+        if (valueOld instanceof String) {
+            valueNew = valueNewStr;
+        } else if (valueOld instanceof Double) {
+            valueNew = Double.parseDouble(valueNewStr);
+        } else if (valueOld instanceof Float) {
+            valueNew = Float.parseFloat(valueNewStr);
+        } else if (valueOld instanceof Integer) {
+            valueNew = Integer.parseInt(valueNewStr);
+        } else if (valueOld instanceof Long) {
+            valueNew = Long.parseLong(valueNewStr);
+        } else if (valueOld instanceof Boolean) {
+            char firstChar = valueNewStr.toLowerCase().charAt(0);
+            if (firstChar == 'f' || firstChar == 'n' || "0".equals(valueNewStr))
+                valueNew = false;
+            else
+                valueNew = true;
+        }
+        return valueNew;
+    }
+
     public abstract Map<String, Object> getDefaultParameters();
 
     public Map<String, Object> getParameters() {
@@ -41,25 +64,7 @@ public abstract class PlotProcessor {
             Object oldValue = parameters.get(key);
             Object newValue = parametersNew.get(key);
             if (oldValue != null) {
-                parameters.put(key, newValue);
-            }
-        }
-    }
-
-    public Map<String, Color> getColors() {
-        Map<String, Color> colors = new HashMap<String, Color>();
-        for (Series series : seriesList) {
-            colors.put(series.getTitle(), series.getColor());
-        }
-        return colors;
-    }
-
-    public void setColors(Map<String, Color> colors) {
-        for (Map.Entry<String, Color> entry : colors.entrySet()) {
-            for (Series series : seriesList) {
-                if (series.getTitle().equals(entry.getKey())) {
-                    series.setColor(entry.getValue());
-                }
+                parameters.put(key, castValue(oldValue, newValue));
             }
         }
     }
