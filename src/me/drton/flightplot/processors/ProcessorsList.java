@@ -41,16 +41,6 @@ public class ProcessorsList {
         return processors.keySet();
     }
 
-    public PlotProcessor getProcessorInstance(String processorType)
-            throws NoSuchMethodException, IllegalAccessException, InvocationTargetException, InstantiationException {
-        Class<? extends PlotProcessor> procClass = processors.get(processorType);
-        if (procClass != null) {
-            return procClass.newInstance();
-        } else {
-            return null;
-        }
-    }
-
     public PlotProcessor getProcessorInstance(ProcessorPreset processorPreset, double skipOut, Map<String, String> fieldsList)
             throws NoSuchMethodException, IllegalAccessException, InvocationTargetException, InstantiationException {
         Class<? extends PlotProcessor> procClass = processors.get(processorPreset.getProcessorType());
