@@ -25,7 +25,6 @@ public class EulerFromQuaternion extends PlotProcessor {
 
     @Override
     public void init() {
-        super.init();
         q = new double[4];
         param_Fields = ((String) parameters.get("Fields")).split(WHITESPACE_RE);
         param_Scale = (Double) parameters.get("Scale");

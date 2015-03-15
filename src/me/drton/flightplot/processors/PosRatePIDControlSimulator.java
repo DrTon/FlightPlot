@@ -54,7 +54,6 @@ public class PosRatePIDControlSimulator extends PlotProcessor {
 
     @Override
     public void init() {
-        super.init();
         pos = 0.0;
         rate = 0.0;
         posSP = 0.0;

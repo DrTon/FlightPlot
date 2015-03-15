@@ -86,7 +86,6 @@ public class PositionEstimator extends PlotProcessor {
 
     @Override
     public void init() {
-        super.init();
         timePrev = Double.NaN;
         gpsInited = false;
         baroInited = false;

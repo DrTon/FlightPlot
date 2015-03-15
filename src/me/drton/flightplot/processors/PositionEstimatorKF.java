@@ -104,7 +104,6 @@ public class PositionEstimatorKF extends PlotProcessor {
 
     @Override
     public void init() {
-        super.init();
         timePrev = Double.NaN;
         I = new Basic2DMatrix(10, 10);
         x = new BasicVector(10);

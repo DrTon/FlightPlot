@@ -1,23 +1,16 @@
 package me.drton.flightplot;
 
 import java.awt.*;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.prefs.BackingStoreException;
-import java.util.prefs.Preferences;
 
 /**
  * Created by ada on 22.12.14.
  */
 public class ColorSupplier {
-    public Paint[] paintSequence;
-    public int paintIndex;
-    public int fillPaintIndex;
-
-    private Map<String, Paint> paintForFields = new HashMap<String, Paint>();
+    private Color[] paintSequence;
+    private int[] paintUsage;
 
     {
-        paintSequence = new Paint[]{
+        paintSequence = new Color[]{
                 Color.RED,
                 Color.GREEN,
                 Color.BLUE,
@@ -33,44 +26,55 @@ public class ColorSupplier {
                 Color.MAGENTA.darker(),
                 Color.ORANGE.darker(),
         };
+
+        paintUsage = new int[paintSequence.length];
     }
 
-    public Paint getNextPaint(String field) {
-        Paint result = paintForFields.get(field);
-        if (null == result) {
-            result = paintSequence[paintIndex % paintSequence.length];
-            paintForFields.put(field, result);
-            paintIndex++;
+    public Color[] getPaintSequence() {
+        return paintSequence;
+    }
+
+    public Color getPaint(int idx) {
+        return paintSequence[idx];
+    }
+
+    public void resetColorsUsed() {
+        for (int i = 0; i < paintSequence.length; i++) {
+            paintUsage[i] = 0;
         }
-        return result;
     }
 
-    public Paint getNextFillPaint(String field) {
-        Paint result = paintForFields.get(field);
-        if (null == result) {
-            result = paintSequence[fillPaintIndex % paintSequence.length];
-            paintForFields.put(field, result);
-            fillPaintIndex++;
-        }
-        return result;
-    }
-
-    public void updatePaintForField(String field, Paint paint) {
-        paintForFields.put(field, paint);
-    }
-
-    public void savePaintForFields(Preferences prefs) {
-        for(Map.Entry<String, Paint> entry : paintForFields.entrySet()) {
-            if(entry.getValue() instanceof Color) {
-                prefs.put(entry.getKey(), String.valueOf(((Color) entry.getValue()).getRGB()));
+    public void markColorUsed(Color color) {
+        for (int i = 0; i < paintSequence.length; i++) {
+            if (color.equals(paintSequence[i])) {
+                markColorUsed(i);
             }
         }
     }
 
-    public void loadPaintForFields (Preferences prefs) throws BackingStoreException {
-        for(String key : prefs.keys()) {
-            int rgb = prefs.getInt(key, Color.RED.getRGB());
-            paintForFields.put(key, new Color(rgb));
+    public void markColorUsed(int color_idx) {
+        paintUsage[color_idx]++;
+    }
+
+    /**
+     * Select color with minimal usage
+     *
+     * @param field
+     * @return
+     */
+    public Color getNextColor(String field) {
+        int minUsage = -1;
+        int color_idx = 0;
+        for (int i = 0; i < paintSequence.length; i++) {
+            if (paintUsage[i] < minUsage || minUsage < 0) {
+                minUsage = paintUsage[i];
+                color_idx = i;
+            }
+            if (minUsage == 0) {
+                markColorUsed(color_idx);
+                break;
+            }
         }
+        return paintSequence[color_idx];
     }
 }

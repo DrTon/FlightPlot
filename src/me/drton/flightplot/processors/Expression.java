@@ -24,7 +24,6 @@ public class Expression extends PlotProcessor {
 
     @Override
     public void init() {
-        super.init();
         String exprStr = (String) parameters.get("Expression");
         expr = null;
         ExpressionBuilder expBuilder = new ExpressionBuilder(exprStr);
@@ -32,7 +31,8 @@ public class Expression extends PlotProcessor {
             expBuilder.variables(fieldsList.keySet());
             try {
                 expr = expBuilder.build();
-            } catch (Exception ignored) {
+            } catch (Exception e) {
+                e.printStackTrace();
             }
         }
         lowPassFilter = new LowPassFilter();

@@ -22,7 +22,6 @@ public class ATan2 extends PlotProcessor {
 
     @Override
     public void init() {
-        super.init();
         param_Field_X = (String) parameters.get("Field_X");
         param_Field_Y = (String) parameters.get("Field_Y");
         param_Angle_Offset = (Double) parameters.get("Angle Offset");

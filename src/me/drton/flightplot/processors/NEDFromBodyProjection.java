@@ -41,7 +41,6 @@ public class NEDFromBodyProjection extends PlotProcessor {
 
     @Override
     public void init() {
-        super.init();
         param_Fields = ((String) parameters.get("Fields")).split(WHITESPACE_RE);
         param_Fields_Att = ((String) parameters.get("Fields Att")).split(WHITESPACE_RE);
         String[] attOffsStr = ((String) parameters.get("Att Offsets")).split(WHITESPACE_RE);

@@ -30,10 +30,7 @@ import javax.swing.event.ListSelectionListener;
 import javax.swing.event.TableModelEvent;
 import javax.swing.event.TableModelListener;
 import javax.swing.filechooser.FileNameExtensionFilter;
-import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
-import javax.swing.table.TableCellEditor;
-import javax.swing.table.TableCellRenderer;
 import java.awt.*;
 import java.awt.event.*;
 import java.io.*;
@@ -49,6 +46,22 @@ import java.util.prefs.Preferences;
  * User: ton Date: 03.06.13 Time: 23:24
  */
 public class FlightPlot {
+    private static final int TIME_MODE_LOG_START = 0;
+    private static final int TIME_MODE_BOOT = 1;
+    private static final int TIME_MODE_GPS = 2;
+    private static final NumberFormat doubleNumberFormat = NumberFormat.getInstance(Locale.ROOT);
+
+    static {
+        doubleNumberFormat.setGroupingUsed(false);
+        doubleNumberFormat.setMinimumFractionDigits(1);
+        doubleNumberFormat.setMaximumFractionDigits(10);
+    }
+
+    private static String appName = "FlightPlot";
+    private static String version = "0.2.11";
+    private static String appNameAndVersion = appName + " v." + version;
+    private static String colorParamPrefix = "Color ";
+    private final Preferences preferences;
     private JFrame mainFrame;
     private JLabel statusLabel;
     private JPanel mainPanel;
@@ -66,15 +79,10 @@ public class FlightPlot {
     private JButton deletePresetButton;
     private JButton logInfoButton;
     private JRadioButtonMenuItem[] timeModeItems;
-
-    private static String appName = "FlightPlot";
-    private static String version = "0.2.11";
-    private static String appNameAndVersion = appName + " v." + version;
-    private final Preferences preferences;
     private LogReader logReader = null;
     private XYSeriesCollection dataset;
     private JFreeChart jFreeChart;
-    private ColorSupplier colorSupplier = new ColorSupplier();
+    private ColorSupplier colorSupplier;
     private ProcessorsList processorsTypesList;
     private File lastLogDirectory = null;
     private File lastPresetDirectory = null;
@@ -90,37 +98,7 @@ public class FlightPlot {
     private NumberAxis domainAxisSeconds;
     private DateAxis domainAxisDate;
     private int timeMode = 0;
-    private static final int TIME_MODE_LOG_START = 0;
-    private static final int TIME_MODE_BOOT = 1;
-    private static final int TIME_MODE_GPS = 2;
-
-    private static final NumberFormat doubleNumberFormat = NumberFormat.getInstance(Locale.ROOT);
-
-    static {
-        doubleNumberFormat.setGroupingUsed(false);
-        doubleNumberFormat.setMinimumFractionDigits(1);
-        doubleNumberFormat.setMaximumFractionDigits(10);
-    }
-
-    public static void main(String[] args)
-            throws ClassNotFoundException, UnsupportedLookAndFeelException, InstantiationException,
-            IllegalAccessException {
-        SwingUtilities.invokeLater(new Runnable() {
-            @Override
-            public void run() {
-                if (OSValidator.isMac()) {
-                    System.setProperty("apple.laf.useScreenMenuBar", "true");
-                }
-                try {
-                    UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
-                } catch (Exception e) {
-                    e.printStackTrace();
-                    return;
-                }
-                new FlightPlot();
-            }
-        });
-    }
+    private List<Map<String, Integer>> seriesIndex = new ArrayList<Map<String, Integer>>();
 
     public FlightPlot() {
         preferences = Preferences.userRoot().node(appName);
@@ -151,11 +129,14 @@ public class FlightPlot {
                     fieldsValue.append(field);
                 }
                 PlotProcessor processor = new Simple();
-                processor.getParameters().put("Fields", fieldsValue.toString());
-                prepareProcessor(processor, fieldsValue.toString());
-                processorsListModel.addElement(processor);
-                processorsList.setSelectedValue(processor, true);
+                processor.setParameters(Collections.<String, Object>singletonMap("Fields", fieldsValue.toString()));
+                ProcessorPreset pp = new ProcessorPreset("New", processor.getProcessorType(),
+                        processor.getDefaultParameters(), Collections.<String, Color>emptyMap());
+                updatePresetParameters(pp, null);
+                processorsListModel.addElement(pp);
+                processorsList.setSelectedValue(pp, true);
                 processorsList.repaint();
+                updateUsedColors();
                 showAddProcessorDialog(true);
                 processFile();
             }
@@ -245,6 +226,38 @@ public class FlightPlot {
         mainFrame.setVisible(true);
     }
 
+    public static void main(String[] args)
+            throws ClassNotFoundException, UnsupportedLookAndFeelException, InstantiationException,
+            IllegalAccessException {
+        SwingUtilities.invokeLater(new Runnable() {
+            @Override
+            public void run() {
+                if (OSValidator.isMac()) {
+                    System.setProperty("apple.laf.useScreenMenuBar", "true");
+                }
+                try {
+                    UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    return;
+                }
+                new FlightPlot();
+            }
+        });
+    }
+
+    private static Object formatParameterValue(Object value) {
+        Object returnValue;
+        if (value instanceof Double) {
+            returnValue = doubleNumberFormat.format(value);
+        } else if (value instanceof Color) {
+            returnValue = value;
+        } else {
+            returnValue = value.toString();
+        }
+        return returnValue;
+    }
+
     private void onQuit() {
         try {
             savePreferences();
@@ -283,6 +296,7 @@ public class FlightPlot {
             Object selection = presetComboBox.getSelectedItem();
             if ("".equals(selection)) {
                 processorsListModel.clear();
+                updateUsedColors();
             }
             if (selection instanceof Preset) {
                 loadPreset((Preset) selection);
@@ -319,16 +333,18 @@ public class FlightPlot {
         }
         Preferences presets = preferences.node("Presets");
         presetComboBox.addItem("");
-        for (String p : presets.childrenNames()) {
-            Preset preset = Preset.unpack(presets.node(p));
-            if (preset != null) {
-                presetComboBox.addItem(preset);
+        for (String p : presets.keys()) {
+            try {
+                Preset preset = Preset.unpackJSONObject(new JSONObject(presets.get(p, "{}")));
+                if (preset != null) {
+                    presetComboBox.addItem(preset);
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
             }
         }
         timeMode = Integer.parseInt(preferences.get("TimeMode", "0"));
         timeModeItems[timeMode].setSelected(true);
-        Preferences paintForFields = preferences.node("PaintForFields");
-        colorSupplier.loadPaintForFields(paintForFields);
         this.exportManager.loadPreferences(preferences.node("ExportManager"));
     }
 
@@ -352,42 +368,31 @@ public class FlightPlot {
             Object object = presetComboBox.getItemAt(i);
             if (object instanceof Preset) {
                 Preset preset = (Preset) object;
-                preset.pack(presetsPref);
+                try {
+                    presetsPref.put(preset.getTitle(), preset.packJSONObject().toString());
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
             }
         }
         preferences.put("TimeMode", Integer.toString(timeMode));
-        Preferences paintForFields = preferences.node("PaintForFields");
-        colorSupplier.savePaintForFields(paintForFields);
         this.exportManager.savePreferences(preferences.node("ExportManager"));
+        preferences.sync();
     }
 
     private void loadPreset(Preset preset) {
         processorsListModel.clear();
         for (ProcessorPreset pp : preset.getProcessorPresets()) {
-            try {
-                PlotProcessor processor = processorsTypesList.getProcessorInstance(pp.getProcessorType());
-                if (processor != null) {
-                    processor.setSerializedParameters(pp.getParameters());
-                    prepareProcessor(processor, pp.getTitle());
-                    // setting the parameters a second time after prepare ensures that all the color params will be set
-                    // TODO: processor parameter handling in general should be revised
-                    // - more clear separation between GUI, memory and storage (preferences)
-                    // - provide type information per parameter (to get rid of the current casting mechanism)
-                    // - use serialization to store parameters that supports versioning (e.g. protobuf)
-                    processor.setSerializedParameters(pp.getParameters());
-                    processorsListModel.addElement(processor);
-                }
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
+            updatePresetParameters(pp, null);
+            processorsListModel.addElement(pp);
         }
+        updateUsedColors();
     }
 
     private Preset formatPreset(String title) {
         List<ProcessorPreset> processorPresets = new ArrayList<ProcessorPreset>();
         for (int i = 0; i < processorsListModel.size(); i++) {
-            PlotProcessor processor = (PlotProcessor) processorsListModel.elementAt(i);
-            processorPresets.add(new ProcessorPreset(processor));
+            processorPresets.add((ProcessorPreset) processorsListModel.elementAt(i));
         }
         return new Preset(title, processorPresets);
     }
@@ -396,6 +401,7 @@ public class FlightPlot {
         // Chart panel
         processorsTypesList = new ProcessorsList();
         dataset = new XYSeriesCollection();
+        colorSupplier = new ColorSupplier();
         jFreeChart = ChartFactory.createXYLineChart("", "", "", null, PlotOrientation.VERTICAL, true, true, false);
         jFreeChart.getXYPlot().setDataset(dataset);
 
@@ -496,7 +502,7 @@ public class FlightPlot {
         };
         parametersTable.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_ENTER, 0), "startEditing");
         parametersTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-        parametersTable.getColumnModel().getColumn(1).setCellEditor(new ParamValueTableCellEditor());
+        parametersTable.getColumnModel().getColumn(1).setCellEditor(new ParamValueTableCellEditor(colorSupplier));
         parametersTable.getColumnModel().getColumn(1).setCellRenderer(new ParamValueTableCellRenderer());
     }
 
@@ -807,6 +813,7 @@ public class FlightPlot {
 
     private void generateSeries() throws IOException, FormatErrorException {
         dataset.removeAllSeries();
+        seriesIndex.clear();
         PlotProcessor[] processors = new PlotProcessor[processorsListModel.size()];
 
         // Update time offset according to selected time mode
@@ -827,12 +834,15 @@ public class FlightPlot {
         double skip = range.getLength() / displayPixels;
         if (processors.length > 0) {
             for (int i = 0; i < processorsListModel.size(); i++) {
-                PlotProcessor p = (PlotProcessor) processorsListModel.get(i);
-                processors[i] = p;
-                p.setFields(logReader.getFields());
-                p.init();
-                p.setSkipOut(skip);
-                p.setTimeScale(timeScale);
+                ProcessorPreset pp = (ProcessorPreset) processorsListModel.get(i);
+                PlotProcessor processor;
+                try {
+                    processor = processorsTypesList.getProcessorInstance(pp, skip, logReader.getFields());
+                    processor.setFieldsList(logReader.getFields());
+                    processors[i] = processor;
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
             }
             logReader.seek(timeStart);
             Map<String, Object> data = new HashMap<String, Object>();
@@ -851,19 +861,38 @@ public class FlightPlot {
                     processor.process((t + timeOffset) * 1e-6, data);
                 }
             }
-            for (PlotProcessor processor : processors) {
-                for (XYSeries series : (List<XYSeries>) processor.getSeriesCollection().getSeries()) {
-                    dataset.addSeries(series);
-                    jFreeChart.getXYPlot().getRendererForDataset(dataset).setSeriesPaint(dataset.indexOf(series),
-                            processor.getSeriesPaint(processor.getSeriesCollection().indexOf(series)));
+            for (int i = 0; i < processorsListModel.size(); i++) {
+                PlotProcessor processor = processors[i];
+                String processorTitle = ((ProcessorPreset) processorsListModel.get(i)).getTitle();
+                Map<String, Integer> processorSeriesIndex = new HashMap<String, Integer>();
+                seriesIndex.add(processorSeriesIndex);
+                for (Series series : processor.getSeriesList()) {
+                    processorSeriesIndex.put(series.getTitle(), dataset.getSeriesCount());
+                    XYSeries jseries = new XYSeries(series.getFullTitle(processorTitle), false);
+                    for (XYPoint point : series) {
+                        jseries.add(point.x * timeScale, point.y);
+                    }
+                    dataset.addSeries(jseries);
                 }
             }
+            setChartColors();
         }
         chartPanel.repaint();
     }
 
+    private void setChartColors() {
+        if (dataset.getSeriesCount() > 0) {
+            for (int i = 0; i < processorsListModel.size(); i++) {
+                for (Map.Entry<String, Integer> entry : seriesIndex.get(i).entrySet()) {
+                    ProcessorPreset processorPreset = (ProcessorPreset) processorsListModel.get(i);
+                    jFreeChart.getXYPlot().getRendererForDataset(dataset).setSeriesPaint(entry.getValue(), processorPreset.getColors().get(entry.getKey()));
+                }
+            }
+        }
+    }
+
     private void showAddProcessorDialog(boolean editMode) {
-        PlotProcessor selectedProcessor = editMode ? (PlotProcessor) processorsList.getSelectedValue() : null;
+        ProcessorPreset selectedProcessor = editMode ? (ProcessorPreset) processorsList.getSelectedValue() : null;
         addProcessorDialog.display(new Runnable() {
             @Override
             public void run() {
@@ -874,206 +903,125 @@ public class FlightPlot {
 
     private void onAddProcessorDialogOK() {
         updatePresetEdited(true);
-        PlotProcessor origProcessor = addProcessorDialog.getOrigProcessor();
+        ProcessorPreset processorPreset = addProcessorDialog.getOrigProcessorPreset();
         String title = addProcessorDialog.getProcessorTitle();
         String processorType = addProcessorDialog.getProcessorType();
-        if (origProcessor != null) {
+        if (processorPreset != null) {
             // Edit processor
-            PlotProcessor processor = origProcessor;
-            prepareProcessor(processor, title);
-            if (!origProcessor.getProcessorType().equals(processorType)) {
-                // Processor type changed, replace instance
-                Map<String, Object> parameters = origProcessor.getParameters();
-                try {
-                    processor = processorsTypesList.getProcessorInstance(processorType);
-                } catch (Exception e) {
-                    setStatus("Error creating processor");
-                    e.printStackTrace();
-                    return;
-                }
-                processor.setParameters(parameters);
+            Map<String, Object> parameters = null;
+            if (!processorPreset.getProcessorType().equals(processorType)) {
+                // Processor type changed
+                parameters = processorPreset.getParameters();
+                processorPreset = new ProcessorPreset(title, processorType, Collections.<String, Object>emptyMap(), Collections.<String, Color>emptyMap());
+            } else {
+                // Only change title
+                processorPreset.setTitle(title);
             }
-            int idx = processorsListModel.indexOf(origProcessor);
-            processorsListModel.set(idx, processor);
-            processorsList.setSelectedValue(processor, true);
+            updatePresetParameters(processorPreset, parameters);
+            int idx = processorsListModel.indexOf(processorPreset);
+            processorsListModel.set(idx, processorPreset);
+            processorsList.setSelectedValue(processorPreset, true);
             showProcessorParameters();
         } else {
-            try {
-                PlotProcessor processor = processorsTypesList.getProcessorInstance(processorType);
-                prepareProcessor(processor, title);
-                processorsListModel.addElement(processor);
-                processorsList.setSelectedValue(processor, true);
-            } catch (Exception e) {
-                setStatus("Error creating processor");
-                e.printStackTrace();
-            }
+            processorPreset = new ProcessorPreset(title, processorType, Collections.<String, Object>emptyMap(), Collections.<String, Color>emptyMap());
+            updatePresetParameters(processorPreset, null);
+            processorsListModel.addElement(processorPreset);
+            processorsList.setSelectedValue(processorPreset, true);
         }
+        updateUsedColors();
         processFile();
     }
 
-    private void prepareProcessor(PlotProcessor processor, String title) {
-        processor.setTitle(title);
-        processor.init();
-        processor.updatePaint(colorSupplier);
+    private void updatePresetParameters(ProcessorPreset processorPreset, Map<String, Object> parametersUpdate) {
+        if (parametersUpdate != null) {
+            // Update parameters of preset
+            processorPreset.getParameters().putAll(parametersUpdate);
+        }
+        // Construct and initialize processor to cleanup parameters list and get list of series
+        PlotProcessor p;
+        try {
+            p = processorsTypesList.getProcessorInstance(processorPreset, 0.0, null);
+        } catch (Exception e) {
+            setStatus("Error in processor \"" + processorPreset + "\"");
+            e.printStackTrace();
+            return;
+        }
+        processorPreset.setParameters(p.getParameters());
+        Map<String, Color> colorsNew = new HashMap<String, Color>();
+        for (Series series : p.getSeriesList()) {
+            Color color = processorPreset.getColors().get(series.getTitle());
+            if (color == null) {
+                color = colorSupplier.getNextColor(series.getTitle());
+            }
+            colorsNew.put(series.getTitle(), color);
+        }
+        processorPreset.setColors(colorsNew);
     }
 
     private void removeSelectedProcessor() {
-        PlotProcessor selectedProcessor = (PlotProcessor) processorsList.getSelectedValue();
+        ProcessorPreset selectedProcessor = (ProcessorPreset) processorsList.getSelectedValue();
         if (selectedProcessor != null) {
             processorsListModel.removeElement(selectedProcessor);
             updatePresetEdited(true);
+            updateUsedColors();
             processFile();
         }
     }
 
-    private static Object formatParameterValue(Object value) {
-        Object returnValue;
-        if (value instanceof Double) {
-            returnValue = doubleNumberFormat.format(value);
-        } else if (value instanceof Color) {
-            returnValue = value;
-        } else {
-            returnValue = value.toString();
+    private void updateUsedColors() {
+        colorSupplier.resetColorsUsed();
+        for (int i = 0; i < processorsListModel.size(); i++) {
+            ProcessorPreset pp = (ProcessorPreset) processorsListModel.get(i);
+            for (Color color : pp.getColors().values()) {
+                colorSupplier.markColorUsed(color);
+            }
         }
-        return returnValue;
     }
 
     private void showProcessorParameters() {
         while (parametersTableModel.getRowCount() > 0) {
             parametersTableModel.removeRow(0);
         }
-        PlotProcessor selectedProcessor = (PlotProcessor) processorsList.getSelectedValue();
+        ProcessorPreset selectedProcessor = (ProcessorPreset) processorsList.getSelectedValue();
         if (selectedProcessor != null) {
+            // Parameters
             Map<String, Object> params = selectedProcessor.getParameters();
-            List<String> keys = new ArrayList<String>(params.keySet());
-            Collections.sort(keys);
-            for (String key : keys) {
+            List<String> param_keys = new ArrayList<String>(params.keySet());
+            Collections.sort(param_keys);
+            for (String key : param_keys) {
                 parametersTableModel.addRow(new Object[]{key, formatParameterValue(params.get(key))});
+            }
+            // Colors
+            Map<String, Color> colors = selectedProcessor.getColors();
+            List<String> color_keys = new ArrayList<String>(colors.keySet());
+            Collections.sort(color_keys);
+            for (String key : color_keys) {
+                parametersTableModel.addRow(new Object[]{colorParamPrefix + key, colors.get(key)});
             }
         }
     }
 
     private void onParameterChanged(int row) {
-        PlotProcessor selectedProcessor = (PlotProcessor) processorsList.getSelectedValue();
+        ProcessorPreset selectedProcessor = (ProcessorPreset) processorsList.getSelectedValue();
         if (selectedProcessor != null) {
             String key = parametersTableModel.getValueAt(row, 0).toString();
             Object value = parametersTableModel.getValueAt(row, 1);
-            try {
-                selectedProcessor.setParameter(key, value);
-                prepareProcessor(selectedProcessor, selectedProcessor.getTitle());
-                updatePresetEdited(true);
-
-                if (value instanceof Color) {
-                    colorSupplier.updatePaintForField(selectedProcessor.getFieldForPaint(key), (Color) value);
-                }
-            } catch (Exception e) {
-                setStatus("Error: " + e);
-                e.printStackTrace();
-            }
-            parametersTableModel.removeTableModelListener(parameterChangedListener);
-            showProcessorParameters(); // refresh all parameters because changing one param might influence others (e.g. color)
-            parametersTableModel.addTableModelListener(parameterChangedListener);
-            processFile();
-        }
-    }
-
-    private class ParamValueTableCellEditor extends AbstractCellEditor implements TableCellEditor {
-        private TableCellEditor editor;
-
-        @Override
-        public Object getCellEditorValue() {
-            if (editor != null) {
-                return editor.getCellEditorValue();
-            }
-
-            return null;
-        }
-
-        @Override
-        public Component getTableCellEditorComponent(JTable table, Object value, boolean isSelected, int row, int column) {
             if (value instanceof Color) {
-                editor = new ColorParamTableCellEditor();
-            } else if (value instanceof String) {
-                editor = new DefaultCellEditor(new JTextField());
-            } else if (value instanceof Boolean) {
-                editor = new DefaultCellEditor(new JCheckBox());
-            }
-
-            return editor.getTableCellEditorComponent(table, value, isSelected, row, column);
-        }
-    }
-
-    private class ColorParamTableCellEditor extends AbstractCellEditor implements TableCellEditor, ActionListener {
-        private Color color;
-        private JComboBox select;
-
-        public ColorParamTableCellEditor() {
-            select = new JComboBox();
-            select.addActionListener(this);
-            select.setRenderer(new ColorCellRenderer());
-            for (Paint paint : colorSupplier.paintSequence) {
-                select.addItem(paint);
-            }
-        }
-
-        @Override
-        public Object getCellEditorValue() {
-            return color;
-        }
-
-        @Override
-        public Component getTableCellEditorComponent(JTable table, Object value, boolean isSelected, int row, int column) {
-            color = (Color) value;
-            select.setSelectedItem(color);
-            return select;
-        }
-
-        @Override
-        public void actionPerformed(ActionEvent actionEvent) {
-            color = (Color) colorSupplier.paintSequence[select.getSelectedIndex()];
-        }
-
-        private class ColorCellRenderer extends JLabel implements ListCellRenderer {
-            boolean setBg = false;
-
-            public ColorCellRenderer() {
-                setOpaque(true);
-                setPreferredSize(new Dimension(0, 15));
-            }
-
-            @Override
-            public void setBackground(Color bg) {
-                if (!setBg) {
-                    return;
-                }
-                super.setBackground(bg);
-            }
-
-            public Component getListCellRendererComponent(JList list, Object value, int index, boolean isSelected, boolean cellHasFocus) {
-                setBg = true;
-                setText("");
-                setBackground((Color) value);
-                setBg = false;
-                return this;
-            }
-        }
-    }
-
-    private class ParamValueTableCellRenderer extends JLabel implements TableCellRenderer {
-        private DefaultTableCellRenderer defaultTableCellRenderer = new DefaultTableCellRenderer();
-
-        public ParamValueTableCellRenderer() {
-            setOpaque(true);
-        }
-
-        public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected
-                , boolean hasFocus, int row, int column) {
-            if (value instanceof Color) {
-                setBackground((Color) value);
+                selectedProcessor.getColors().put(key.substring(colorParamPrefix.length(), key.length()), (Color) value);
+                setChartColors();
             } else {
-                return defaultTableCellRenderer.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
+                try {
+                    updatePresetParameters(selectedProcessor, Collections.<String, Object>singletonMap(key, value.toString()));
+                    updatePresetEdited(true);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    setStatus("Error: " + e);
+                }
+                parametersTableModel.removeTableModelListener(parameterChangedListener);
+                showProcessorParameters(); // refresh all parameters because changing one param might influence others (e.g. color)
+                parametersTableModel.addTableModelListener(parameterChangedListener);
+                processFile();
             }
-            return this;
         }
     }
 

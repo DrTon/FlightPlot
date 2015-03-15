@@ -38,27 +38,6 @@ public class Preset {
         return processorPresets;
     }
 
-    public void setProcessorPresets(List<ProcessorPreset> processorPresets) {
-        this.processorPresets = processorPresets;
-    }
-
-    public void pack(Preferences preferences) throws BackingStoreException {
-        Preferences p = preferences.node(title);
-        p.clear();
-        for (ProcessorPreset pp : processorPresets) {
-            pp.pack(p);
-        }
-    }
-
-    public static Preset unpack(Preferences preferences) throws BackingStoreException {
-        String title = preferences.name();
-        List<ProcessorPreset> processorPresets = new ArrayList<ProcessorPreset>();
-        for (String k : preferences.childrenNames()) {
-            processorPresets.add(ProcessorPreset.unpack(preferences.node(k)));
-        }
-        return new Preset(title, processorPresets);
-    }
-
     public JSONObject packJSONObject() throws IOException {
         JSONObject json = new JSONObject();
         json.put("Title", title);

@@ -1,5 +1,8 @@
 package me.drton.flightplot.processors;
 
+import me.drton.flightplot.ColorSupplier;
+import me.drton.flightplot.ProcessorPreset;
+
 import java.lang.reflect.InvocationTargetException;
 import java.util.HashMap;
 import java.util.Map;
@@ -38,11 +41,26 @@ public class ProcessorsList {
         return processors.keySet();
     }
 
-    public PlotProcessor getProcessorInstance(String processorName)
+    public PlotProcessor getProcessorInstance(String processorType)
             throws NoSuchMethodException, IllegalAccessException, InvocationTargetException, InstantiationException {
-        Class<? extends PlotProcessor> procClass = processors.get(processorName);
+        Class<? extends PlotProcessor> procClass = processors.get(processorType);
         if (procClass != null) {
             return procClass.newInstance();
+        } else {
+            return null;
+        }
+    }
+
+    public PlotProcessor getProcessorInstance(ProcessorPreset processorPreset, double skipOut, Map<String, String> fieldsList)
+            throws NoSuchMethodException, IllegalAccessException, InvocationTargetException, InstantiationException {
+        Class<? extends PlotProcessor> procClass = processors.get(processorPreset.getProcessorType());
+        if (procClass != null) {
+            PlotProcessor processor = procClass.newInstance();
+            processor.setSkipOut(skipOut);
+            processor.setFieldsList(fieldsList);
+            processor.setParameters(processorPreset.getParameters());
+            processor.init();
+            return processor;
         } else {
             return null;
         }
