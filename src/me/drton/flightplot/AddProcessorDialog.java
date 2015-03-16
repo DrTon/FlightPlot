@@ -10,14 +10,16 @@ public class AddProcessorDialog extends JDialog {
     private JButton buttonOK;
     private JButton buttonCancel;
     private JTextField titleField;
-    private JComboBox processorTypeComboBox;
-    private String[] processorsTypes;
+    private JList processorTypesList;
+    private DefaultListModel processorTypesListModel;
+    private String[] processorTypes;
 
     private ProcessorPreset origProcessorPreset = null;
     private Runnable callback;
 
-    public AddProcessorDialog(String[] processorsTypes) {
-        this.processorsTypes = processorsTypes;
+    public AddProcessorDialog(String[] processorTypes) {
+        this.processorTypes = processorTypes;
+        //this.processorTypes = processorTypes;
         setContentPane(contentPane);
         setModal(true);
         setTitle("Add Processor");
@@ -56,15 +58,21 @@ public class AddProcessorDialog extends JDialog {
     }
 
     public String getProcessorType() {
-        return (String) processorTypeComboBox.getSelectedItem();
+        return (String) processorTypesList.getSelectedValue();
     }
 
     public void display(Runnable callback, ProcessorPreset processorPreset) {
+        if (processorTypesListModel.size() == 0) {
+            for (String processorType : processorTypes) {
+                processorTypesListModel.addElement(processorType);
+            }
+            processorTypesList.setSelectedValue("Simple", true);
+        }
         this.callback = callback;
         if (processorPreset != null) {
             origProcessorPreset = processorPreset;
             titleField.setText(processorPreset.getTitle());
-            processorTypeComboBox.setSelectedItem(processorPreset.getProcessorType());
+            processorTypesList.setSelectedValue(processorPreset.getProcessorType(), true);
         } else {
             origProcessorPreset = null;
             titleField.setText("");
@@ -83,7 +91,7 @@ public class AddProcessorDialog extends JDialog {
     }
 
     private void createUIComponents() {
-        processorTypeComboBox = new JComboBox(processorsTypes);
-        processorTypeComboBox.setMaximumRowCount(20);
+        processorTypesListModel = new DefaultListModel();
+        processorTypesList = new JList(processorTypesListModel);
     }
 }
