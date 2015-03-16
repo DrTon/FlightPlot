@@ -28,7 +28,10 @@ class ParamValueTableCellEditor extends AbstractCellEditor implements TableCellE
             editor = new ColorParamTableCellEditor(colorSupplier);
             ((ColorParamTableCellEditor) editor).getComponent().addActionListener(new ActionDelegate());
         } else if (value instanceof String) {
-            editor = new DefaultCellEditor(new JTextField());
+            JTextField textField = new JTextField();
+            textField.setFont(table.getFont());
+            textField.setBorder(BorderFactory.createLineBorder(Color.BLACK));
+            editor = new DefaultCellEditor(textField);
             ((JTextField) ((DefaultCellEditor) editor).getComponent()).addActionListener(new ActionDelegate());
         }
 

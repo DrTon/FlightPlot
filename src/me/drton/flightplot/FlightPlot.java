@@ -1020,6 +1020,7 @@ public class FlightPlot {
                 parametersTableModel.removeTableModelListener(parameterChangedListener);
                 showProcessorParameters(); // refresh all parameters because changing one param might influence others (e.g. color)
                 parametersTableModel.addTableModelListener(parameterChangedListener);
+                parametersTable.addRowSelectionInterval(row, row);
                 processFile();
             }
         }
