@@ -14,7 +14,7 @@ import java.util.prefs.Preferences;
  */
 public class ExportManager {
 
-    private static final String DIALOG_SETTING = "Dialog";
+    private static final String DIALOG_SETTING = "ExportDialog";
     private static final String EXPORTER_CONFIGURATION_SETTING = "ExporterConfiguration";
     private static final String READER_CONFIGURATION_SETTING = "ReaderConfiguration";
     private static final String LAST_EXPORT_DIRECTORY_SETTING = "LastExportDirectory";

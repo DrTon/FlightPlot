@@ -345,7 +345,7 @@ public class FlightPlot {
         }
         timeMode = Integer.parseInt(preferences.get("TimeMode", "0"));
         timeModeItems[timeMode].setSelected(true);
-        this.exportManager.loadPreferences(preferences.node("ExportManager"));
+        this.exportManager.loadPreferences(preferences);
     }
 
     private void savePreferences() throws BackingStoreException {
@@ -376,7 +376,7 @@ public class FlightPlot {
             }
         }
         preferences.put("TimeMode", Integer.toString(timeMode));
-        this.exportManager.savePreferences(preferences.node("ExportManager"));
+        this.exportManager.savePreferences(preferences);
         preferences.sync();
     }
 
