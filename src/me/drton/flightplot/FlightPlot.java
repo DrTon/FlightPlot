@@ -131,7 +131,7 @@ public class FlightPlot {
                 PlotProcessor processor = new Simple();
                 processor.setParameters(Collections.<String, Object>singletonMap("Fields", fieldsValue.toString()));
                 ProcessorPreset pp = new ProcessorPreset("New", processor.getProcessorType(),
-                        processor.getDefaultParameters(), Collections.<String, Color>emptyMap());
+                        processor.getParameters(), Collections.<String, Color>emptyMap());
                 updatePresetParameters(pp, null);
                 processorsListModel.addElement(pp);
                 processorsList.setSelectedValue(pp, true);
@@ -909,18 +909,19 @@ public class FlightPlot {
         if (processorPreset != null) {
             // Edit processor
             Map<String, Object> parameters = null;
+            ProcessorPreset processorPresetNew = processorPreset;
             if (!processorPreset.getProcessorType().equals(processorType)) {
                 // Processor type changed
                 parameters = processorPreset.getParameters();
-                processorPreset = new ProcessorPreset(title, processorType, Collections.<String, Object>emptyMap(), Collections.<String, Color>emptyMap());
+                processorPresetNew = new ProcessorPreset(title, processorType, new HashMap<String, Object>(), Collections.<String, Color>emptyMap());
             } else {
                 // Only change title
-                processorPreset.setTitle(title);
+                processorPresetNew.setTitle(title);
             }
-            updatePresetParameters(processorPreset, parameters);
+            updatePresetParameters(processorPresetNew, parameters);
             int idx = processorsListModel.indexOf(processorPreset);
-            processorsListModel.set(idx, processorPreset);
-            processorsList.setSelectedValue(processorPreset, true);
+            processorsListModel.set(idx, processorPresetNew);
+            processorsList.setSelectedValue(processorPresetNew, true);
             showProcessorParameters();
         } else {
             processorPreset = new ProcessorPreset(title, processorType, Collections.<String, Object>emptyMap(), Collections.<String, Color>emptyMap());
