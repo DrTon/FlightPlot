@@ -10,11 +10,11 @@ import java.awt.event.ActionListener;
 * Created by ton on 13.03.15.
 */
 class ParamValueTableCellEditor extends AbstractCellEditor implements TableCellEditor {
-    private ColorSupplier colorSupplier;
+    private FlightPlot app;
     private TableCellEditor editor;
 
-    public ParamValueTableCellEditor(ColorSupplier colorSupplier) {
-        this.colorSupplier = colorSupplier;
+    public ParamValueTableCellEditor(FlightPlot app) {
+        this.app = app;
     }
 
     @Override
@@ -24,8 +24,9 @@ class ParamValueTableCellEditor extends AbstractCellEditor implements TableCellE
 
     @Override
     public Component getTableCellEditorComponent(JTable table, Object value, boolean isSelected, int row, int column) {
+        app.setEditingProcessor();
         if (value instanceof Color) {
-            editor = new ColorParamTableCellEditor(colorSupplier);
+            editor = new ColorParamTableCellEditor(app.getColorSupplier());
             ((ColorParamTableCellEditor) editor).getComponent().addActionListener(new ActionDelegate());
         } else if (value instanceof String) {
             JTextField textField = new JTextField();

@@ -99,6 +99,7 @@ public class FlightPlot {
     private DateAxis domainAxisDate;
     private int timeMode = 0;
     private List<Map<String, Integer>> seriesIndex = new ArrayList<Map<String, Integer>>();
+    private ProcessorPreset editingProcessor = null;
 
     public FlightPlot() {
         preferences = Preferences.userRoot().node(appName);
@@ -502,7 +503,7 @@ public class FlightPlot {
         };
         parametersTable.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_ENTER, 0), "startEditing");
         parametersTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-        parametersTable.getColumnModel().getColumn(1).setCellEditor(new ParamValueTableCellEditor(colorSupplier));
+        parametersTable.getColumnModel().getColumn(1).setCellEditor(new ParamValueTableCellEditor(this));
         parametersTable.getColumnModel().getColumn(1).setCellRenderer(new ParamValueTableCellRenderer());
     }
 
@@ -1003,16 +1004,15 @@ public class FlightPlot {
     }
 
     private void onParameterChanged(int row) {
-        ProcessorPreset selectedProcessor = (ProcessorPreset) processorsList.getSelectedValue();
-        if (selectedProcessor != null) {
+        if (editingProcessor != null) {
             String key = parametersTableModel.getValueAt(row, 0).toString();
             Object value = parametersTableModel.getValueAt(row, 1);
             if (value instanceof Color) {
-                selectedProcessor.getColors().put(key.substring(colorParamPrefix.length(), key.length()), (Color) value);
+                editingProcessor.getColors().put(key.substring(colorParamPrefix.length(), key.length()), (Color) value);
                 setChartColors();
             } else {
                 try {
-                    updatePresetParameters(selectedProcessor, Collections.<String, Object>singletonMap(key, value.toString()));
+                    updatePresetParameters(editingProcessor, Collections.<String, Object>singletonMap(key, value.toString()));
                     updatePresetEdited(true);
                 } catch (Exception e) {
                     e.printStackTrace();
@@ -1027,4 +1027,11 @@ public class FlightPlot {
         }
     }
 
+    ColorSupplier getColorSupplier() {
+        return colorSupplier;
+    }
+
+    void setEditingProcessor() {
+        editingProcessor = (ProcessorPreset) processorsList.getSelectedValue();
+    }
 }
