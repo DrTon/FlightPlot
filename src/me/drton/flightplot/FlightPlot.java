@@ -19,6 +19,7 @@ import org.jfree.chart.event.ChartChangeEventType;
 import org.jfree.chart.event.ChartChangeListener;
 import org.jfree.chart.plot.PlotOrientation;
 import org.jfree.chart.plot.XYPlot;
+import org.jfree.chart.renderer.xy.XYLineAndShapeRenderer;
 import org.jfree.data.Range;
 import org.jfree.data.xy.XYSeries;
 import org.jfree.data.xy.XYSeriesCollection;
@@ -33,6 +34,7 @@ import javax.swing.filechooser.FileNameExtensionFilter;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
 import java.awt.event.*;
+import java.awt.geom.Ellipse2D;
 import java.io.*;
 import java.nio.charset.Charset;
 import java.text.NumberFormat;
@@ -78,6 +80,7 @@ public class FlightPlot {
     private JComboBox presetComboBox;
     private JButton deletePresetButton;
     private JButton logInfoButton;
+    private JCheckBox markerCheckBox;
     private JRadioButtonMenuItem[] timeModeItems;
     private LogReader logReader = null;
     private XYSeriesCollection dataset;
@@ -238,6 +241,20 @@ public class FlightPlot {
             }
         });
         mainFrame.setVisible(true);
+        markerCheckBox.addComponentListener(new ComponentAdapter() {
+        });
+        markerCheckBox.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent actionEvent) {
+                try {
+                    generateSeries();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                } catch (FormatErrorException e) {
+                    e.printStackTrace();
+                }
+            }
+        });
     }
 
     public static void main(String[] args)
@@ -424,6 +441,9 @@ public class FlightPlot {
         plot.setBackgroundPaint(Color.WHITE);
         plot.setDomainGridlinePaint(Color.LIGHT_GRAY);
         plot.setRangeGridlinePaint(Color.LIGHT_GRAY);
+
+        final XYLineAndShapeRenderer renderer = new XYLineAndShapeRenderer(true, false);
+        plot.setRenderer(renderer);
 
         // Domain (X) axis - seconds
         domainAxisSeconds = new NumberAxis("T") {
@@ -911,6 +931,7 @@ public class FlightPlot {
                 }
             }
             setChartColors();
+            setChartMarkers();
         }
         chartPanel.repaint();
     }
@@ -921,6 +942,19 @@ public class FlightPlot {
                 for (Map.Entry<String, Integer> entry : seriesIndex.get(i).entrySet()) {
                     ProcessorPreset processorPreset = activeProcessors.get(i);
                     jFreeChart.getXYPlot().getRendererForDataset(dataset).setSeriesPaint(entry.getValue(), processorPreset.getColors().get(entry.getKey()));
+                }
+            }
+        }
+    }
+
+    private void setChartMarkers() {
+        if (dataset.getSeriesCount() > 0) {
+            Shape marker = new Ellipse2D.Double(-1.5,-1.5,3,3);
+            Object renderer = jFreeChart.getXYPlot().getRendererForDataset(dataset);
+            if (renderer instanceof XYLineAndShapeRenderer) {
+                for (int j = 0; j<dataset.getSeriesCount(); j++) {
+                    ((XYLineAndShapeRenderer) renderer).setSeriesShape(j, marker);
+                    ((XYLineAndShapeRenderer) renderer).setSeriesShapesVisible(j, markerCheckBox.isSelected());
                 }
             }
         }

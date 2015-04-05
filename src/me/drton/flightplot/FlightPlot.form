@@ -193,6 +193,12 @@
               <text value="Log Info"/>
             </properties>
           </component>
+          <component id="b62f4" class="javax.swing.JCheckBox" binding="markerCheckBox">
+            <constraints/>
+            <properties>
+              <text value="Markers"/>
+            </properties>
+          </component>
           <component id="d93f2" class="javax.swing.JLabel">
             <constraints/>
             <properties>
