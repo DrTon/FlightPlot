@@ -8,6 +8,7 @@ import me.drton.flightplot.processors.Simple;
 import me.drton.jmavlib.log.FormatErrorException;
 import me.drton.jmavlib.log.LogReader;
 import me.drton.jmavlib.log.PX4LogReader;
+import me.drton.jmavlib.log.PX5LogReader;
 import org.jfree.chart.ChartFactory;
 import org.jfree.chart.ChartPanel;
 import org.jfree.chart.JFreeChart;
@@ -84,12 +85,11 @@ public class FlightPlot {
     private JFreeChart jFreeChart;
     private ColorSupplier colorSupplier;
     private ProcessorsList processorsTypesList;
-    private File lastLogDirectory = null;
     private File lastPresetDirectory = null;
     private AddProcessorDialog addProcessorDialog;
     private FieldsListDialog fieldsListDialog;
     private LogInfo logInfo;
-    private FileNameExtensionFilter logExtensionFilter = new FileNameExtensionFilter("PX4/APM Logs (*.bin, *.px4log)", "bin", "px4log");
+    private JFileChooser openLogFileChooser;
     private FileNameExtensionFilter presetExtensionFilter = new FileNameExtensionFilter("FlightPlot Presets (*.fplot)",
             "fplot");
     private AtomicBoolean invokeProcessFile = new AtomicBoolean(false);
@@ -205,6 +205,22 @@ public class FlightPlot {
             }
         };
         parametersTableModel.addTableModelListener(parameterChangedListener);
+
+        // Open Log Dialog
+        FileNameExtensionFilter[] logExtensionfilters = new FileNameExtensionFilter[]{
+                new FileNameExtensionFilter("PX4/APM Logs (*.px4log, *.bin)", "px4log", "bin"),
+                new FileNameExtensionFilter("PX5 Logs (*.p5l)", "p5l")
+        };
+
+        openLogFileChooser = new JFileChooser();
+        for (FileNameExtensionFilter filter : logExtensionfilters) {
+            openLogFileChooser.addChoosableFileFilter(filter);
+        }
+        openLogFileChooser.setFileFilter(logExtensionfilters[0]);
+
+        openLogFileChooser.setDialogTitle("Open Log");
+
+        // Load preferences
         try {
             loadPreferences();
         } catch (BackingStoreException e) {
@@ -326,7 +342,8 @@ public class FlightPlot {
         preferencesUtil.loadWindowPreferences(logInfo.getFrame(), preferences.node("LogInfoFrame"), 600, 600);
         String logDirectoryStr = preferences.get("LogDirectory", null);
         if (logDirectoryStr != null) {
-            lastLogDirectory = new File(logDirectoryStr);
+            File dir = new File(logDirectoryStr);
+            openLogFileChooser.setCurrentDirectory(dir);
         }
         String presetDirectoryStr = preferences.get("PresetDirectory", null);
         if (presetDirectoryStr != null) {
@@ -358,6 +375,7 @@ public class FlightPlot {
         preferencesUtil.saveWindowPreferences(fieldsListDialog, preferences.node("FieldsListDialog"));
         preferencesUtil.saveWindowPreferences(addProcessorDialog, preferences.node("AddProcessorDialog"));
         preferencesUtil.saveWindowPreferences(logInfo.getFrame(), preferences.node("LogInfoFrame"));
+        File lastLogDirectory = openLogFileChooser.getCurrentDirectory();
         if (lastLogDirectory != null) {
             preferences.put("LogDirectory", lastLogDirectory.getAbsolutePath());
         }
@@ -640,16 +658,9 @@ public class FlightPlot {
     }
 
     public void showOpenLogDialog() {
-        JFileChooser fc = new JFileChooser();
-        if (lastLogDirectory != null) {
-            fc.setCurrentDirectory(lastLogDirectory);
-        }
-        fc.setFileFilter(logExtensionFilter);
-        fc.setDialogTitle("Open Log");
-        int returnVal = fc.showDialog(mainFrame, "Open");
+        int returnVal = openLogFileChooser.showDialog(mainFrame, "Open");
         if (returnVal == JFileChooser.APPROVE_OPTION) {
-            lastLogDirectory = fc.getCurrentDirectory();
-            File file = fc.getSelectedFile();
+            File file = openLogFileChooser.getSelectedFile();
             String logFileName = file.getPath();
             mainFrame.setTitle(appNameAndVersion + " - " + logFileName);
             if (logReader != null) {
@@ -661,7 +672,12 @@ public class FlightPlot {
                 logReader = null;
             }
             try {
-                logReader = new PX4LogReader(logFileName);
+                String logFileNameLower = logFileName.toLowerCase();
+                if (logFileNameLower.endsWith(".bin") || logFileNameLower.endsWith(".px4log")) {
+                    logReader = new PX4LogReader(logFileName);
+                } else if (logFileNameLower.endsWith(".p5l")) {
+                    logReader = new PX5LogReader(logFileName);
+                }
                 logInfo.updateInfo(logReader);
             } catch (Exception e) {
                 logReader = null;
@@ -1005,6 +1021,7 @@ public class FlightPlot {
 
     private void onParameterChanged(int row) {
         if (editingProcessor != null) {
+            // TODO bug here, need to use editingProcessor, not parametersTableModel, that may be already invalid
             String key = parametersTableModel.getValueAt(row, 0).toString();
             Object value = parametersTableModel.getValueAt(row, 1);
             if (value instanceof Color) {
