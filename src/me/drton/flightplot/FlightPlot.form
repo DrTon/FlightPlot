@@ -55,11 +55,9 @@
                         <properties/>
                         <border type="line"/>
                         <children>
-                          <component id="53b2" class="javax.swing.JList" binding="processorsList" custom-create="true">
+                          <component id="80676" class="javax.swing.JTable" binding="processorsList" custom-create="true">
                             <constraints/>
-                            <properties>
-                              <selectionMode value="0"/>
-                            </properties>
+                            <properties/>
                           </component>
                         </children>
                       </scrollpane>
