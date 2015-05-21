@@ -182,12 +182,11 @@ public class FlightPlot {
                 showProcessorParameters();
             }
         });
-        processorsList.addKeyListener(new KeyAdapter() {
+        processorsList.getInputMap(JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT).put(KeyStroke.getKeyStroke(KeyEvent.VK_ENTER, 0), "Enter");
+        processorsList.getActionMap().put("Enter", new AbstractAction() {
             @Override
-            public void keyTyped(KeyEvent e) {
-                if (e.getKeyChar() == KeyEvent.VK_ENTER) {
-                    showAddProcessorDialog(true);
-                }
+            public void actionPerformed(ActionEvent ae) {
+                showAddProcessorDialog(true);
             }
         });
         processorsList.addMouseListener(new MouseAdapter() {
@@ -928,7 +927,7 @@ public class FlightPlot {
     }
 
     private void showAddProcessorDialog(boolean editMode) {
-        ProcessorPreset selectedProcessor = editMode ? (ProcessorPreset) processorsList.getValueAt(processorsList.getSelectedRow(), 1) : null;
+        ProcessorPreset selectedProcessor = editMode ? getSelectedProcessor() : null;
         addProcessorDialog.display(new Runnable() {
             @Override
             public void run() {
@@ -944,11 +943,10 @@ public class FlightPlot {
         String processorType = addProcessorDialog.getProcessorType();
         if (processorPreset != null) {
             // Edit processor
-            Map<String, Object> parameters = null;
             ProcessorPreset processorPresetNew = processorPreset;
             if (!processorPreset.getProcessorType().equals(processorType)) {
                 // Processor type changed
-                parameters = processorPreset.getParameters();
+                Map<String, Object> parameters = processorPreset.getParameters();
                 processorPresetNew = new ProcessorPreset(title, processorType, new HashMap<String, Object>(), Collections.<String, Color>emptyMap());
                 updatePresetParameters(processorPresetNew, parameters);
                 for (int row = 0; row < processorsListModel.getRowCount(); row++) {
