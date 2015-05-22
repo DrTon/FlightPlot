@@ -4,8 +4,8 @@ import me.drton.jmavlib.conversion.RotationConversion;
 import me.drton.jmavlib.geo.GlobalPositionProjector;
 import me.drton.jmavlib.geo.LatLonAlt;
 import me.drton.jmavlib.processing.DelayLine;
-import org.la4j.matrix.Matrix;
-import org.la4j.vector.Vector;
+import org.la4j.Matrix;
+import org.la4j.Vector;
 import org.la4j.vector.dense.BasicVector;
 
 import java.util.Arrays;
@@ -285,7 +285,7 @@ public class PositionEstimator extends PlotProcessor {
                 Vector b = rot.transpose().multiply(accBiasCorrV).multiply(param_W_Acc_Bias * dt);
                 Vector accNED = rot.multiply(acc);
                 accNED.set(2, accNED.get(2) + G);
-                accBias.addInPlace(b);
+                accBias = accBias.add(b);
                 predict(est, dt, new double[]{accNED.get(0), accNED.get(1), accNED.get(2)});
                 for (int axis = 0; axis < 3; axis++) {
                     correct(est[axis], dt, 0, corrGPS[axis][0], param_W_GPS[axis][0] * wGPS[axis]);
