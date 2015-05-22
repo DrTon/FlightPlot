@@ -2,9 +2,9 @@ package me.drton.flightplot.processors;
 
 import me.drton.flightplot.processors.tools.LowPassFilter;
 import me.drton.jmavlib.conversion.RotationConversion;
-import org.la4j.matrix.Matrix;
+import org.la4j.Matrix;
 import org.la4j.matrix.dense.Basic2DMatrix;
-import org.la4j.vector.Vector;
+import org.la4j.Vector;
 import org.la4j.vector.dense.BasicVector;
 
 import java.util.HashMap;

@@ -5,9 +5,9 @@ import me.drton.jmavlib.geo.GlobalPositionProjector;
 import me.drton.jmavlib.geo.LatLonAlt;
 import me.drton.jmavlib.processing.DelayLine;
 import org.la4j.LinearAlgebra;
-import org.la4j.matrix.Matrix;
+import org.la4j.Matrix;
 import org.la4j.matrix.dense.Basic2DMatrix;
-import org.la4j.vector.Vector;
+import org.la4j.Vector;
 import org.la4j.vector.dense.BasicVector;
 
 import java.util.ArrayList;
@@ -380,7 +380,7 @@ public class PositionEstimatorKF extends PlotProcessor {
         Matrix K = P.multiply(H.transpose()).multiply(S.withInverter(inverter).inverse());
 
         // Correction
-        x.addInPlace(K.multiply(y));
+        x = x.add(K.multiply(y));
         P = I.subtract(K.multiply(H)).multiply(P);
     }
 }
