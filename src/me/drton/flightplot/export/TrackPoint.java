@@ -6,7 +6,7 @@ package me.drton.flightplot.export;
 public class TrackPoint {
     public final double lat;    /// latitude
     public final double lon;    /// longitude
-    public final double alt;    /// altitude AMLS
+    public double alt;    /// altitude AMLS
     public final long time;     /// unix time in milliseconds
     public FlightMode flightMode = FlightMode.MANUAL;  /// flight mode
 

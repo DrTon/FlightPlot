@@ -21,7 +21,6 @@ public abstract class AbstractTrackExporter implements TrackExporter {
     protected boolean trackStarted;
     protected String title;
     protected Writer writer;
-    protected float altOffset;
 
     public AbstractTrackExporter(TrackReader trackReader) {
         this.trackReader = trackReader;
@@ -37,9 +36,10 @@ public abstract class AbstractTrackExporter implements TrackExporter {
 
     protected TrackPoint readNextPoint() throws IOException, FormatErrorException {
         TrackPoint point = this.trackReader.readNextPoint();
+        float altOffset = configuration.getAltOffset();
         if (null != point) {
             if (altOffset != 0) {
-                point = new TrackPoint(point.lat, point.lon, (float)(point.alt + altOffset), point.time);
+                point.alt += altOffset;
             }
             feedAnalyzers(point);
         }
@@ -54,7 +54,6 @@ public abstract class AbstractTrackExporter implements TrackExporter {
 
     public void exportToFile(File file, String title) throws IOException {
         this.writer = initWriter(file, title);
-        altOffset = configuration.getAltOffset();
         try {
             writeStart();
             TrackPoint point = readNextPoint();

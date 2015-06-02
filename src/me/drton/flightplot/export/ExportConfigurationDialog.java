@@ -33,10 +33,6 @@ public class ExportConfigurationDialog extends JDialog {
     private ReaderConfiguration readerConfiguration = new ReaderConfiguration();
     private ExportData exportData;
 
-    private void createUIComponents() {
-        // TODO: place custom component creation code here
-    }
-
     private class FormatItem {
         String displayName;
         String name;

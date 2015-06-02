@@ -9,12 +9,14 @@ public class ExporterConfiguration {
     private boolean splitTracksByFlightMode;
     private final static String SPLIT_TRACK_BY_FLIGHT_MODE_SETTING = "splitTracksByFlightMode";
     private float altOffset = 0;
+    private final static String ADD_ALTITUDE_OFFSET = "addAltitudeOffset";
 
     private ExportFormatFactory.ExportFormatType exportFormatType;
     private final static String EXPORT_FORMAT_TYPE_SETTING = "exportFormatType";
 
     public void saveConfiguration(Preferences preferences) {
         preferences.putBoolean(SPLIT_TRACK_BY_FLIGHT_MODE_SETTING, this.splitTracksByFlightMode);
+        preferences.putFloat(ADD_ALTITUDE_OFFSET, this.altOffset);
         if (null != this.exportFormatType) {
             preferences.put(EXPORT_FORMAT_TYPE_SETTING, this.exportFormatType.name());
         }
@@ -22,6 +24,7 @@ public class ExporterConfiguration {
 
     public void loadConfiguration(Preferences preferences) {
         this.splitTracksByFlightMode = preferences.getBoolean(SPLIT_TRACK_BY_FLIGHT_MODE_SETTING, false);
+        this.altOffset = preferences.getFloat(ADD_ALTITUDE_OFFSET, 0);
         String formatType = preferences.get(EXPORT_FORMAT_TYPE_SETTING, null);
         if (null != formatType) {
             try {
