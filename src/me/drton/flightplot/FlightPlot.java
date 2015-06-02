@@ -241,8 +241,6 @@ public class FlightPlot {
             }
         });
         mainFrame.setVisible(true);
-        markerCheckBox.addComponentListener(new ComponentAdapter() {
-        });
         markerCheckBox.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent actionEvent) {
