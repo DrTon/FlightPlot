@@ -69,7 +69,7 @@ public class ExportManager {
             String exportFileName = fc.getSelectedFile().toString();
             String exportFileExtension = extensionFilter.getExtensions()[0];
             if (extensionFilter == fc.getFileFilter() && !exportFileName.toLowerCase().endsWith(exportFileExtension)) {
-                exportFileName += exportFileExtension;
+                exportFileName +=  ( "." + exportFileExtension);
             }
             File exportFile = new File(exportFileName);
             if (!exportFile.exists()) {
