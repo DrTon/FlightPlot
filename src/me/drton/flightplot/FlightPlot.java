@@ -59,7 +59,7 @@ public class FlightPlot {
     }
 
     private static String appName = "FlightPlot";
-    private static String version = "0.2.14";
+    private static String version = "0.2.15";
     private static String appNameAndVersion = appName + " v." + version;
     private static String colorParamPrefix = "Color ";
     private final Preferences preferences;
@@ -472,7 +472,7 @@ public class FlightPlot {
         NumberAxis rangeAxis = (NumberAxis) plot.getRangeAxis();
         rangeAxis.setAutoRangeIncludesZero(false);
 
-        chartPanel = new ChartPanel(jFreeChart);
+        chartPanel = new ChartPanel(jFreeChart, false);
         chartPanel.setMouseWheelEnabled(true);
         chartPanel.setMouseZoomable(true, false);
         chartPanel.setPopupMenu(null);
