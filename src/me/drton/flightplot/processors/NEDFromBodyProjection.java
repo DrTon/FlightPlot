@@ -2,11 +2,9 @@ package me.drton.flightplot.processors;
 
 import me.drton.flightplot.processors.tools.LowPassFilter;
 import me.drton.jmavlib.conversion.RotationConversion;
-import org.la4j.Matrix;
-import org.la4j.matrix.dense.Basic2DMatrix;
-import org.la4j.Vector;
-import org.la4j.vector.dense.BasicVector;
 
+import javax.vecmath.Matrix3d;
+import javax.vecmath.Vector3d;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -22,8 +20,11 @@ public class NEDFromBodyProjection extends PlotProcessor {
     private double[] param_Att_Offsets;
     private boolean[] show;
     private LowPassFilter[] lowPassFilters;
-    private Matrix r;
-    private Vector v;
+    private Matrix3d r;
+    private double[] vArr;
+    private Vector3d v;
+    private double[] vNEDArr;
+    private Vector3d vNED;
 
     @Override
     public Map<String, Object> getDefaultParameters() {
@@ -50,8 +51,11 @@ public class NEDFromBodyProjection extends PlotProcessor {
         String showStr = ((String) parameters.get("Show")).toUpperCase();
         show = new boolean[]{false, false, false};
         lowPassFilters = new LowPassFilter[3];
-        v = new BasicVector(3);
-        r = new Basic2DMatrix(3, 3);
+        vArr = new double[3];
+        v = new Vector3d();
+        vNEDArr = new double[3];
+        vNED = new Vector3d();
+        r = new Matrix3d();
         param_Att_Offsets = new double[3];
         for (int i = 0; i < 3; i++) {
             if (attOffsStr.length > i) {
@@ -72,33 +76,40 @@ public class NEDFromBodyProjection extends PlotProcessor {
 
     @Override
     public void process(double time, Map<String, Object> update) {
-        int seriesIdx = 0;
+        boolean act = false;
+
         Number roll = (Number) update.get(param_Fields_Att[0]);
         Number pitch = (Number) update.get(param_Fields_Att[1]);
         Number yaw = (Number) update.get(param_Fields_Att[2]);
-        boolean act = false;
+
         if (roll != null && pitch != null && yaw != null) {
             // Update rotation matrix
-            r = RotationConversion.rotationMatrixByEulerAngles(roll.doubleValue() + param_Att_Offsets[0],
-                    pitch.doubleValue() + param_Att_Offsets[1], yaw.doubleValue() + param_Att_Offsets[2]);
+            r.set(RotationConversion.rotationMatrixByEulerAngles(roll.doubleValue() + param_Att_Offsets[0],
+                    pitch.doubleValue() + param_Att_Offsets[1], yaw.doubleValue() + param_Att_Offsets[2]));
             if (param_Backward) {
-                r = r.transpose();
+                r.transpose();
             }
             act = true;
         }
+
         for (int i = 0; i < 3; i++) {
             Number vNum = (Number) update.get(param_Fields[i]);
             if (vNum != null) {
                 // Update source vector
-                v.set(i, vNum.doubleValue());
+                vArr[i] = vNum.doubleValue();
                 act = true;
             }
         }
+        v.set(vArr);
+
         if (act) {
-            Vector vNED = r.multiply(v);
+            vNED.set(v);
+            r.transform(vNED);
+            int seriesIdx = 0;
+            vNED.get(vNEDArr);
             for (int i = 0; i < 3; i++) {
                 if (show[i]) {
-                    double out = lowPassFilters[i].getOutput(time, vNED.get(i));
+                    double out = lowPassFilters[i].getOutput(time, vNEDArr[i]);
                     addPoint(seriesIdx, time, out * param_Scale + param_Offset);
                     seriesIdx++;
                 }
