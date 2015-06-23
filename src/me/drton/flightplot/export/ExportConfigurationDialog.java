@@ -22,6 +22,8 @@ public class ExportConfigurationDialog extends JDialog {
     private JCheckBox exportDataInRange;
     private JLabel exportTimeFromLabel;
     private JLabel exportTimeToLabel;
+    private JTextField altOffsetTextField;
+    private JLabel altOffsetLabel;
 
     private String exportTimeToHold = null;
     private String exportTimeFromHold = null;
@@ -30,6 +32,10 @@ public class ExportConfigurationDialog extends JDialog {
     private ExporterConfiguration exporterConfiguration = new ExporterConfiguration();
     private ReaderConfiguration readerConfiguration = new ReaderConfiguration();
     private ExportData exportData;
+
+    private void createUIComponents() {
+        // TODO: place custom component creation code here
+    }
 
     private class FormatItem {
         String displayName;
@@ -282,6 +288,7 @@ public class ExportConfigurationDialog extends JDialog {
 
     private void updateConfigurationFromDialog() {
         this.exporterConfiguration.setSplitTracksByFlightMode(this.splitTrackByFlightCheckBox.isSelected());
+        this.exporterConfiguration.setAltitudeOffset(Float.valueOf(this.altOffsetTextField.getText()));
         FormatItem item = (FormatItem) this.exportFormat.getSelectedItem();
         this.exporterConfiguration.setExportFormatType(ExportFormatFactory.ExportFormatType.valueOf(item.name));
 

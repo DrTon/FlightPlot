@@ -11,13 +11,11 @@ public class KmlExportFormat implements ExportFormat {
 
     @Override
     public String getFileExtension() {
-        return ".kml";
+        return "kml";
     }
 
     @Override
-    public String getFileExtensionName() {
-        return "KML";
-    }
+    public String getFileExtensionName() { return "KML"; }
 
     @Override
     public TrackExporter getTrackExporter(TrackReader trackReader) {
