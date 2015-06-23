@@ -374,6 +374,7 @@ public class FlightPlot {
         }
         timeMode = Integer.parseInt(preferences.get("TimeMode", "0"));
         timeModeItems[timeMode].setSelected(true);
+        markerCheckBox.setSelected(preferences.getBoolean("ShowMarkers", false));
         this.exportManager.loadPreferences(preferences);
     }
 
@@ -405,6 +406,7 @@ public class FlightPlot {
             }
         }
         preferences.put("TimeMode", Integer.toString(timeMode));
+        preferences.putBoolean("ShowMarkers", markerCheckBox.isSelected());
         this.exportManager.savePreferences(preferences);
         preferences.sync();
     }
