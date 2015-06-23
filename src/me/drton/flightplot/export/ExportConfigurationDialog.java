@@ -309,6 +309,8 @@ public class ExportConfigurationDialog extends JDialog {
                 }
             }
         }
+        this.altOffsetTextField.setText(String.valueOf(this.exporterConfiguration.getAltOffset()));
+
         setSamplesPerSecond(this.readerConfiguration.getSamplesPerSecond());
         this.maxTimeValue.setText(String.format(Locale.ROOT, " (max: %d)", this.exportData.getLogSizeInSeconds()));
         this.exportDataInRange.setSelected(this.readerConfiguration.isExportChartRangeOnly());
