@@ -11,7 +11,7 @@ public class GpxExportFormat implements ExportFormat {
 
     @Override
     public String getFileExtension() {
-        return ".gpx";
+        return "gpx";
     }
 
     @Override
