@@ -19,6 +19,7 @@ import org.jfree.chart.event.ChartChangeEventType;
 import org.jfree.chart.event.ChartChangeListener;
 import org.jfree.chart.plot.PlotOrientation;
 import org.jfree.chart.plot.XYPlot;
+import org.jfree.chart.renderer.AbstractRenderer;
 import org.jfree.chart.renderer.xy.XYLineAndShapeRenderer;
 import org.jfree.data.Range;
 import org.jfree.data.xy.XYSeries;
@@ -104,6 +105,7 @@ public class FlightPlot {
     private List<Map<String, Integer>> seriesIndex = new ArrayList<Map<String, Integer>>();
     private ProcessorPreset editingProcessor = null;
     private List<ProcessorPreset> activeProcessors = new ArrayList<ProcessorPreset>();
+    private Range lastTimeRange = null;
 
     public FlightPlot() {
         preferences = Preferences.userRoot().node(appName);
@@ -244,13 +246,7 @@ public class FlightPlot {
         markerCheckBox.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent actionEvent) {
-                try {
-                    generateSeries();
-                } catch (IOException e) {
-                    e.printStackTrace();
-                } catch (FormatErrorException e) {
-                    e.printStackTrace();
-                }
+                setChartMarkers();
             }
         });
     }
@@ -474,7 +470,12 @@ public class FlightPlot {
         NumberAxis rangeAxis = (NumberAxis) plot.getRangeAxis();
         rangeAxis.setAutoRangeIncludesZero(false);
 
-        chartPanel = new ChartPanel(jFreeChart, false);
+        chartPanel = new ChartPanel(jFreeChart, false) {
+            @Override
+            public void mouseDragged(MouseEvent e) {
+                super.mouseDragged(e);
+            }
+        };
         chartPanel.setMouseWheelEnabled(true);
         chartPanel.setMouseZoomable(true, false);
         chartPanel.setPopupMenu(null);
@@ -482,7 +483,11 @@ public class FlightPlot {
             @Override
             public void chartChanged(ChartChangeEvent chartChangeEvent) {
                 if (chartChangeEvent.getType() == ChartChangeEventType.GENERAL) {
-                    processFile();
+                    Range timeRange = jFreeChart.getXYPlot().getDomainAxis().getRange();
+                    if (!timeRange.equals(lastTimeRange)) {
+                        lastTimeRange = timeRange;
+                        processFile();
+                    }
                 }
             }
         });
@@ -656,16 +661,16 @@ public class FlightPlot {
 
         ValueAxis domainAxis = selectDomainAxis(timeMode);
         // Set axis type according to selected time mode
-        jFreeChart.getXYPlot().setDomainAxis(domainAxis);
+        jFreeChart.getXYPlot().setDomainAxis(0, domainAxis, false);
 
         if (domainAxis == domainAxisDate) {
             // DateAxis uses ms instead of seconds
-            domainAxis.setRange(rangeOld.getLowerBound() * 1e3 + timeOffset * 1e-3,
-                    rangeOld.getUpperBound() * 1e3 + timeOffset * 1e-3);
+            domainAxis.setRange(new Range(rangeOld.getLowerBound() * 1e3 + timeOffset * 1e-3,
+                    rangeOld.getUpperBound() * 1e3 + timeOffset * 1e-3), true, false);
             domainAxis.setDefaultAutoRange(new Range(logStart * 1e-3, (logStart + logSize) * 1e-3));
         } else {
-            domainAxis.setRange(rangeOld.getLowerBound() + timeOffset * 1e-6,
-                    rangeOld.getUpperBound() + timeOffset * 1e-6);
+            domainAxis.setRange(new Range(rangeOld.getLowerBound() + timeOffset * 1e-6,
+                    rangeOld.getUpperBound() + timeOffset * 1e-6), true, false);
             domainAxis.setDefaultAutoRange(new Range(logStart * 1e-6, (logStart + logSize) * 1e-6));
         }
     }
@@ -925,7 +930,7 @@ public class FlightPlot {
                     processorSeriesIndex.put(series.getTitle(), dataset.getSeriesCount());
                     XYSeries jseries = new XYSeries(series.getFullTitle(processorTitle), false);
                     for (XYPoint point : series) {
-                        jseries.add(point.x * timeScale, point.y);
+                        jseries.add(point.x * timeScale, point.y, false);
                     }
                     dataset.addSeries(jseries);
                 }
@@ -941,7 +946,7 @@ public class FlightPlot {
             for (int i = 0; i < activeProcessors.size(); i++) {
                 for (Map.Entry<String, Integer> entry : seriesIndex.get(i).entrySet()) {
                     ProcessorPreset processorPreset = activeProcessors.get(i);
-                    jFreeChart.getXYPlot().getRendererForDataset(dataset).setSeriesPaint(entry.getValue(), processorPreset.getColors().get(entry.getKey()));
+                    ((AbstractRenderer) jFreeChart.getXYPlot().getRendererForDataset(dataset)).setSeriesPaint(entry.getValue(), processorPreset.getColors().get(entry.getKey()), false);
                 }
             }
         }
@@ -949,12 +954,15 @@ public class FlightPlot {
 
     private void setChartMarkers() {
         if (dataset.getSeriesCount() > 0) {
-            Shape marker = new Ellipse2D.Double(-1.5,-1.5,3,3);
+            boolean showMarkers = markerCheckBox.isSelected();
+            Shape marker = new Ellipse2D.Double(-1.5, -1.5, 3, 3);
             Object renderer = jFreeChart.getXYPlot().getRendererForDataset(dataset);
             if (renderer instanceof XYLineAndShapeRenderer) {
-                for (int j = 0; j<dataset.getSeriesCount(); j++) {
-                    ((XYLineAndShapeRenderer) renderer).setSeriesShape(j, marker);
-                    ((XYLineAndShapeRenderer) renderer).setSeriesShapesVisible(j, markerCheckBox.isSelected());
+                for (int j = 0; j < dataset.getSeriesCount(); j++) {
+                    if (showMarkers) {
+                        ((XYLineAndShapeRenderer) renderer).setSeriesShape(j, marker, false);
+                    }
+                    ((XYLineAndShapeRenderer) renderer).setSeriesShapesVisible(j, showMarkers);
                 }
             }
         }
