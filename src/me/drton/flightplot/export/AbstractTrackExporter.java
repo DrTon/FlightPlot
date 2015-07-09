@@ -1,9 +1,6 @@
 package me.drton.flightplot.export;
 
-import java.io.File;
-import java.io.FileWriter;
-import java.io.IOException;
-import java.io.Writer;
+import java.io.*;
 import java.lang.reflect.Method;
 
 /**
@@ -21,7 +18,7 @@ public abstract class AbstractTrackExporter implements TrackExporter {
     public void export(TrackReader trackReader, TrackExporterConfiguration config, File file, String title) throws IOException {
         this.trackReader = trackReader;
         this.config = config;
-        this.writer = new FileWriter(file);
+        this.writer = new BufferedWriter(new FileWriter(file));
         this.title = title;
         boolean trackStarted = false;
         try {
@@ -32,8 +29,11 @@ public abstract class AbstractTrackExporter implements TrackExporter {
                     break;
                 }
                 if (!trackStarted || (point.flightMode != null && !point.flightMode.equals(flightMode))) {
+                    if (trackStarted) {
+                        writePoint(point);  // Write this point at the end of previous track to avoid interruption of track
+                        writeTrackPartEnd();
+                    }
                     flightMode = point.flightMode;
-                    trackStarted = true;
                     String trackPartName;
                     if (point.flightMode != null) {
                         trackPartName = String.format("%s: %s", trackPart, point.flightMode);
@@ -42,6 +42,7 @@ public abstract class AbstractTrackExporter implements TrackExporter {
                         trackPartName = "Track";
                     }
                     writeTrackPartStart(trackPartName);
+                    trackStarted = true;
                 }
                 writePoint(point);
             }

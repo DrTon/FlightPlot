@@ -76,7 +76,7 @@ public class KMLTrackExporter extends AbstractTrackExporter {
         writer.write("<name>" + trackPartName + "</name>\n");
         writer.write("<description></description>\n");
         writer.write("<styleUrl>#" + styleId + "</styleUrl>\n");
-        writer.write("<gx:Track id=\"ID\">\n");
+        writer.write("<gx:Track id=\"" + trackPartName + "\">\n");
         writer.write("<altitudeMode>absolute</altitudeMode>\n");
         writer.write("<gx:interpolate>0</gx:interpolate>\n");
     }
