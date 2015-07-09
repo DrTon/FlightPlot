@@ -10,9 +10,9 @@ import java.io.IOException;
  * Created by ada on 24.12.13.
  */
 public class TrackReaderFactory {
-    public static TrackReader getTrackReader(LogReader reader) throws IOException, FormatErrorException {
+    public static TrackReader getTrackReader(LogReader reader, TrackReaderConfiguration config) throws IOException, FormatErrorException {
         if (reader instanceof PX4LogReader) {
-            return new PX4TrackReader((PX4LogReader) reader);
+            return new PX4TrackReader((PX4LogReader) reader, config);
         } else {
             throw new UnsupportedOperationException(
                     String.format("No track reader for this %s available.", reader.getClass()));

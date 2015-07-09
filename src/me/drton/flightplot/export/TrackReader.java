@@ -8,7 +8,6 @@ import java.io.IOException;
  * Created by ada on 24.12.13.
  */
 public interface TrackReader {
-
     /**
      * Reads next track point from LogReader.
      *
@@ -17,11 +16,4 @@ public interface TrackReader {
      * @throws FormatErrorException
      */
     TrackPoint readNextPoint() throws IOException, FormatErrorException;
-
-    /**
-     * Reset reader to start of log.
-     */
-    void reset() throws IOException, FormatErrorException;
-
-    void setConfiguration(ReaderConfiguration configuration) throws ConfigurationException;
 }

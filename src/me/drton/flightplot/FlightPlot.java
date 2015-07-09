@@ -1,7 +1,9 @@
 package me.drton.flightplot;
 
-import me.drton.flightplot.export.ExportData;
-import me.drton.flightplot.export.ExportManager;
+import me.drton.flightplot.export.GPXTrackExporter;
+import me.drton.flightplot.export.KMLTrackExporter;
+import me.drton.flightplot.export.TrackExportDialog;
+import me.drton.flightplot.export.TrackExporter;
 import me.drton.flightplot.processors.PlotProcessor;
 import me.drton.flightplot.processors.ProcessorsList;
 import me.drton.flightplot.processors.Simple;
@@ -97,7 +99,7 @@ public class FlightPlot {
     private FileNameExtensionFilter presetExtensionFilter = new FileNameExtensionFilter("FlightPlot Presets (*.fplot)",
             "fplot");
     private AtomicBoolean invokeProcessFile = new AtomicBoolean(false);
-    private ExportManager exportManager = new ExportManager();
+    private TrackExportDialog exportDialog;
     private PreferencesUtil preferencesUtil = new PreferencesUtil();
     private NumberAxis domainAxisSeconds;
     private DateAxis domainAxisDate;
@@ -108,6 +110,15 @@ public class FlightPlot {
     private Range lastTimeRange = null;
 
     public FlightPlot() {
+        Map<String, TrackExporter> exporters = new LinkedHashMap<String, TrackExporter>();
+        for (TrackExporter exporter : new TrackExporter[]{
+                new KMLTrackExporter(),
+                new GPXTrackExporter()
+        }) {
+            exporters.put(exporter.getName(), exporter);
+        }
+        exportDialog = new TrackExportDialog(exporters);
+
         preferences = Preferences.userRoot().node(appName);
         mainFrame = new JFrame(appNameAndVersion);
         mainFrame.setContentPane(mainPanel);
@@ -371,7 +382,7 @@ public class FlightPlot {
         timeMode = Integer.parseInt(preferences.get("TimeMode", "0"));
         timeModeItems[timeMode].setSelected(true);
         markerCheckBox.setSelected(preferences.getBoolean("ShowMarkers", false));
-        this.exportManager.loadPreferences(preferences);
+        exportDialog.loadPreferences(preferences);
     }
 
     private void savePreferences() throws BackingStoreException {
@@ -403,7 +414,7 @@ public class FlightPlot {
         }
         preferences.put("TimeMode", Integer.toString(timeMode));
         preferences.putBoolean("ShowMarkers", markerCheckBox.isSelected());
-        this.exportManager.savePreferences(preferences);
+        exportDialog.savePreferences(preferences);
         preferences.sync();
     }
 
@@ -675,6 +686,12 @@ public class FlightPlot {
         }
     }
 
+    /**
+     * Displayed log range in seconds of native log time
+     *
+     * @param tm time mode
+     * @return displayed log range [s]
+     */
     private Range getLogRange(int tm) {
         Range range = selectDomainAxis(tm).getRange();
         if (tm == TIME_MODE_GPS) {
@@ -787,28 +804,14 @@ public class FlightPlot {
     }
 
     public void exportTrack() {
-        if (null == this.logReader) {
+        if (logReader == null) {
             JOptionPane.showMessageDialog(mainFrame, "Log file must be opened first.", "Error",
                     JOptionPane.ERROR_MESSAGE);
             return;
         }
 
         try {
-            ExportData data = new ExportData();
-            Range timeAxisRange = jFreeChart.getXYPlot().getDomainAxis().getRange();
-            data.setChartRangeFrom((long) (timeAxisRange.getLowerBound() * 1000000));
-            data.setChartRangeTo((long) (timeAxisRange.getUpperBound() * 1000000));
-            data.setLogReader(this.logReader);
-
-            boolean exportStarted = this.exportManager.export(data, new Runnable() {
-                @Override
-                public void run() {
-                    showExportTrackStatusMessage(FlightPlot.this.exportManager.getLastStatusMessage());
-                }
-            });
-            if (exportStarted) {
-                showExportTrackStatusMessage("Exporting...");
-            }
+            exportDialog.display(logReader, getLogRange(timeMode));
         } catch (Exception e) {
             e.printStackTrace();
             showExportTrackStatusMessage("Track could not be exported.");
