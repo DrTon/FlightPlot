@@ -1,7 +1,7 @@
 package me.drton.flightplot.export;
 
 import me.drton.jmavlib.log.FormatErrorException;
-import me.drton.jmavlib.log.PX4LogReader;
+import me.drton.jmavlib.log.px4.PX4LogReader;
 
 import java.io.EOFException;
 import java.io.IOException;
