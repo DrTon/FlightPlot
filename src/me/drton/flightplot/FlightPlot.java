@@ -34,6 +34,8 @@ import javax.swing.event.TableModelListener;
 import javax.swing.filechooser.FileNameExtensionFilter;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
+import java.awt.dnd.*;
+import java.awt.datatransfer.DataFlavor;
 import java.awt.event.*;
 import java.awt.geom.Ellipse2D;
 import java.io.*;
@@ -119,6 +121,47 @@ public class FlightPlot {
                 onQuit();
             }
         });
+        mainFrame.setDropTarget(new DropTarget() {
+            public synchronized void drop(DropTargetDropEvent evt) {
+                try {
+                    evt.acceptDrop(DnDConstants.ACTION_COPY);
+                    List<File> droppedFiles = (List<File>) evt
+                            .getTransferable().getTransferData(
+                                    DataFlavor.javaFileListFlavor);
+
+                    if ( droppedFiles.size() == 1 ) {
+                        File file = droppedFiles.get(0);
+                        if (logReader != null) {
+                            try {
+                                logReader.close();
+                            } catch (IOException e) {
+                                e.printStackTrace();
+                            }
+                            logReader = null;
+                        }
+                        mainFrame.setTitle(appNameAndVersion + " - " + file.getAbsolutePath());
+                        try {
+                            logReader = new PX4LogReader(file.getAbsolutePath());
+                            logInfo.updateInfo(logReader);
+                        } catch (Exception e) {
+                            logReader = null;
+                            setStatus("Error: " + e);
+                            e.printStackTrace();
+                        }
+                        fieldsListDialog.setFieldsList(logReader.getFields());
+                        onTimeModeChanged();
+                        jFreeChart.getXYPlot().getDomainAxis().setAutoRange(true);
+                        jFreeChart.getXYPlot().getRangeAxis().setAutoRange(true);
+                        processFile();
+                    }
+
+
+                } catch (Exception ex) {
+                    ex.printStackTrace();
+                }
+            }
+        });
+
         mainFrame.pack();
         createMenuBar();
         java.util.List<String> processors = new ArrayList<String>(processorsTypesList.getProcessorsList());
