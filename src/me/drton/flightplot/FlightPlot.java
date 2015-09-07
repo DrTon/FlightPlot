@@ -223,11 +223,6 @@ public class FlightPlot {
             }
         };
         parametersTableModel.addTableModelListener(parameterChangedListener);
-        try {
-            loadPreferences();
-        } catch (BackingStoreException e) {
-            e.printStackTrace();
-        }
         presetComboBox.setMaximumRowCount(20);
         presetComboBox.addActionListener(new ActionListener() {
             @Override
@@ -242,13 +237,18 @@ public class FlightPlot {
                 onDeletePreset();
             }
         });
-        mainFrame.setVisible(true);
         markerCheckBox.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent actionEvent) {
                 setChartMarkers();
             }
         });
+        mainFrame.setVisible(true);
+        try {
+            loadPreferences();
+        } catch (BackingStoreException e) {
+            e.printStackTrace();
+        }
     }
 
     public static void main(String[] args)

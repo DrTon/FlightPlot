@@ -19,9 +19,10 @@ public class PreferencesUtil {
 
     public void loadWindowPreferences(Component window, Preferences windowPreferences, int defaultWidth,
                                       int defaultHeight) {
-        if (defaultWidth > 0)
+        if (defaultWidth > 0) {
             window.setSize(windowPreferences.getInt("Width", defaultWidth),
                     windowPreferences.getInt("Height", defaultHeight));
+        }
         window.setLocation(windowPreferences.getInt("X", 0), windowPreferences.getInt("Y", 0));
     }
 }
