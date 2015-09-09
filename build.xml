@@ -49,8 +49,9 @@
         <jarbundler dir="out/production" name="FlightPlot" mainclass="me.drton.flightplot.FlightPlot"
                     jar="out/production/flightplot.jar" version="0.2.15"
                     vmoptions="-Dapple.eawt.quitStrategy=CLOSE_ALL_WINDOWS -Djava.ext.dirs="
-                    stubfile="lib/JavaApplicationStub"
+                    stubfile="lib/universalJavaApplicationStub"
                     jvmversion="1.6+"
+                    useJavaXKey="true"
                     hirescapable="true"
                 />
     </target>

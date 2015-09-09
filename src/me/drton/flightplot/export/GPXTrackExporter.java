@@ -7,13 +7,9 @@ import java.util.Locale;
 /**
  * Created by ada on 16.02.14.
  */
-public class GpxTrackExporter extends AbstractTrackExporter {
+public class GPXTrackExporter extends AbstractTrackExporter {
 
     private final SimpleDateFormat dateFormatter = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'");
-
-    public GpxTrackExporter(TrackReader trackReader) {
-        super(trackReader);
-    }
 
     protected void writeStart() throws IOException {
         writer.write("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n");
@@ -26,23 +22,40 @@ public class GpxTrackExporter extends AbstractTrackExporter {
         writer.write("<trk>\n");
     }
 
-    protected void startTrackPart() throws IOException {
+    @Override
+    protected void writeTrackPartStart(String trackPartName) throws IOException {
         writer.write("<trkseg>\n");
     }
 
+    @Override
     protected void writePoint(TrackPoint point) throws IOException {
         writer.write(String.format(Locale.ROOT, "<trkpt lat=\"%.10f\" lon=\"%.10f\">\n", point.lat, point.lon));
         writer.write(String.format(Locale.ROOT, "<ele>%.2f</ele>\n", point.alt));
-        writer.write(String.format("<time>%s</time>\n", dateFormatter.format(point.time)));
+        writer.write(String.format("<time>%s</time>\n", dateFormatter.format(point.time / 1000)));
         writer.write("</trkpt>\n");
     }
 
-    protected void endTrackPart() throws IOException {
+    protected void writeTrackPartEnd() throws IOException {
         writer.write("</trkseg>\n");
     }
 
     protected void writeEnd() throws IOException {
         writer.write("</trk>\n");
         writer.write("</gpx>\n");
+    }
+
+    @Override
+    public String getName() {
+        return "GPX";
+    }
+
+    @Override
+    public String getDescription() {
+        return "GPS Exchange Format (GPX)";
+    }
+
+    @Override
+    public String getFileExtension() {
+        return "gpx";
     }
 }

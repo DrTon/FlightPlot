@@ -1,7 +1,9 @@
 package me.drton.flightplot;
 
-import me.drton.flightplot.export.ExportData;
-import me.drton.flightplot.export.ExportManager;
+import me.drton.flightplot.export.GPXTrackExporter;
+import me.drton.flightplot.export.KMLTrackExporter;
+import me.drton.flightplot.export.TrackExportDialog;
+import me.drton.flightplot.export.TrackExporter;
 import me.drton.flightplot.processors.PlotProcessor;
 import me.drton.flightplot.processors.ProcessorsList;
 import me.drton.flightplot.processors.Simple;
@@ -20,6 +22,8 @@ import org.jfree.chart.event.ChartChangeEventType;
 import org.jfree.chart.event.ChartChangeListener;
 import org.jfree.chart.plot.PlotOrientation;
 import org.jfree.chart.plot.XYPlot;
+import org.jfree.chart.renderer.AbstractRenderer;
+import org.jfree.chart.renderer.xy.XYLineAndShapeRenderer;
 import org.jfree.data.Range;
 import org.jfree.data.xy.XYSeries;
 import org.jfree.data.xy.XYSeriesCollection;
@@ -34,6 +38,7 @@ import javax.swing.filechooser.FileNameExtensionFilter;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
 import java.awt.event.*;
+import java.awt.geom.Ellipse2D;
 import java.io.*;
 import java.nio.charset.Charset;
 import java.text.NumberFormat;
@@ -79,6 +84,7 @@ public class FlightPlot {
     private JComboBox presetComboBox;
     private JButton deletePresetButton;
     private JButton logInfoButton;
+    private JCheckBox markerCheckBox;
     private JRadioButtonMenuItem[] timeModeItems;
     private LogReader logReader = null;
     private XYSeriesCollection dataset;
@@ -93,7 +99,7 @@ public class FlightPlot {
     private FileNameExtensionFilter presetExtensionFilter = new FileNameExtensionFilter("FlightPlot Presets (*.fplot)",
             "fplot");
     private AtomicBoolean invokeProcessFile = new AtomicBoolean(false);
-    private ExportManager exportManager = new ExportManager();
+    private TrackExportDialog exportDialog;
     private PreferencesUtil preferencesUtil = new PreferencesUtil();
     private NumberAxis domainAxisSeconds;
     private DateAxis domainAxisDate;
@@ -101,8 +107,18 @@ public class FlightPlot {
     private List<Map<String, Integer>> seriesIndex = new ArrayList<Map<String, Integer>>();
     private ProcessorPreset editingProcessor = null;
     private List<ProcessorPreset> activeProcessors = new ArrayList<ProcessorPreset>();
+    private Range lastTimeRange = null;
 
     public FlightPlot() {
+        Map<String, TrackExporter> exporters = new LinkedHashMap<String, TrackExporter>();
+        for (TrackExporter exporter : new TrackExporter[]{
+                new KMLTrackExporter(),
+                new GPXTrackExporter()
+        }) {
+            exporters.put(exporter.getName(), exporter);
+        }
+        exportDialog = new TrackExportDialog(exporters);
+
         preferences = Preferences.userRoot().node(appName);
         mainFrame = new JFrame(appNameAndVersion);
         mainFrame.setContentPane(mainPanel);
@@ -233,12 +249,6 @@ public class FlightPlot {
 
         openLogFileChooser.setDialogTitle("Open Log");
 
-        // Load preferences
-        try {
-            loadPreferences();
-        } catch (BackingStoreException e) {
-            e.printStackTrace();
-        }
         presetComboBox.setMaximumRowCount(20);
         presetComboBox.addActionListener(new ActionListener() {
             @Override
@@ -253,7 +263,20 @@ public class FlightPlot {
                 onDeletePreset();
             }
         });
+        markerCheckBox.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent actionEvent) {
+                setChartMarkers();
+            }
+        });
         mainFrame.setVisible(true);
+
+        // Load preferences
+        try {
+            loadPreferences();
+        } catch (BackingStoreException e) {
+            e.printStackTrace();
+        }
     }
 
     public static void main(String[] args)
@@ -376,7 +399,8 @@ public class FlightPlot {
         }
         timeMode = Integer.parseInt(preferences.get("TimeMode", "0"));
         timeModeItems[timeMode].setSelected(true);
-        this.exportManager.loadPreferences(preferences);
+        markerCheckBox.setSelected(preferences.getBoolean("ShowMarkers", false));
+        exportDialog.loadPreferences(preferences);
     }
 
     private void savePreferences() throws BackingStoreException {
@@ -408,7 +432,8 @@ public class FlightPlot {
             }
         }
         preferences.put("TimeMode", Integer.toString(timeMode));
-        this.exportManager.savePreferences(preferences);
+        preferences.putBoolean("ShowMarkers", markerCheckBox.isSelected());
+        exportDialog.savePreferences(preferences);
         preferences.sync();
     }
 
@@ -443,6 +468,9 @@ public class FlightPlot {
         plot.setDomainGridlinePaint(Color.LIGHT_GRAY);
         plot.setRangeGridlinePaint(Color.LIGHT_GRAY);
 
+        final XYLineAndShapeRenderer renderer = new XYLineAndShapeRenderer(true, false);
+        plot.setRenderer(renderer);
+
         // Domain (X) axis - seconds
         domainAxisSeconds = new NumberAxis("T") {
             // Use default auto range to adjust range
@@ -472,7 +500,12 @@ public class FlightPlot {
         NumberAxis rangeAxis = (NumberAxis) plot.getRangeAxis();
         rangeAxis.setAutoRangeIncludesZero(false);
 
-        chartPanel = new ChartPanel(jFreeChart, false);
+        chartPanel = new ChartPanel(jFreeChart, false) {
+            @Override
+            public void mouseDragged(MouseEvent e) {
+                super.mouseDragged(e);
+            }
+        };
         chartPanel.setMouseWheelEnabled(true);
         chartPanel.setMouseZoomable(true, false);
         chartPanel.setPopupMenu(null);
@@ -480,7 +513,11 @@ public class FlightPlot {
             @Override
             public void chartChanged(ChartChangeEvent chartChangeEvent) {
                 if (chartChangeEvent.getType() == ChartChangeEventType.GENERAL) {
-                    processFile();
+                    Range timeRange = jFreeChart.getXYPlot().getDomainAxis().getRange();
+                    if (!timeRange.equals(lastTimeRange)) {
+                        lastTimeRange = timeRange;
+                        processFile();
+                    }
                 }
             }
         });
@@ -654,20 +691,26 @@ public class FlightPlot {
 
         ValueAxis domainAxis = selectDomainAxis(timeMode);
         // Set axis type according to selected time mode
-        jFreeChart.getXYPlot().setDomainAxis(domainAxis);
+        jFreeChart.getXYPlot().setDomainAxis(0, domainAxis, false);
 
         if (domainAxis == domainAxisDate) {
             // DateAxis uses ms instead of seconds
-            domainAxis.setRange(rangeOld.getLowerBound() * 1e3 + timeOffset * 1e-3,
-                    rangeOld.getUpperBound() * 1e3 + timeOffset * 1e-3);
+            domainAxis.setRange(new Range(rangeOld.getLowerBound() * 1e3 + timeOffset * 1e-3,
+                    rangeOld.getUpperBound() * 1e3 + timeOffset * 1e-3), true, false);
             domainAxis.setDefaultAutoRange(new Range(logStart * 1e-3, (logStart + logSize) * 1e-3));
         } else {
-            domainAxis.setRange(rangeOld.getLowerBound() + timeOffset * 1e-6,
-                    rangeOld.getUpperBound() + timeOffset * 1e-6);
+            domainAxis.setRange(new Range(rangeOld.getLowerBound() + timeOffset * 1e-6,
+                    rangeOld.getUpperBound() + timeOffset * 1e-6), true, false);
             domainAxis.setDefaultAutoRange(new Range(logStart * 1e-6, (logStart + logSize) * 1e-6));
         }
     }
 
+    /**
+     * Displayed log range in seconds of native log time
+     *
+     * @param tm time mode
+     * @return displayed log range [s]
+     */
     private Range getLogRange(int tm) {
         Range range = selectDomainAxis(tm).getRange();
         if (tm == TIME_MODE_GPS) {
@@ -778,28 +821,14 @@ public class FlightPlot {
     }
 
     public void exportTrack() {
-        if (null == this.logReader) {
+        if (logReader == null) {
             JOptionPane.showMessageDialog(mainFrame, "Log file must be opened first.", "Error",
                     JOptionPane.ERROR_MESSAGE);
             return;
         }
 
         try {
-            ExportData data = new ExportData();
-            Range timeAxisRange = jFreeChart.getXYPlot().getDomainAxis().getRange();
-            data.setChartRangeFrom((long) (timeAxisRange.getLowerBound() * 1000000));
-            data.setChartRangeTo((long) (timeAxisRange.getUpperBound() * 1000000));
-            data.setLogReader(this.logReader);
-
-            boolean exportStarted = this.exportManager.export(data, new Runnable() {
-                @Override
-                public void run() {
-                    showExportTrackStatusMessage(FlightPlot.this.exportManager.getLastStatusMessage());
-                }
-            });
-            if (exportStarted) {
-                showExportTrackStatusMessage("Exporting...");
-            }
+            exportDialog.display(logReader, getLogRange(timeMode));
         } catch (Exception e) {
             e.printStackTrace();
             showExportTrackStatusMessage("Track could not be exported.");
@@ -921,12 +950,13 @@ public class FlightPlot {
                     processorSeriesIndex.put(series.getTitle(), dataset.getSeriesCount());
                     XYSeries jseries = new XYSeries(series.getFullTitle(processorTitle), false);
                     for (XYPoint point : series) {
-                        jseries.add(point.x * timeScale, point.y);
+                        jseries.add(point.x * timeScale, point.y, false);
                     }
                     dataset.addSeries(jseries);
                 }
             }
             setChartColors();
+            setChartMarkers();
         }
         chartPanel.repaint();
     }
@@ -936,7 +966,23 @@ public class FlightPlot {
             for (int i = 0; i < activeProcessors.size(); i++) {
                 for (Map.Entry<String, Integer> entry : seriesIndex.get(i).entrySet()) {
                     ProcessorPreset processorPreset = activeProcessors.get(i);
-                    jFreeChart.getXYPlot().getRendererForDataset(dataset).setSeriesPaint(entry.getValue(), processorPreset.getColors().get(entry.getKey()));
+                    ((AbstractRenderer) jFreeChart.getXYPlot().getRendererForDataset(dataset)).setSeriesPaint(entry.getValue(), processorPreset.getColors().get(entry.getKey()), false);
+                }
+            }
+        }
+    }
+
+    private void setChartMarkers() {
+        if (dataset.getSeriesCount() > 0) {
+            boolean showMarkers = markerCheckBox.isSelected();
+            Shape marker = new Ellipse2D.Double(-1.5, -1.5, 3, 3);
+            Object renderer = jFreeChart.getXYPlot().getRendererForDataset(dataset);
+            if (renderer instanceof XYLineAndShapeRenderer) {
+                for (int j = 0; j < dataset.getSeriesCount(); j++) {
+                    if (showMarkers) {
+                        ((XYLineAndShapeRenderer) renderer).setSeriesShape(j, marker, false);
+                    }
+                    ((XYLineAndShapeRenderer) renderer).setSeriesShapesVisible(j, showMarkers);
                 }
             }
         }

@@ -1,7 +1,7 @@
 package me.drton.flightplot.export;
 
 import me.drton.jmavlib.log.FormatErrorException;
-import me.drton.jmavlib.log.px4.PX4LogReader;
+import me.drton.jmavlib.log.LogReader;
 
 import java.io.EOFException;
 import java.io.IOException;
@@ -11,61 +11,30 @@ import java.util.Map;
  * Created by ada on 23.12.13.
  */
 public abstract class AbstractTrackReader implements TrackReader {
+    protected final LogReader reader;
+    private long timeNext = 0;
+    protected final TrackReaderConfiguration config;
 
-    private final PX4LogReader reader;
-    private long nextMinTime = 0;
-    private long timeGap = 0;
-    private long endTime = 0;
-    private ReaderConfiguration configuration = new ReaderConfiguration();
-
-    public AbstractTrackReader(PX4LogReader reader) throws IOException, FormatErrorException {
+    public AbstractTrackReader(LogReader reader, TrackReaderConfiguration config) throws IOException, FormatErrorException {
         this.reader = reader;
-        reset();
-        initFromConfig();
-    }
-
-    public void reset() throws IOException, FormatErrorException {
-        reader.seek(0);
+        this.config = config;
+        this.reader.seek(this.config.getTimeStart());
     }
 
     protected long readUpdate(Map<String, Object> data) throws IOException, FormatErrorException {
-        long logTime = 0;
+        long t;
         while (true) {
-            logTime = this.reader.readUpdate(data);
-            if (logTime > this.endTime) {
+            t = reader.readUpdate(data);
+            if (t > config.getTimeEnd()) {
                 throw new EOFException("Reached configured export limit.");
             }
-            if (logTime >= this.nextMinTime) {
-                if (0 == this.nextMinTime) {
-                    this.nextMinTime = logTime;
+            if (t >= timeNext) {
+                if (timeNext == 0) {
+                    timeNext = t;
                 }
-                this.nextMinTime += this.timeGap;
-                return logTime;
+                timeNext += config.getTimeInterval();
+                return t;
             }
         }
-    }
-
-    @Override
-    public void setConfiguration(ReaderConfiguration configuration) throws ConfigurationException {
-        this.configuration = configuration;
-        try {
-            initFromConfig();
-        } catch (IOException e) {
-            throw new ConfigurationException(e);
-        } catch (FormatErrorException e) {
-            throw new ConfigurationException(e);
-        }
-    }
-
-    protected ReaderConfiguration getConfiguration() {
-        return this.configuration;
-    }
-
-    private void initFromConfig() throws IOException, FormatErrorException {
-        this.timeGap = (long) Math.floor(1000000 / this.configuration.getSamplesPerSecond());
-        if (this.configuration.getTimeFromInSeconds() > 0) {
-            this.reader.seek(this.reader.getStartMicroseconds() + this.configuration.getTimeFromInSeconds() * 1000000);
-        }
-        this.endTime = this.reader.getStartMicroseconds() + this.configuration.getTimeToInSeconds() * 1000000;
     }
 }
