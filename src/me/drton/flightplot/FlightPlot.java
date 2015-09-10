@@ -44,6 +44,7 @@ import java.awt.dnd.DropTargetDropEvent;
 import java.awt.event.*;
 import java.awt.geom.Ellipse2D;
 import java.io.*;
+import java.lang.reflect.InvocationTargetException;
 import java.nio.charset.Charset;
 import java.text.NumberFormat;
 import java.util.*;
@@ -214,7 +215,10 @@ public class FlightPlot {
         processorsList.getSelectionModel().addListSelectionListener(new ListSelectionListener() {
             @Override
             public void valueChanged(ListSelectionEvent listSelectionEvent) {
-                showProcessorParameters();
+                // If processor changed during editing skip this event to avoid inconsistent editor state
+                if (editingProcessor == null) {
+                    showProcessorParameters();
+                }
             }
         });
         processorsList.getInputMap(JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT).put(KeyStroke.getKeyStroke(KeyEvent.VK_ENTER, 0), "Enter");
@@ -249,6 +253,7 @@ public class FlightPlot {
                 if (e.getType() == TableModelEvent.UPDATE) {
                     int row = e.getFirstRow();
                     onParameterChanged(row);
+                    editingProcessor = null;
                 }
             }
         };
@@ -460,7 +465,7 @@ public class FlightPlot {
         processorsListModel.setRowCount(0);
         for (ProcessorPreset pp : preset.getProcessorPresets()) {
             updatePresetParameters(pp, null);
-            processorsListModel.addRow(new Object[]{true, pp});
+            processorsListModel.addRow(new Object[]{true, pp.clone()});
         }
         updateUsedColors();
     }
@@ -468,7 +473,7 @@ public class FlightPlot {
     private Preset formatPreset(String title) {
         List<ProcessorPreset> processorPresets = new ArrayList<ProcessorPreset>();
         for (int i = 0; i < processorsListModel.getRowCount(); i++) {
-            processorPresets.add((ProcessorPreset) processorsListModel.getValueAt(i, 1));
+            processorPresets.add(((ProcessorPreset) processorsListModel.getValueAt(i, 1)).clone());
         }
         return new Preset(title, processorPresets);
     }
@@ -757,7 +762,7 @@ public class FlightPlot {
 
     private void openLog(String logFileName) {
         String logFileNameLower = logFileName.toLowerCase();
-        LogReader logReaderNew = null;
+        LogReader logReaderNew;
         try {
             if (logFileNameLower.endsWith(".bin") || logFileNameLower.endsWith(".px4log")) {
                 logReaderNew = new PX4LogReader(logFileName);
@@ -913,7 +918,7 @@ public class FlightPlot {
         }
     }
 
-    private void generateSeries() throws IOException, FormatErrorException {
+    private void generateSeries() throws IOException, FormatErrorException, InvocationTargetException, NoSuchMethodException, InstantiationException, IllegalAccessException {
         activeProcessors.clear();
         for (int row = 0; row < processorsListModel.getRowCount(); row++) {
             if ((Boolean) processorsListModel.getValueAt(row, 0)) {
@@ -945,13 +950,9 @@ public class FlightPlot {
             for (int i = 0; i < activeProcessors.size(); i++) {
                 ProcessorPreset pp = activeProcessors.get(i);
                 PlotProcessor processor;
-                try {
-                    processor = processorsTypesList.getProcessorInstance(pp, skip, logReader.getFields());
-                    processor.setFieldsList(logReader.getFields());
-                    processors[i] = processor;
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
+                processor = processorsTypesList.getProcessorInstance(pp, skip, logReader.getFields());
+                processor.setFieldsList(logReader.getFields());
+                processors[i] = processor;
             }
             logReader.seek(timeStart);
             Map<String, Object> data = new HashMap<String, Object>();
@@ -995,7 +996,8 @@ public class FlightPlot {
             for (int i = 0; i < activeProcessors.size(); i++) {
                 for (Map.Entry<String, Integer> entry : seriesIndex.get(i).entrySet()) {
                     ProcessorPreset processorPreset = activeProcessors.get(i);
-                    ((AbstractRenderer) jFreeChart.getXYPlot().getRendererForDataset(dataset)).setSeriesPaint(entry.getValue(), processorPreset.getColors().get(entry.getKey()), false);
+                    AbstractRenderer renderer = (AbstractRenderer) jFreeChart.getXYPlot().getRendererForDataset(dataset);
+                    renderer.setSeriesPaint(entry.getValue(), processorPreset.getColors().get(entry.getKey()), true);
                 }
             }
         }
@@ -1139,21 +1141,21 @@ public class FlightPlot {
     }
 
     private void onParameterChanged(int row) {
-        if (editingProcessor != null) {
-            // TODO bug here, need to use editingProcessor, not parametersTableModel, that may be already invalid
+        if (editingProcessor != null && editingProcessor == getSelectedProcessor()) {
             String key = parametersTableModel.getValueAt(row, 0).toString();
             Object value = parametersTableModel.getValueAt(row, 1);
             if (value instanceof Color) {
                 editingProcessor.getColors().put(key.substring(colorParamPrefix.length(), key.length()), (Color) value);
                 setChartColors();
-            } else {
-                try {
-                    updatePresetParameters(editingProcessor, Collections.<String, Object>singletonMap(key, value.toString()));
-                    updatePresetEdited(true);
-                } catch (Exception e) {
-                    e.printStackTrace();
-                    setStatus("Error: " + e);
-                }
+            }
+            try {
+                updatePresetParameters(editingProcessor, Collections.<String, Object>singletonMap(key, value.toString()));
+                updatePresetEdited(true);
+            } catch (Exception e) {
+                e.printStackTrace();
+                setStatus("Error: " + e);
+            }
+            if (!(value instanceof Color)) {
                 parametersTableModel.removeTableModelListener(parameterChangedListener);
                 showProcessorParameters(); // refresh all parameters because changing one param might influence others (e.g. color)
                 parametersTableModel.addTableModelListener(parameterChangedListener);

@@ -4,9 +4,7 @@ import org.json.JSONObject;
 
 import java.awt.*;
 import java.io.IOException;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.Map;
+import java.util.*;
 
 /**
  * User: ton Date: 22.06.13 Time: 15:08
@@ -83,6 +81,29 @@ public class ProcessorPreset {
         }
         json.put("Colors", new JSONObject(jsonColors));
         return json;
+    }
+
+    public Map.Entry<String, Object> getParameter(int i) {
+        java.util.List<Map.Entry> paramEntries = new ArrayList<Map.Entry>(parameters.entrySet());
+        Collections.sort(paramEntries, new Comparator<Map.Entry>() {
+            @Override
+            public int compare(Map.Entry o1, Map.Entry o2) {
+                return ((String) o1.getKey()).compareTo((String) o2.getKey());
+            }
+        });
+        java.util.List<Map.Entry> colorsEntries = new ArrayList<Map.Entry>(colors.entrySet());
+        Collections.sort(paramEntries, new Comparator<Map.Entry>() {
+            @Override
+            public int compare(Map.Entry o1, Map.Entry o2) {
+                return ((String) o1.getKey()).compareTo((String) o2.getKey());
+            }
+        });
+        paramEntries.addAll(colorsEntries);
+        return paramEntries.get(i);
+    }
+
+    public ProcessorPreset clone() {
+        return new ProcessorPreset(title, processorType, new HashMap<String, Object>(parameters), new HashMap<String, Color>(colors));
     }
 
     @Override
