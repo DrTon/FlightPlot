@@ -1,13 +1,16 @@
 package me.drton.flightplot;
 
-import me.drton.flightplot.export.ExportData;
-import me.drton.flightplot.export.ExportManager;
+import me.drton.flightplot.export.GPXTrackExporter;
+import me.drton.flightplot.export.KMLTrackExporter;
+import me.drton.flightplot.export.TrackExportDialog;
+import me.drton.flightplot.export.TrackExporter;
 import me.drton.flightplot.processors.PlotProcessor;
 import me.drton.flightplot.processors.ProcessorsList;
 import me.drton.flightplot.processors.Simple;
 import me.drton.jmavlib.log.FormatErrorException;
 import me.drton.jmavlib.log.LogReader;
-import me.drton.jmavlib.log.PX4LogReader;
+import me.drton.jmavlib.log.px4.PX4LogReader;
+import me.drton.jmavlib.log.ulog.ULogReader;
 import org.jfree.chart.ChartFactory;
 import org.jfree.chart.ChartPanel;
 import org.jfree.chart.JFreeChart;
@@ -90,16 +93,15 @@ public class FlightPlot {
     private JFreeChart jFreeChart;
     private ColorSupplier colorSupplier;
     private ProcessorsList processorsTypesList;
-    private File lastLogDirectory = null;
     private File lastPresetDirectory = null;
     private AddProcessorDialog addProcessorDialog;
     private FieldsListDialog fieldsListDialog;
     private LogInfo logInfo;
-    private FileNameExtensionFilter logExtensionFilter = new FileNameExtensionFilter("PX4/APM Logs (*.bin, *.px4log)", "bin", "px4log");
+    private JFileChooser openLogFileChooser;
     private FileNameExtensionFilter presetExtensionFilter = new FileNameExtensionFilter("FlightPlot Presets (*.fplot)",
             "fplot");
     private AtomicBoolean invokeProcessFile = new AtomicBoolean(false);
-    private ExportManager exportManager = new ExportManager();
+    private TrackExportDialog exportDialog;
     private PreferencesUtil preferencesUtil = new PreferencesUtil();
     private NumberAxis domainAxisSeconds;
     private DateAxis domainAxisDate;
@@ -110,6 +112,15 @@ public class FlightPlot {
     private Range lastTimeRange = null;
 
     public FlightPlot() {
+        Map<String, TrackExporter> exporters = new LinkedHashMap<String, TrackExporter>();
+        for (TrackExporter exporter : new TrackExporter[]{
+                new KMLTrackExporter(),
+                new GPXTrackExporter()
+        }) {
+            exporters.put(exporter.getName(), exporter);
+        }
+        exportDialog = new TrackExportDialog(exporters);
+
         preferences = Preferences.userRoot().node(appName);
         mainFrame = new JFrame(appNameAndVersion);
         mainFrame.setContentPane(mainPanel);
@@ -266,11 +277,21 @@ public class FlightPlot {
             }
         };
         parametersTableModel.addTableModelListener(parameterChangedListener);
-        try {
-            loadPreferences();
-        } catch (BackingStoreException e) {
-            e.printStackTrace();
+
+        // Open Log Dialog
+        FileNameExtensionFilter[] logExtensionfilters = new FileNameExtensionFilter[]{
+                new FileNameExtensionFilter("PX4/APM Log (*.px4log, *.bin)", "px4log", "bin"),
+                new FileNameExtensionFilter("ULog (*.ulg)", "ulg")
+        };
+
+        openLogFileChooser = new JFileChooser();
+        for (FileNameExtensionFilter filter : logExtensionfilters) {
+            openLogFileChooser.addChoosableFileFilter(filter);
         }
+        openLogFileChooser.setFileFilter(logExtensionfilters[0]);
+
+        openLogFileChooser.setDialogTitle("Open Log");
+
         presetComboBox.setMaximumRowCount(20);
         presetComboBox.addActionListener(new ActionListener() {
             @Override
@@ -285,13 +306,20 @@ public class FlightPlot {
                 onDeletePreset();
             }
         });
-        mainFrame.setVisible(true);
         markerCheckBox.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent actionEvent) {
                 setChartMarkers();
             }
         });
+        mainFrame.setVisible(true);
+
+        // Load preferences
+        try {
+            loadPreferences();
+        } catch (BackingStoreException e) {
+            e.printStackTrace();
+        }
     }
 
     public static void main(String[] args)
@@ -393,7 +421,8 @@ public class FlightPlot {
         preferencesUtil.loadWindowPreferences(logInfo.getFrame(), preferences.node("LogInfoFrame"), 600, 600);
         String logDirectoryStr = preferences.get("LogDirectory", null);
         if (logDirectoryStr != null) {
-            lastLogDirectory = new File(logDirectoryStr);
+            File dir = new File(logDirectoryStr);
+            openLogFileChooser.setCurrentDirectory(dir);
         }
         String presetDirectoryStr = preferences.get("PresetDirectory", null);
         if (presetDirectoryStr != null) {
@@ -414,7 +443,7 @@ public class FlightPlot {
         timeMode = Integer.parseInt(preferences.get("TimeMode", "0"));
         timeModeItems[timeMode].setSelected(true);
         markerCheckBox.setSelected(preferences.getBoolean("ShowMarkers", false));
-        this.exportManager.loadPreferences(preferences);
+        exportDialog.loadPreferences(preferences);
     }
 
     private void savePreferences() throws BackingStoreException {
@@ -426,6 +455,7 @@ public class FlightPlot {
         preferencesUtil.saveWindowPreferences(fieldsListDialog, preferences.node("FieldsListDialog"));
         preferencesUtil.saveWindowPreferences(addProcessorDialog, preferences.node("AddProcessorDialog"));
         preferencesUtil.saveWindowPreferences(logInfo.getFrame(), preferences.node("LogInfoFrame"));
+        File lastLogDirectory = openLogFileChooser.getCurrentDirectory();
         if (lastLogDirectory != null) {
             preferences.put("LogDirectory", lastLogDirectory.getAbsolutePath());
         }
@@ -446,7 +476,7 @@ public class FlightPlot {
         }
         preferences.put("TimeMode", Integer.toString(timeMode));
         preferences.putBoolean("ShowMarkers", markerCheckBox.isSelected());
-        this.exportManager.savePreferences(preferences);
+        exportDialog.savePreferences(preferences);
         preferences.sync();
     }
 
@@ -718,6 +748,12 @@ public class FlightPlot {
         }
     }
 
+    /**
+     * Displayed log range in seconds of native log time
+     *
+     * @param tm time mode
+     * @return displayed log range [s]
+     */
     private Range getLogRange(int tm) {
         Range range = selectDomainAxis(tm).getRange();
         if (tm == TIME_MODE_GPS) {
@@ -735,16 +771,9 @@ public class FlightPlot {
     }
 
     public void showOpenLogDialog() {
-        JFileChooser fc = new JFileChooser();
-        if (lastLogDirectory != null) {
-            fc.setCurrentDirectory(lastLogDirectory);
-        }
-        fc.setFileFilter(logExtensionFilter);
-        fc.setDialogTitle("Open Log");
-        int returnVal = fc.showDialog(mainFrame, "Open");
+        int returnVal = openLogFileChooser.showDialog(mainFrame, "Open");
         if (returnVal == JFileChooser.APPROVE_OPTION) {
-            lastLogDirectory = fc.getCurrentDirectory();
-            File file = fc.getSelectedFile();
+            File file = openLogFileChooser.getSelectedFile();
             String logFileName = file.getPath();
             mainFrame.setTitle(appNameAndVersion + " - " + logFileName);
             if (logReader != null) {
@@ -756,7 +785,12 @@ public class FlightPlot {
                 logReader = null;
             }
             try {
-                logReader = new PX4LogReader(logFileName);
+                String logFileNameLower = logFileName.toLowerCase();
+                if (logFileNameLower.endsWith(".bin") || logFileNameLower.endsWith(".px4log")) {
+                    logReader = new PX4LogReader(logFileName);
+                } else if (logFileNameLower.endsWith(".ulg")) {
+                    logReader = new ULogReader(logFileName);
+                }
                 logInfo.updateInfo(logReader);
             } catch (Exception e) {
                 logReader = null;
@@ -830,28 +864,14 @@ public class FlightPlot {
     }
 
     public void exportTrack() {
-        if (null == this.logReader) {
+        if (logReader == null) {
             JOptionPane.showMessageDialog(mainFrame, "Log file must be opened first.", "Error",
                     JOptionPane.ERROR_MESSAGE);
             return;
         }
 
         try {
-            ExportData data = new ExportData();
-            Range timeAxisRange = jFreeChart.getXYPlot().getDomainAxis().getRange();
-            data.setChartRangeFrom((long) (timeAxisRange.getLowerBound() * 1000000));
-            data.setChartRangeTo((long) (timeAxisRange.getUpperBound() * 1000000));
-            data.setLogReader(this.logReader);
-
-            boolean exportStarted = this.exportManager.export(data, new Runnable() {
-                @Override
-                public void run() {
-                    showExportTrackStatusMessage(FlightPlot.this.exportManager.getLastStatusMessage());
-                }
-            });
-            if (exportStarted) {
-                showExportTrackStatusMessage("Exporting...");
-            }
+            exportDialog.display(logReader, getLogRange(timeMode));
         } catch (Exception e) {
             e.printStackTrace();
             showExportTrackStatusMessage("Track could not be exported.");
@@ -1134,6 +1154,7 @@ public class FlightPlot {
 
     private void onParameterChanged(int row) {
         if (editingProcessor != null) {
+            // TODO bug here, need to use editingProcessor, not parametersTableModel, that may be already invalid
             String key = parametersTableModel.getValueAt(row, 0).toString();
             Object value = parametersTableModel.getValueAt(row, 1);
             if (value instanceof Color) {

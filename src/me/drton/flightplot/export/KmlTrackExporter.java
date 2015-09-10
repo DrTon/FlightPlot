@@ -7,52 +7,37 @@ import java.util.Locale;
 /**
  * Created by ada on 23.12.13.
  */
-public class KmlTrackExporter extends AbstractTrackExporter implements FlightModeChangeListener {
-
-    private static final String LINE_STYLE_YELLOW = "yellow";
-    private static final String LINE_STYLE_BLUE = "blue";
+public class KMLTrackExporter extends AbstractTrackExporter {
     private static final String LINE_STYLE_RED = "red";
-
-    private int nextTrackNumber = 1;
+    private static final String LINE_STYLE_GREEN = "green";
+    private static final String LINE_STYLE_BLUE = "blue";
+    private static final String LINE_STYLE_CYAN = "cyan";
+    private static final String LINE_STYLE_MAGENTA = "magenta";
+    private static final String LINE_STYLE_YELLOW = "yellow";
     private final SimpleDateFormat dateFormatter = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'");
 
-    public KmlTrackExporter(TrackReader trackReader) {
-        super(trackReader);
-    }
-
-    @Override
-    public void flightModeChanged(FlightMode newFlightMode) {
-        try {
-            splitTrack(newFlightMode);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
-
-    private void splitTrack(FlightMode newFlightMode) throws IOException {
-        if (getConfiguration().isSplitTracksByFlightMode()) {
-            if (this.trackStarted) {
-                endTrackPart();
-                startTrackPart(determineStyleByFlightMode(newFlightMode));
-            } else {
-                startTrackPart(determineStyleByFlightMode(newFlightMode));
-                this.trackStarted = true;
-            }
-        }
-    }
-
-    protected String determineStyleByFlightMode(FlightMode flightMode) {
-        if (null == flightMode) {
+    protected String getStyleForFlightMode(String flightMode) {
+        if (flightMode == null) {
             return LINE_STYLE_YELLOW;
         }
-        switch (flightMode) {
-            case AUTO:
-                return LINE_STYLE_RED;
-            case STABILIZED:
-                return LINE_STYLE_BLUE;
-            case MANUAL:
-            default:
-                return LINE_STYLE_YELLOW;
+        if ("MANUAL".equals(flightMode)) {
+            return LINE_STYLE_RED;
+        } else if ("ALTCTL".equals(flightMode)) {
+            return LINE_STYLE_YELLOW;
+        } else if ("POSCTL".equals(flightMode)) {
+            return LINE_STYLE_GREEN;
+        } else if ("AUTO_MISSION".equals(flightMode)) {
+            return LINE_STYLE_BLUE;
+        } else if ("AUTO_LOITER".equals(flightMode)) {
+            return LINE_STYLE_CYAN;
+        } else if ("AUTO_RTL".equals(flightMode)) {
+            return LINE_STYLE_MAGENTA;
+        } else if ("AUTO_ACRO".equals(flightMode)) {
+            return LINE_STYLE_RED;
+        } else if ("AUTO_OFFBOARD".equals(flightMode)) {
+            return LINE_STYLE_BLUE;
+        } else {
+            return LINE_STYLE_YELLOW;
         }
     }
 
@@ -83,32 +68,24 @@ public class KmlTrackExporter extends AbstractTrackExporter implements FlightMod
         writer.write("</Style>\n");
     }
 
-    protected void startTrackPart() throws IOException {
-        startTrackPart(LINE_STYLE_YELLOW);
-    }
-
-    protected void startTrackPart(String style) throws IOException {
-        startTrackPart(style, String.format("Part %d", this.nextTrackNumber));
-    }
-
-    protected void startTrackPart(String styleId, String name) throws IOException {
+    @Override
+    protected void writeTrackPartStart(String trackPartName) throws IOException {
+        String styleId = getStyleForFlightMode(flightMode);
         writer.write("<Placemark>\n");
-        writer.write("<name>" + name + "</name>\n");
+        writer.write("<name>" + trackPartName + "</name>\n");
         writer.write("<description></description>\n");
         writer.write("<styleUrl>#" + styleId + "</styleUrl>\n");
-        writer.write("<gx:Track id=\"ID\">\n");
+        writer.write("<gx:Track id=\"" + trackPartName + "\">\n");
         writer.write("<altitudeMode>absolute</altitudeMode>\n");
         writer.write("<gx:interpolate>0</gx:interpolate>\n");
-        this.nextTrackNumber++;
     }
 
     protected void writePoint(TrackPoint point) throws IOException {
-        writer.write(String.format("<when>%s</when>\n", dateFormatter.format(point.time)));
-        writer.write(
-                String.format(Locale.ROOT, "<gx:coord>%.10f %.10f %.2f</gx:coord>\n", point.lon, point.lat, point.alt));
+        writer.write(String.format("<when>%s</when>\n", dateFormatter.format(point.time / 1000)));
+        writer.write(String.format(Locale.ROOT, "<gx:coord>%.10f %.10f %.2f</gx:coord>\n", point.lon, point.lat, point.alt));
     }
 
-    protected void endTrackPart() throws IOException {
+    protected void writeTrackPartEnd() throws IOException {
         writer.write("</gx:Track>\n");
         writer.write("</Placemark>\n");
     }
@@ -116,5 +93,20 @@ public class KmlTrackExporter extends AbstractTrackExporter implements FlightMod
     protected void writeEnd() throws IOException {
         writer.write("</Document>\n");
         writer.write("</kml>");
+    }
+
+    @Override
+    public String getName() {
+        return "KML";
+    }
+
+    @Override
+    public String getDescription() {
+        return "Google Earth Track (KML)";
+    }
+
+    @Override
+    public String getFileExtension() {
+        return "kml";
     }
 }

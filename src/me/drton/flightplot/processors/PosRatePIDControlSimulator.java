@@ -18,7 +18,8 @@ public class PosRatePIDControlSimulator extends PlotProcessor {
     private double accScale;
     private double drag;
     private DelayLine<Double> delayLine = new DelayLine<Double>();
-    private LowPassFilter lpf = new LowPassFilter();
+    private LowPassFilter rateLPF = new LowPassFilter();
+    private LowPassFilter controlLPF = new LowPassFilter();
     private PID pidPos = new PID();
     private PID pidRate = new PID();
     private double pos;
@@ -49,6 +50,7 @@ public class PosRatePIDControlSimulator extends PlotProcessor {
         params.put("Drag", 0.0);
         params.put("Use Rate SP", false);
         params.put("SP Rate FF", 1.0);
+        params.put("Rate LPF", 0.0);
         return params;
     }
 
@@ -68,8 +70,8 @@ public class PosRatePIDControlSimulator extends PlotProcessor {
         spRateFF = (Double) parameters.get("SP Rate FF");
         delayLine.reset();
         delayLine.setDelay((Double) parameters.get("Thrust Delay"));
-        lpf.reset();
-        lpf.setT((Double) parameters.get("Thrust T"));
+        controlLPF.reset();
+        controlLPF.setT((Double) parameters.get("Thrust T"));
         pidPos.reset();
         pidPos.setK((Double) parameters.get("Ctrl P"), 0.0, (Double) parameters.get("Ctrl D"),
                 (Double) parameters.get("Ctrl Limit"), PID.MODE.DERIVATIVE_SET);
@@ -78,6 +80,8 @@ public class PosRatePIDControlSimulator extends PlotProcessor {
                 "Ctrl Rate D SP") ? PID.MODE.DERIVATIVE_CALC : PID.MODE.DERIVATIVE_CALC_NO_SP;
         pidRate.setK((Double) parameters.get("Ctrl Rate P"), (Double) parameters.get("Ctrl Rate I"),
                 (Double) parameters.get("Ctrl Rate D"), (Double) parameters.get("Ctrl Rate Limit"), pidRateMode);
+        rateLPF.reset();
+        rateLPF.setF((Double) parameters.get("Rate LPF"));
         addSeries("Pos");
         addSeries("Rate");
         addSeries("Acc");
@@ -90,7 +94,7 @@ public class PosRatePIDControlSimulator extends PlotProcessor {
         if (update.containsKey("ATT.Roll")) {   // Act only on attitude updates
             if (!Double.isNaN(timePrev)) {
                 double dt = time - timePrev;
-                Double force = delayLine.getOutput(time, lpf.getOutput(time, 0.0));
+                Double force = delayLine.getOutput(time, controlLPF.getOutput(time, 0.0));
                 if (force == null) {
                     force = 0.0;
                 }
@@ -106,14 +110,15 @@ public class PosRatePIDControlSimulator extends PlotProcessor {
                         posSP = startSP;
                     }
                 }
+                double rateMeas = rateLPF.getOutput(time, rate);
                 double rateSP;
                 if (useRateSP) {
                     rateSP = posSP;
                 } else {
-                    rateSP = pidPos.getOutput(posSP - pos, posSPRate - rate, dt) + posSPRate * spRateFF;
+                    rateSP = pidPos.getOutput(posSP - pos, posSPRate - rateMeas, dt) + posSPRate * spRateFF;
                 }
-                double control = pidRate.getOutput(rateSP, rate, 0.0, dt, 1.0);
-                lpf.setInput(control);
+                double control = pidRate.getOutput(rateSP, rateMeas, 0.0, dt, 1.0);
+                controlLPF.setInput(control);
                 addPoint(0, time, pos);
                 addPoint(1, time, rate);
                 if (accScale != 0.0) {
