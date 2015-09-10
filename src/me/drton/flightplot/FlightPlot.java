@@ -10,7 +10,7 @@ import me.drton.flightplot.processors.Simple;
 import me.drton.jmavlib.log.FormatErrorException;
 import me.drton.jmavlib.log.LogReader;
 import me.drton.jmavlib.log.px4.PX4LogReader;
-import me.drton.jmavlib.log.px5.PX5LogReader;
+import me.drton.jmavlib.log.ulog.ULogReader;
 import org.jfree.chart.ChartFactory;
 import org.jfree.chart.ChartPanel;
 import org.jfree.chart.JFreeChart;
@@ -237,8 +237,8 @@ public class FlightPlot {
 
         // Open Log Dialog
         FileNameExtensionFilter[] logExtensionfilters = new FileNameExtensionFilter[]{
-                new FileNameExtensionFilter("PX4/APM Logs (*.px4log, *.bin)", "px4log", "bin"),
-                new FileNameExtensionFilter("PX5 Logs (*.p5l)", "p5l")
+                new FileNameExtensionFilter("PX4/APM Log (*.px4log, *.bin)", "px4log", "bin"),
+                new FileNameExtensionFilter("ULog (*.ulg)", "ulg")
         };
 
         openLogFileChooser = new JFileChooser();
@@ -745,8 +745,8 @@ public class FlightPlot {
                 String logFileNameLower = logFileName.toLowerCase();
                 if (logFileNameLower.endsWith(".bin") || logFileNameLower.endsWith(".px4log")) {
                     logReader = new PX4LogReader(logFileName);
-                } else if (logFileNameLower.endsWith(".p5l")) {
-                    logReader = new PX5LogReader(logFileName);
+                } else if (logFileNameLower.endsWith(".ulg")) {
+                    logReader = new ULogReader(logFileName);
                 }
                 logInfo.updateInfo(logReader);
             } catch (Exception e) {
