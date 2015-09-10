@@ -53,6 +53,7 @@
                     jvmversion="1.6+"
                     useJavaXKey="true"
                     hirescapable="true"
+                    icon="flightplot.icns"
                 />
     </target>
 
