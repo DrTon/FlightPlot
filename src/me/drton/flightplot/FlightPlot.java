@@ -37,8 +37,10 @@ import javax.swing.event.TableModelListener;
 import javax.swing.filechooser.FileNameExtensionFilter;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
-import java.awt.dnd.*;
 import java.awt.datatransfer.DataFlavor;
+import java.awt.dnd.DnDConstants;
+import java.awt.dnd.DropTarget;
+import java.awt.dnd.DropTargetDropEvent;
 import java.awt.event.*;
 import java.awt.geom.Ellipse2D;
 import java.io.*;
@@ -136,37 +138,11 @@ public class FlightPlot {
             public synchronized void drop(DropTargetDropEvent evt) {
                 try {
                     evt.acceptDrop(DnDConstants.ACTION_COPY);
-                    List<File> droppedFiles = (List<File>) evt
-                            .getTransferable().getTransferData(
-                                    DataFlavor.javaFileListFlavor);
-
-                    if ( droppedFiles.size() == 1 ) {
+                    List<File> droppedFiles = (List<File>) evt.getTransferable().getTransferData(DataFlavor.javaFileListFlavor);
+                    if (droppedFiles.size() == 1) {
                         File file = droppedFiles.get(0);
-                        if (logReader != null) {
-                            try {
-                                logReader.close();
-                            } catch (IOException e) {
-                                e.printStackTrace();
-                            }
-                            logReader = null;
-                        }
-                        mainFrame.setTitle(appNameAndVersion + " - " + file.getAbsolutePath());
-                        try {
-                            logReader = new PX4LogReader(file.getAbsolutePath());
-                            logInfo.updateInfo(logReader);
-                        } catch (Exception e) {
-                            logReader = null;
-                            setStatus("Error: " + e);
-                            e.printStackTrace();
-                        }
-                        fieldsListDialog.setFieldsList(logReader.getFields());
-                        onTimeModeChanged();
-                        jFreeChart.getXYPlot().getDomainAxis().setAutoRange(true);
-                        jFreeChart.getXYPlot().getRangeAxis().setAutoRange(true);
-                        processFile();
+                        openLog(file.getAbsolutePath());
                     }
-
-
                 } catch (Exception ex) {
                     ex.printStackTrace();
                 }
@@ -775,34 +751,44 @@ public class FlightPlot {
         if (returnVal == JFileChooser.APPROVE_OPTION) {
             File file = openLogFileChooser.getSelectedFile();
             String logFileName = file.getPath();
-            mainFrame.setTitle(appNameAndVersion + " - " + logFileName);
-            if (logReader != null) {
-                try {
-                    logReader.close();
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-                logReader = null;
+            openLog(logFileName);
+        }
+    }
+
+    private void openLog(String logFileName) {
+        String logFileNameLower = logFileName.toLowerCase();
+        LogReader logReaderNew = null;
+        try {
+            if (logFileNameLower.endsWith(".bin") || logFileNameLower.endsWith(".px4log")) {
+                logReaderNew = new PX4LogReader(logFileName);
+            } else if (logFileNameLower.endsWith(".ulg")) {
+                logReaderNew = new ULogReader(logFileName);
+            } else {
+                setStatus("Log format not supported: " + logFileName);
+                return;
             }
+        } catch (Exception e) {
+            setStatus("Error: " + e);
+            e.printStackTrace();
+            return;
+        }
+
+        mainFrame.setTitle(appNameAndVersion + " - " + logFileName);
+        if (logReader != null) {
             try {
-                String logFileNameLower = logFileName.toLowerCase();
-                if (logFileNameLower.endsWith(".bin") || logFileNameLower.endsWith(".px4log")) {
-                    logReader = new PX4LogReader(logFileName);
-                } else if (logFileNameLower.endsWith(".ulg")) {
-                    logReader = new ULogReader(logFileName);
-                }
-                logInfo.updateInfo(logReader);
-            } catch (Exception e) {
-                logReader = null;
-                setStatus("Error: " + e);
+                logReader.close();
+            } catch (IOException e) {
                 e.printStackTrace();
             }
-            fieldsListDialog.setFieldsList(logReader.getFields());
-            onTimeModeChanged();
-            jFreeChart.getXYPlot().getDomainAxis().setAutoRange(true);
-            jFreeChart.getXYPlot().getRangeAxis().setAutoRange(true);
-            processFile();
+            logReader = null;
         }
+        logReader = logReaderNew;
+        logInfo.updateInfo(logReader);
+        fieldsListDialog.setFieldsList(logReader.getFields());
+        onTimeModeChanged();
+        jFreeChart.getXYPlot().getDomainAxis().setAutoRange(true);
+        jFreeChart.getXYPlot().getRangeAxis().setAutoRange(true);
+        processFile();
     }
 
     public void showImportPresetDialog() {
