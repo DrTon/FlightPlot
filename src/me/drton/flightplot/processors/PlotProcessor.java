@@ -1,9 +1,10 @@
 package me.drton.flightplot.processors;
 
+import me.drton.flightplot.MarkersList;
+import me.drton.flightplot.PlotItem;
 import me.drton.flightplot.Series;
 import me.drton.flightplot.XYPoint;
 
-import java.awt.*;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -17,7 +18,7 @@ public abstract class PlotProcessor {
     protected Map<String, Object> parameters;
     protected Map<String, String> fieldsList = new HashMap<String, String>();
     private double skipOut = 0.0;
-    private List<Series> seriesList = new ArrayList<Series>();
+    private List<PlotItem> seriesList = new ArrayList<PlotItem>();
     private List<XYPoint> lastPoints = new ArrayList<XYPoint>();
 
     protected PlotProcessor() {
@@ -88,12 +89,28 @@ public abstract class PlotProcessor {
         return idx;
     }
 
-    public List<Series> getSeriesList() {
+    protected int addMarkersList() {
+        int idx = seriesList.size();
+        seriesList.add(new MarkersList(""));
+        return idx;
+    }
+
+    protected int addMarkersList(String label) {
+        int idx = seriesList.size();
+        seriesList.add(new MarkersList(label));
+        return idx;
+    }
+
+    public List<PlotItem> getSeriesList() {
         return seriesList;
     }
 
     protected void addPoint(int seriesIdx, double time, double value) {
-        seriesList.get(seriesIdx).addPoint(time, value);
+        ((Series) seriesList.get(seriesIdx)).addPoint(time, value);
+    }
+
+    protected void addMarker(int seriesIdx, double time, String label) {
+        ((MarkersList) seriesList.get(seriesIdx)).addMarker(time, label);
     }
 
     public abstract void process(double time, Map<String, Object> update);

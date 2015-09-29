@@ -21,12 +21,16 @@ import org.jfree.chart.event.ChartChangeEvent;
 import org.jfree.chart.event.ChartChangeEventType;
 import org.jfree.chart.event.ChartChangeListener;
 import org.jfree.chart.plot.PlotOrientation;
+import org.jfree.chart.plot.ValueMarker;
 import org.jfree.chart.plot.XYPlot;
 import org.jfree.chart.renderer.AbstractRenderer;
 import org.jfree.chart.renderer.xy.XYLineAndShapeRenderer;
 import org.jfree.data.Range;
 import org.jfree.data.xy.XYSeries;
 import org.jfree.data.xy.XYSeriesCollection;
+import org.jfree.ui.Layer;
+import org.jfree.ui.RectangleAnchor;
+import org.jfree.ui.TextAnchor;
 import org.json.JSONObject;
 
 import javax.swing.*;
@@ -971,18 +975,35 @@ public class FlightPlot {
                     processor.process((t + timeOffset) * 1e-6, data);
                 }
             }
+            jFreeChart.getXYPlot().clearDomainMarkers();
             for (int i = 0; i < activeProcessors.size(); i++) {
                 PlotProcessor processor = processors[i];
                 String processorTitle = activeProcessors.get(i).getTitle();
                 Map<String, Integer> processorSeriesIndex = new HashMap<String, Integer>();
                 seriesIndex.add(processorSeriesIndex);
-                for (Series series : processor.getSeriesList()) {
-                    processorSeriesIndex.put(series.getTitle(), dataset.getSeriesCount());
-                    XYSeries jseries = new XYSeries(series.getFullTitle(processorTitle), false);
-                    for (XYPoint point : series) {
-                        jseries.add(point.x * timeScale, point.y, false);
+                for (PlotItem item : processor.getSeriesList()) {
+                    if (item instanceof Series) {
+                        Series series = (Series) item;
+                        processorSeriesIndex.put(series.getTitle(), dataset.getSeriesCount());
+                        XYSeries jseries = new XYSeries(series.getFullTitle(processorTitle), false);
+                        for (XYPoint point : series) {
+                            jseries.add(point.x * timeScale, point.y, false);
+                        }
+                        dataset.addSeries(jseries);
+                    } else if (item instanceof MarkersList) {
+                        MarkersList markers = (MarkersList) item;
+                        processorSeriesIndex.put(markers.getTitle(), dataset.getSeriesCount());
+                        XYSeries jseries = new XYSeries(markers.getFullTitle(processorTitle), false);
+                        dataset.addSeries(jseries);
+                        for (Marker marker : markers) {
+                            TaggedValueMarker m = new TaggedValueMarker(i, marker.x * timeScale);
+                            m.setPaint(Color.black);
+                            m.setLabel(marker.label);
+                            m.setLabelAnchor(RectangleAnchor.TOP_RIGHT);
+                            m.setLabelTextAnchor(TextAnchor.TOP_LEFT);
+                            jFreeChart.getXYPlot().addDomainMarker(0, m, Layer.BACKGROUND, false);
+                        }
                     }
-                    dataset.addSeries(jseries);
                 }
             }
             setChartColors();
@@ -993,11 +1014,20 @@ public class FlightPlot {
 
     private void setChartColors() {
         if (dataset.getSeriesCount() > 0) {
+            Collection<ValueMarker> markers = jFreeChart.getXYPlot().getDomainMarkers(0, Layer.BACKGROUND);
             for (int i = 0; i < activeProcessors.size(); i++) {
                 for (Map.Entry<String, Integer> entry : seriesIndex.get(i).entrySet()) {
                     ProcessorPreset processorPreset = activeProcessors.get(i);
                     AbstractRenderer renderer = (AbstractRenderer) jFreeChart.getXYPlot().getRendererForDataset(dataset);
-                    renderer.setSeriesPaint(entry.getValue(), processorPreset.getColors().get(entry.getKey()), true);
+                    Paint color = processorPreset.getColors().get(entry.getKey());
+                    renderer.setSeriesPaint(entry.getValue(), color, true);
+                    if (markers != null) {
+                        for (ValueMarker marker : markers) {
+                            if (((TaggedValueMarker)marker).tag == i) {
+                                marker.setPaint(color);
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -1081,7 +1111,7 @@ public class FlightPlot {
         }
         processorPreset.setParameters(p.getParameters());
         Map<String, Color> colorsNew = new HashMap<String, Color>();
-        for (Series series : p.getSeriesList()) {
+        for (PlotItem series : p.getSeriesList()) {
             Color color = processorPreset.getColors().get(series.getTitle());
             if (color == null) {
                 color = colorSupplier.getNextColor(series.getTitle());
