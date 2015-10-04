@@ -31,10 +31,10 @@ public class EulerFromQuaternion extends PlotProcessor {
         String showStr = ((String) parameters.get("Show")).toUpperCase();
         show = new boolean[]{false, false, false};
         String[] axes = new String[]{"Roll", "Pitch", "Yaw"};
-        for (int i = 0; i < 3; i++) {
-            String axisName = axes[i];
-            show[i] = showStr.contains(axisName.substring(0, 1));
-            if (show[i]) {
+        for (int axis = 0; axis < 3; axis++) {
+            String axisName = axes[axis];
+            show[axis] = showStr.contains(axisName.substring(0, 1));
+            if (show[axis]) {
                 addSeries(axisName);
             }
         }
@@ -53,8 +53,11 @@ public class EulerFromQuaternion extends PlotProcessor {
             q[i] = v.doubleValue();
         }
         double[] euler = RotationConversion.eulerAnglesByQuaternion(q);
+        int plot_idx = 0;
         for (int axis = 0; axis < 3; axis++) {
-            addPoint(axis, time, euler[axis] * param_Scale);
+            if (show[axis]) {
+                addPoint(plot_idx++, time, euler[axis] * param_Scale);
+            }
         }
     }
 }
