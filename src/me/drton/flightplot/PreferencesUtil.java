@@ -8,7 +8,7 @@ import java.util.prefs.Preferences;
  */
 public class PreferencesUtil {
 
-    public void saveWindowPreferences(Component window, Preferences windowPreferences) {
+    public static void saveWindowPreferences(Component window, Preferences windowPreferences) {
         Dimension size = window.getSize();
         windowPreferences.putInt("Width", size.width);
         windowPreferences.putInt("Height", size.height);
@@ -17,7 +17,7 @@ public class PreferencesUtil {
         windowPreferences.putInt("Y", location.y);
     }
 
-    public void loadWindowPreferences(Component window, Preferences windowPreferences, int defaultWidth,
+    public static void loadWindowPreferences(Component window, Preferences windowPreferences, int defaultWidth,
                                       int defaultHeight) {
         if (defaultWidth > 0) {
             window.setSize(windowPreferences.getInt("Width", defaultWidth),
