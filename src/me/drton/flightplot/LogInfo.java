@@ -45,6 +45,7 @@ public class LogInfo {
         }
         if (logReader != null) {
             infoTableModel.addRow(new Object[]{"Format", logReader.getFormat()});
+            infoTableModel.addRow(new Object[]{"System", logReader.getSystemName()});
             infoTableModel.addRow(new Object[]{
                     "Length, s", String.format(Locale.ROOT, "%.3f", logReader.getSizeMicroseconds() * 1e-6)});
             String startTimeStr = "";
