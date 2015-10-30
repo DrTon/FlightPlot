@@ -575,41 +575,7 @@ public class FlightPlot {
         };
         parametersTableModel.addColumn("Parameter");
         parametersTableModel.addColumn("Value");
-        parametersTable = new JTable(parametersTableModel) {
-            // Workaround for bug to avoid starting edit on Fn or Cmd keys
-            @Override
-            protected boolean processKeyBinding(KeyStroke ks, KeyEvent e, int condition, boolean pressed) {
-                boolean retValue = false;
-                if (e.getKeyCode() != KeyEvent.VK_META || e.getKeyCode() != KeyEvent.VK_CONTROL ||
-                        e.getKeyCode() != KeyEvent.VK_ALT) {
-                    if (e.isControlDown() || e.isMetaDown() || e.isAltDown() || e.getKeyChar() == 0xFFFF) {
-                        InputMap map = this.getInputMap(condition);
-                        ActionMap am = getActionMap();
-                        if (map != null && am != null && isEnabled()) {
-                            Object binding = map.get(ks);
-                            Action action = (binding == null) ? null : am.get(binding);
-                            if (action != null) {
-                                SwingUtilities.notifyAction(action, ks, e, this, e.getModifiers());
-                                retValue = false;
-                            } else {
-                                try {
-                                    JComponent ancestor = (JComponent) SwingUtilities.getAncestorOfClass(
-                                            Class.forName("javax.swing.JComponent"), this);
-                                    ancestor.dispatchEvent(e);
-                                } catch (ClassNotFoundException err) {
-                                    err.printStackTrace();
-                                }
-                            }
-                        } else {
-                            retValue = super.processKeyBinding(ks, e, condition, pressed);
-                        }
-                    } else {
-                        retValue = super.processKeyBinding(ks, e, condition, pressed);
-                    }
-                }
-                return retValue;
-            }
-        };
+        parametersTable = new JTable(parametersTableModel);
         parametersTable.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_ENTER, 0), "startEditing");
         parametersTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         parametersTable.getColumnModel().getColumn(1).setCellEditor(new ParamValueTableCellEditor(this));
