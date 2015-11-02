@@ -580,6 +580,8 @@ public class FlightPlot {
         parametersTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         parametersTable.getColumnModel().getColumn(1).setCellEditor(new ParamValueTableCellEditor(this));
         parametersTable.getColumnModel().getColumn(1).setCellRenderer(new ParamValueTableCellRenderer());
+        parametersTable.putClientProperty("JTable.autoStartsEdit", false);
+        parametersTable.putClientProperty("terminateEditOnFocusLost", true);
     }
 
     private void createMenuBar() {

@@ -107,10 +107,6 @@
                           <component id="3152f" class="javax.swing.JTable" binding="parametersTable" custom-create="true">
                             <constraints/>
                             <properties/>
-                            <clientProperties>
-                              <JTable.autoStartsEdit class="java.lang.Boolean" value="false"/>
-                              <terminateEditOnFocusLost class="java.lang.Boolean" value="true"/>
-                            </clientProperties>
                           </component>
                         </children>
                       </scrollpane>
