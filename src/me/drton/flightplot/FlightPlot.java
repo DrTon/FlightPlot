@@ -90,7 +90,7 @@ public class FlightPlot {
     private JButton removeProcessorButton;
     private JButton openLogButton;
     private JButton fieldsListButton;
-    private JComboBox presetComboBox;
+    private JComboBox<Preset> presetComboBox;
     private JButton deletePresetButton;
     private JButton logInfoButton;
     private JCheckBox markerCheckBox;
@@ -107,6 +107,7 @@ public class FlightPlot {
     private JFileChooser openLogFileChooser;
     private FileNameExtensionFilter presetExtensionFilter = new FileNameExtensionFilter("FlightPlot Presets (*.fplot)",
             "fplot");
+    private FileNameExtensionFilter parametersExtensionFilter = new FileNameExtensionFilter("Parameters (*.txt)", "txt");
     private AtomicBoolean invokeProcessFile = new AtomicBoolean(false);
     private TrackExportDialog trackExportDialog;
     private PlotExportDialog plotExportDialog;
@@ -377,7 +378,7 @@ public class FlightPlot {
         } else if ("comboBoxChanged".equals(e.getActionCommand())) {
             // Load preset
             Object selection = presetComboBox.getSelectedItem();
-            if ("".equals(selection)) {
+            if (selection == null) {
                 processorsListModel.setRowCount(0);
                 updateUsedColors();
             }
@@ -416,7 +417,7 @@ public class FlightPlot {
             lastPresetDirectory = new File(presetDirectoryStr);
         }
         Preferences presets = preferences.node("Presets");
-        presetComboBox.addItem("");
+        presetComboBox.addItem(null);
         for (String p : presets.keys()) {
             try {
                 Preset preset = Preset.unpackJSONObject(new JSONObject(presets.get(p, "{}")));
@@ -453,7 +454,7 @@ public class FlightPlot {
         Preferences presetsPref = preferences.node("Presets");
         for (int i = 0; i < presetComboBox.getItemCount(); i++) {
             Object object = presetComboBox.getItemAt(i);
-            if (object instanceof Preset) {
+            if (object != null) {
                 Preset preset = (Preset) object;
                 try {
                     presetsPref.put(preset.getTitle(), preset.packJSONObject().toString());
@@ -632,6 +633,15 @@ public class FlightPlot {
             }
         });
         fileMenu.add(exportTrackItem);
+
+        JMenuItem exportParametersItem = new JMenuItem("Export Parameters...");
+        exportParametersItem.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                showParametersExportDialog();
+            }
+        });
+        fileMenu.add(exportParametersItem);
 
         if (!OSValidator.isMac()) {
             fileMenu.add(new JPopupMenu.Separator());
@@ -866,6 +876,47 @@ public class FlightPlot {
 
     private void showExportTrackStatusMessage(String message) {
         setStatus(String.format("Track export: %s", message));
+    }
+
+    public void showParametersExportDialog() {
+        if (logReader == null) {
+            JOptionPane.showMessageDialog(mainFrame, "Log file must be opened first.", "Error",
+                    JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        JFileChooser fc = new JFileChooser();
+        fc.setFileFilter(parametersExtensionFilter);
+        fc.setDialogTitle("Export Preset");
+        int returnVal = fc.showDialog(mainFrame, "Export");
+        if (returnVal == JFileChooser.APPROVE_OPTION) {
+            String fileName = fc.getSelectedFile().toString();
+            if (presetExtensionFilter == fc.getFileFilter() && !fileName.toLowerCase().endsWith(".txt")) {
+                fileName += ".txt";
+            }
+            try {
+                FileWriter fileWriter = new FileWriter(new File(fileName));
+                List<Map.Entry<String, Object>> paramsList = new ArrayList<Map.Entry<String, Object>>(logReader.getParameters().entrySet());
+                Collections.sort(paramsList, new Comparator<Map.Entry<String, Object>>() {
+                    @Override
+                    public int compare(Map.Entry<String, Object> o1, Map.Entry<String, Object> o2) {
+                        return o1.getKey().compareTo(o2.getKey());
+                    }
+                });
+                for (Map.Entry<String, Object> param : paramsList) {
+                    int typeID = 0;
+                    Object value = param.getValue();
+                    if (value instanceof Float) {
+                        typeID = 1;
+                    }
+                    fileWriter.write(String.format("%s\t%s\t%s\n", param.getKey(), typeID, param.getValue()));
+                }
+                fileWriter.close();
+            } catch (Exception e) {
+                setStatus("Error: " + e);
+                e.printStackTrace();
+            }
+        }
     }
 
     private void processFile() {
