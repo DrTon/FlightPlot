@@ -35,7 +35,13 @@ https://github.com/DrTon/FlightPlot.git
 Build:
 ```
 cd FlightPlot
-ant
+ant  
+```
+
+if you want to install in ubuntu, use insall_in_ubuntu. you can flightplot in HUD
+```
+cd FlightPlot
+sudo ant install_in_ubuntu
 ```
 
 Run:
