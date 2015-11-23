@@ -5,6 +5,8 @@ import javax.swing.table.TableCellEditor;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.MouseEvent;
+import java.util.EventObject;
 
 /**
 * Created by ton on 13.03.15.
@@ -15,6 +17,13 @@ class ParamValueTableCellEditor extends AbstractCellEditor implements TableCellE
 
     public ParamValueTableCellEditor(FlightPlot app) {
         this.app = app;
+    }
+
+    public boolean isCellEditable(EventObject anEvent) {
+        if (anEvent instanceof MouseEvent) {
+            return ((MouseEvent)anEvent).getClickCount() >= 2;
+        }
+        return true;
     }
 
     @Override

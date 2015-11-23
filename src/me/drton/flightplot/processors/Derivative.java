@@ -21,15 +21,20 @@ public class Derivative extends Simple {
         super.init();
         valuesPrev = new double[param_Fields.length];
         timesPrev = new double[param_Fields.length];
+        for (int i = 0; i < param_Fields.length; i++) {
+            valuesPrev[i] = Double.NaN;
+            timesPrev[i] = Double.NaN;
+        }
     }
 
     @Override
     protected double postProcessValue(int idx, double time, double in) {
-        double out;
+        double out = Double.NaN;
         if (!Double.isNaN(timesPrev[idx])) {
-            out = (in - valuesPrev[idx]) / (time - timesPrev[idx]);
-        } else {
-            out = Double.NaN;
+            double dt = time - timesPrev[idx];
+            if (dt > 1.0e-5) {
+                out = (in - valuesPrev[idx]) / dt;
+            }
         }
         valuesPrev[idx] = in;
         timesPrev[idx] = time;

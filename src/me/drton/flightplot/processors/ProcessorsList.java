@@ -31,6 +31,7 @@ public class ProcessorsList {
         addProcessorClass(Battery.class);
         addProcessorClass(PositionEstimatorKF.class);
         addProcessorClass(EulerFromQuaternion.class);
+        addProcessorClass(Text.class);
     }
 
     private void addProcessorClass(Class<? extends PlotProcessor> processorClass) {

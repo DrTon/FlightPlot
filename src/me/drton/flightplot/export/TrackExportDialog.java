@@ -22,7 +22,7 @@ import java.util.Map;
 import java.util.prefs.Preferences;
 
 public class TrackExportDialog extends JDialog {
-    private static final String DIALOG_SETTING = "ExportDialog";
+    private static final String DIALOG_SETTING = "TrackExportDialog";
     private static final String EXPORTER_CONFIGURATION_SETTING = "ExporterConfiguration";
     private static final String READER_CONFIGURATION_SETTING = "ReaderConfiguration";
     private static final String LAST_EXPORT_DIRECTORY_SETTING = "LastExportDirectory";
@@ -30,7 +30,7 @@ public class TrackExportDialog extends JDialog {
     private JPanel contentPane;
     private JButton buttonExport;
     private JCheckBox splitTrackByFlightCheckBox;
-    private JComboBox<ExportFormatItem> exportFormatComboBox;
+    private JComboBox exportFormatComboBox;
     private JSlider samplesPerSecond;
     private JLabel samplesPerSecondValue;
     private JLabel logEndTimeValue;
@@ -49,7 +49,6 @@ public class TrackExportDialog extends JDialog {
     private TrackReaderConfiguration readerConfiguration = new TrackReaderConfiguration();
     private LogReader logReader;
     private Range chartRange;
-    private PreferencesUtil preferencesUtil;
 
     private class ExportFormatItem {
         String description;
@@ -68,7 +67,6 @@ public class TrackExportDialog extends JDialog {
 
     public TrackExportDialog(Map<String, TrackExporter> exporters) {
         this.exporters = exporters;
-        preferencesUtil = new PreferencesUtil();
         setContentPane(contentPane);
         setModal(true);
         getRootPane().setDefaultButton(buttonExport);
@@ -257,11 +255,8 @@ public class TrackExportDialog extends JDialog {
                             String trackTitle = "Track";
                             exporter.export(trackReader, exporterConfiguration, file, trackTitle);
                             setStatus(String.format("Exported to \"%s\"", file), false);
-                        } catch (IOException e) {
-                            setStatus(String.format("Export failed: %s", e), true);
-                            e.printStackTrace();
-                        } catch (FormatErrorException e) {
-                            setStatus(String.format("Export failed: %s", e), true);
+                        } catch (Exception e) {
+                            setStatus(String.format("Export failed: %s", e.getMessage()), true);
                             e.printStackTrace();
                         }
                     }
@@ -363,7 +358,7 @@ public class TrackExportDialog extends JDialog {
         splitTrackByFlightCheckBox.setSelected(exporterConfiguration.isSplitTracksByFlightMode());
         if (exporterConfiguration.getExportFormat() != null) {
             for (int index = 0; index < exportFormatComboBox.getItemCount(); index++) {
-                ExportFormatItem item = exportFormatComboBox.getItemAt(index);
+                ExportFormatItem item = (ExportFormatItem) exportFormatComboBox.getItemAt(index);
                 if (exporterConfiguration.getExportFormat().equals(item.formatName)) {
                     exportFormatComboBox.setSelectedIndex(index);
                     break;
@@ -384,7 +379,7 @@ public class TrackExportDialog extends JDialog {
     }
 
     public void savePreferences(Preferences preferences) {
-        preferencesUtil.saveWindowPreferences(this, preferences.node(DIALOG_SETTING));
+        PreferencesUtil.saveWindowPreferences(this, preferences.node(DIALOG_SETTING));
         exporterConfiguration.saveConfiguration(preferences.node(EXPORTER_CONFIGURATION_SETTING));
         readerConfiguration.saveConfiguration(preferences.node(READER_CONFIGURATION_SETTING));
         if (lastExportDirectory != null) {
@@ -393,7 +388,7 @@ public class TrackExportDialog extends JDialog {
     }
 
     public void loadPreferences(Preferences preferences) {
-        preferencesUtil.loadWindowPreferences(this, preferences.node(DIALOG_SETTING), -1, -1);
+        PreferencesUtil.loadWindowPreferences(this, preferences.node(DIALOG_SETTING), -1, -1);
         exporterConfiguration.loadConfiguration(preferences.node(EXPORTER_CONFIGURATION_SETTING));
         readerConfiguration.loadConfiguration(preferences.node(READER_CONFIGURATION_SETTING));
         String lastExportDirectoryPath = preferences.get(LAST_EXPORT_DIRECTORY_SETTING, null);

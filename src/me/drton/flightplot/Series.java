@@ -1,12 +1,11 @@
 package me.drton.flightplot;
 
-import java.awt.*;
 import java.util.ArrayList;
 
 /**
  * Created by ton on 09.03.15.
  */
-public class Series extends ArrayList<XYPoint> {
+public class Series extends ArrayList<XYPoint> implements PlotItem {
     private final String title;
     private final double skipOut;
     private Double lastTime = null;
@@ -17,6 +16,7 @@ public class Series extends ArrayList<XYPoint> {
         this.skipOut = skipOut;
     }
 
+    @Override
     public String getTitle() {
         return title;
     }

@@ -1,7 +1,7 @@
 package me.drton.flightplot.export;
 
 import me.drton.jmavlib.log.FormatErrorException;
-import me.drton.jmavlib.log.px4.PX4LogReader;
+import me.drton.jmavlib.log.ulog.ULogReader;
 
 import java.io.EOFException;
 import java.io.IOException;
@@ -11,15 +11,16 @@ import java.util.Map;
 /**
  * Created by ada on 23.12.13.
  */
-public class PX4TrackReader extends AbstractTrackReader {
-    private static final String GPOS_LAT = "GPOS.Lat";
-    private static final String GPOS_LON = "GPOS.Lon";
-    private static final String GPOS_ALT = "GPOS.Alt";
-    private static final String STAT_MAINSTATE = "STAT.MainState";
+public class ULogTrackReader extends AbstractTrackReader {
+    private static final String POS_VALID = "ATTITUDE_POSITION.valid_pos";
+    private static final String POS_LAT = "ATTITUDE_POSITION.lat";
+    private static final String POS_LON = "ATTITUDE_POSITION.lon";
+    private static final String POS_ALT = "ATTITUDE_POSITION.alt_msl";
+    private static final String MODE = "SYSTEM_STATUS.mode";
 
     private String flightMode = null;
 
-    public PX4TrackReader(PX4LogReader reader, TrackReaderConfiguration config) throws IOException, FormatErrorException {
+    public ULogTrackReader(ULogReader reader, TrackReaderConfiguration config) throws IOException, FormatErrorException {
         super(reader, config);
     }
 
@@ -38,10 +39,11 @@ public class PX4TrackReader extends AbstractTrackReader {
             if (currentFlightMode != null) {
                 flightMode = currentFlightMode;
             }
-            Number lat = (Number) data.get(GPOS_LAT);
-            Number lon = (Number) data.get(GPOS_LON);
-            Number alt = (Number) data.get(GPOS_ALT);
-            if (lat != null && lon != null && alt != null) {
+            Number valid = (Number) data.get(POS_VALID);
+            Number lat = (Number) data.get(POS_LAT);
+            Number lon = (Number) data.get(POS_LON);
+            Number alt = (Number) data.get(POS_ALT);
+            if (valid != null && lat != null && lon != null && alt != null && valid.intValue() != 0) {
                 return new TrackPoint(lat.doubleValue(), lon.doubleValue(), alt.doubleValue() + config.getAltitudeOffset(),
                         t + reader.getUTCTimeReferenceMicroseconds(), flightMode);
             }
@@ -50,25 +52,17 @@ public class PX4TrackReader extends AbstractTrackReader {
     }
 
     private String getFlightMode(Map<String, Object> data) {
-        Number flightMode = (Number) data.get(STAT_MAINSTATE);
+        Number flightMode = (Number) data.get(MODE);
         if (flightMode != null) {
             switch (flightMode.intValue()) {
-                case 0:
-                    return "MANUAL";
                 case 1:
-                    return "ALTCTL";
+                    return "MANUAL";
                 case 2:
-                    return "POSCTL";
+                    return "ALTCTL";
                 case 3:
-                    return "AUTO_MISSION";
+                    return "POSCTL";
                 case 4:
-                    return "AUTO_LOITER";
-                case 5:
-                    return "AUTO_RTL";
-                case 6:
-                    return "AUTO_ACRO";
-                case 7:
-                    return "AUTO_OFFBOARD";
+                    return "RTH";
                 default:
                     return String.format("UNKNOWN(%s)", flightMode.intValue());
             }
