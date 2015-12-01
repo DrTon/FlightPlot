@@ -90,10 +90,12 @@ public class FlightPlot {
     private JButton removeProcessorButton;
     private JButton openLogButton;
     private JButton fieldsListButton;
-    private JComboBox presetComboBox;
+    private JComboBox<Preset> presetComboBox;
+    private List<Preset> presetsList = new ArrayList<Preset>();
     private JButton deletePresetButton;
     private JButton logInfoButton;
     private JCheckBox markerCheckBox;
+    private JButton savePresetButton;
     private JRadioButtonMenuItem[] timeModeItems;
     private LogReader logReader = null;
     private XYSeriesCollection dataset;
@@ -107,6 +109,7 @@ public class FlightPlot {
     private JFileChooser openLogFileChooser;
     private FileNameExtensionFilter presetExtensionFilter = new FileNameExtensionFilter("FlightPlot Presets (*.fplot)",
             "fplot");
+    private FileNameExtensionFilter parametersExtensionFilter = new FileNameExtensionFilter("Parameters (*.txt)", "txt");
     private AtomicBoolean invokeProcessFile = new AtomicBoolean(false);
     private TrackExportDialog trackExportDialog;
     private PlotExportDialog plotExportDialog;
@@ -117,6 +120,7 @@ public class FlightPlot {
     private ProcessorPreset editingProcessor = null;
     private List<ProcessorPreset> activeProcessors = new ArrayList<ProcessorPreset>();
     private Range lastTimeRange = null;
+    private String currentPreset = null;
 
     public FlightPlot() {
         Map<String, TrackExporter> exporters = new LinkedHashMap<String, TrackExporter>();
@@ -277,7 +281,7 @@ public class FlightPlot {
 
         openLogFileChooser.setDialogTitle("Open Log");
 
-        presetComboBox.setMaximumRowCount(20);
+        presetComboBox.setMaximumRowCount(30);
         presetComboBox.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
@@ -285,6 +289,12 @@ public class FlightPlot {
             }
         });
         updatePresetEdited(true);
+        savePresetButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                onSavePreset();
+            }
+        });
         deletePresetButton.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
@@ -342,59 +352,72 @@ public class FlightPlot {
     }
 
     private void onQuit() {
-        try {
-            savePreferences();
-        } catch (BackingStoreException e) {
-            e.printStackTrace();
-        }
+        savePreferences();
         System.exit(0);
     }
 
     private void onPresetAction(ActionEvent e) {
         if ("comboBoxEdited".equals(e.getActionCommand())) {
             // Save preset
-            String presetTitle = presetComboBox.getSelectedItem().toString();
-            if (presetTitle.isEmpty()) {
-                return;
-            }
-            Preset preset = formatPreset(presetTitle);
-            boolean addNew = true;
-            for (int i = 0; i < presetComboBox.getItemCount(); i++) {
-                if (presetTitle.equals(presetComboBox.getItemAt(i).toString())) {
-                    // Update existing preset
-                    addNew = false;
-                    presetComboBox.removeItemAt(i);
-                    presetComboBox.insertItemAt(preset, i);
-                    presetComboBox.setSelectedIndex(i);
-                    break;
-                }
-            }
-            if (addNew) {
-                // Add new preset
-                presetComboBox.addItem(preset);
-            }
-            updatePresetEdited(false);
+            onSavePreset();
         } else if ("comboBoxChanged".equals(e.getActionCommand())) {
             // Load preset
+            String oldPreset = currentPreset;
             Object selection = presetComboBox.getSelectedItem();
-            if ("".equals(selection)) {
+            if (selection == null) {
                 processorsListModel.setRowCount(0);
                 updateUsedColors();
-            }
-            if (selection instanceof Preset) {
+                currentPreset = null;
+            } else if (selection instanceof Preset) {
                 loadPreset((Preset) selection);
+                currentPreset = ((Preset) selection).getTitle();
             }
             updatePresetEdited(false);
-            processFile();
+            if ((currentPreset == null && oldPreset != null) || (currentPreset != null && !currentPreset.equals(oldPreset))) {
+                processFile();
+            }
         }
+    }
+
+    private void onSavePreset() {
+        String presetTitle = presetComboBox.getSelectedItem().toString();
+        if (presetTitle.isEmpty()) {
+            setStatus("Enter preset name first");
+            return;
+        }
+        Preset preset = formatPreset(presetTitle);
+        boolean addNew = true;
+        for (int i = 0; i < presetsList.size(); i++) {
+            if (presetTitle.equals(presetsList.get(i).getTitle())) {
+                // Update existing preset
+                addNew = false;
+                presetsList.set(i, preset);
+                setStatus("Preset \"" + preset.getTitle() + "\" updated");
+                break;
+            }
+        }
+        if (addNew) {
+            // Add new preset
+            presetsList.add(preset);
+            currentPreset = preset.getTitle();
+            setStatus("Preset \"" + preset.getTitle() + "\" added");
+        }
+        loadPresetsList();
+        updatePresetEdited(false);
+        savePreferences();
     }
 
     private void onDeletePreset() {
         int i = presetComboBox.getSelectedIndex();
-        if (i >= 0) {
-            presetComboBox.removeItemAt(i);
+        Preset removedPreset = null;
+        if (i > 0) {
+            removedPreset = presetsList.remove(i - 1);
         }
-        presetComboBox.setSelectedIndex(0);
+        if (removedPreset != null) {
+            loadPresetsList();
+            setStatus("Preset \"" + removedPreset.getTitle() + "\" deleted");
+            savePreferences();
+        }
     }
 
     private void updatePresetEdited(boolean edited) {
@@ -416,17 +439,18 @@ public class FlightPlot {
             lastPresetDirectory = new File(presetDirectoryStr);
         }
         Preferences presets = preferences.node("Presets");
-        presetComboBox.addItem("");
+        presetsList.clear();
         for (String p : presets.keys()) {
             try {
                 Preset preset = Preset.unpackJSONObject(new JSONObject(presets.get(p, "{}")));
                 if (preset != null) {
-                    presetComboBox.addItem(preset);
+                    presetsList.add(preset);
                 }
             } catch (Exception e) {
                 e.printStackTrace();
             }
         }
+        loadPresetsList();
         timeMode = Integer.parseInt(preferences.get("TimeMode", "0"));
         timeModeItems[timeMode].setSelected(true);
         markerCheckBox.setSelected(preferences.getBoolean("ShowMarkers", false));
@@ -434,39 +458,63 @@ public class FlightPlot {
         plotExportDialog.loadPreferences(preferences);
     }
 
-    private void savePreferences() throws BackingStoreException {
-        preferences.clear();
-        for (String child : preferences.childrenNames()) {
-            preferences.node(child).removeNode();
-        }
-        PreferencesUtil.saveWindowPreferences(mainFrame, preferences.node("MainWindow"));
-        PreferencesUtil.saveWindowPreferences(fieldsListDialog, preferences.node("FieldsListDialog"));
-        PreferencesUtil.saveWindowPreferences(addProcessorDialog, preferences.node("AddProcessorDialog"));
-        PreferencesUtil.saveWindowPreferences(logInfo.getFrame(), preferences.node("LogInfoFrame"));
-        File lastLogDirectory = openLogFileChooser.getCurrentDirectory();
-        if (lastLogDirectory != null) {
-            preferences.put("LogDirectory", lastLogDirectory.getAbsolutePath());
-        }
-        if (lastPresetDirectory != null) {
-            preferences.put("PresetDirectory", lastPresetDirectory.getAbsolutePath());
-        }
-        Preferences presetsPref = preferences.node("Presets");
-        for (int i = 0; i < presetComboBox.getItemCount(); i++) {
-            Object object = presetComboBox.getItemAt(i);
-            if (object instanceof Preset) {
-                Preset preset = (Preset) object;
-                try {
-                    presetsPref.put(preset.getTitle(), preset.packJSONObject().toString());
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
+    private void loadPresetsList() {
+        Comparator<Preset> presetComparator = new Comparator<Preset>() {
+            @Override
+            public int compare(Preset o1, Preset o2) {
+                return o1.getTitle().compareToIgnoreCase(o2.getTitle());
+            }
+        };
+        Collections.sort(presetsList, presetComparator);
+        presetComboBox.removeAllItems();
+        presetComboBox.addItem(null);
+        Preset selectPreset = null;
+        for (Preset preset : presetsList) {
+            presetComboBox.addItem(preset);
+            if (preset.getTitle().equals(currentPreset)) {
+                selectPreset = preset;
             }
         }
-        preferences.put("TimeMode", Integer.toString(timeMode));
-        preferences.putBoolean("ShowMarkers", markerCheckBox.isSelected());
-        trackExportDialog.savePreferences(preferences);
-        plotExportDialog.savePreferences(preferences);
-        preferences.sync();
+        presetComboBox.setSelectedItem(selectPreset);
+    }
+
+    private void savePreferences() {
+        try {
+            preferences.clear();
+            for (String child : preferences.childrenNames()) {
+                preferences.node(child).removeNode();
+            }
+            PreferencesUtil.saveWindowPreferences(mainFrame, preferences.node("MainWindow"));
+            PreferencesUtil.saveWindowPreferences(fieldsListDialog, preferences.node("FieldsListDialog"));
+            PreferencesUtil.saveWindowPreferences(addProcessorDialog, preferences.node("AddProcessorDialog"));
+            PreferencesUtil.saveWindowPreferences(logInfo.getFrame(), preferences.node("LogInfoFrame"));
+            File lastLogDirectory = openLogFileChooser.getCurrentDirectory();
+            if (lastLogDirectory != null) {
+                preferences.put("LogDirectory", lastLogDirectory.getAbsolutePath());
+            }
+            if (lastPresetDirectory != null) {
+                preferences.put("PresetDirectory", lastPresetDirectory.getAbsolutePath());
+            }
+            Preferences presetsPref = preferences.node("Presets");
+            for (int i = 0; i < presetComboBox.getItemCount(); i++) {
+                Object object = presetComboBox.getItemAt(i);
+                if (object != null) {
+                    Preset preset = (Preset) object;
+                    try {
+                        presetsPref.put(preset.getTitle(), preset.packJSONObject().toString());
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                }
+            }
+            preferences.put("TimeMode", Integer.toString(timeMode));
+            preferences.putBoolean("ShowMarkers", markerCheckBox.isSelected());
+            trackExportDialog.savePreferences(preferences);
+            plotExportDialog.savePreferences(preferences);
+            preferences.sync();
+        } catch (BackingStoreException e) {
+            e.printStackTrace();
+        }
     }
 
     private void loadPreset(Preset preset) {
@@ -633,6 +681,15 @@ public class FlightPlot {
         });
         fileMenu.add(exportTrackItem);
 
+        JMenuItem exportParametersItem = new JMenuItem("Export Parameters...");
+        exportParametersItem.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                showParametersExportDialog();
+            }
+        });
+        fileMenu.add(exportParametersItem);
+
         if (!OSValidator.isMac()) {
             fileMenu.add(new JPopupMenu.Separator());
             JMenuItem exitItem = new JMenuItem("Exit");
@@ -767,6 +824,7 @@ public class FlightPlot {
             }
             logReader = null;
         }
+        setStatus("Log file opened: " + logFileName);
         logReader = logReaderNew;
         logInfo.updateInfo(logReader);
         fieldsListDialog.setFieldsList(logReader.getFields());
@@ -868,16 +926,62 @@ public class FlightPlot {
         setStatus(String.format("Track export: %s", message));
     }
 
+    public void showParametersExportDialog() {
+        if (logReader == null) {
+            JOptionPane.showMessageDialog(mainFrame, "Log file must be opened first.", "Error",
+                    JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        JFileChooser fc = new JFileChooser();
+        fc.setFileFilter(parametersExtensionFilter);
+        fc.setDialogTitle("Export Preset");
+        int returnVal = fc.showDialog(mainFrame, "Export");
+        if (returnVal == JFileChooser.APPROVE_OPTION) {
+            String fileName = fc.getSelectedFile().toString();
+            if (presetExtensionFilter == fc.getFileFilter() && !fileName.toLowerCase().endsWith(".txt")) {
+                fileName += ".txt";
+            }
+            try {
+                FileWriter fileWriter = new FileWriter(new File(fileName));
+                List<Map.Entry<String, Object>> paramsList = new ArrayList<Map.Entry<String, Object>>(logReader.getParameters().entrySet());
+                Collections.sort(paramsList, new Comparator<Map.Entry<String, Object>>() {
+                    @Override
+                    public int compare(Map.Entry<String, Object> o1, Map.Entry<String, Object> o2) {
+                        return o1.getKey().compareTo(o2.getKey());
+                    }
+                });
+                for (Map.Entry<String, Object> param : paramsList) {
+                    int typeID = 0;
+                    Object value = param.getValue();
+                    if (value instanceof Float) {
+                        typeID = 1;
+                    }
+                    fileWriter.write(String.format("%s\t%s\t%s\n", param.getKey(), typeID, param.getValue()));
+                }
+                fileWriter.close();
+            } catch (Exception e) {
+                setStatus("Error: " + e);
+                e.printStackTrace();
+            }
+        }
+    }
+
     private void processFile() {
         if (logReader != null) {
             if (invokeProcessFile.compareAndSet(false, true)) {
-                setStatus("Processing...");
+                final boolean notEmptyPlot = (getActiveProcessors().size() > 0);
+                if (notEmptyPlot) {
+                    setStatus("Processing...");
+                }
                 SwingUtilities.invokeLater(new Runnable() {
                     @Override
                     public void run() {
                         try {
                             generateSeries();
-                            setStatus(" ");
+                            if (notEmptyPlot) {
+                                setStatus(" ");
+                            }
                         } catch (Exception e) {
                             setStatus("Error: " + e);
                             e.printStackTrace();
@@ -913,13 +1017,19 @@ public class FlightPlot {
         }
     }
 
-    private void generateSeries() throws IOException, FormatErrorException, InvocationTargetException, NoSuchMethodException, InstantiationException, IllegalAccessException {
-        activeProcessors.clear();
+    private List<ProcessorPreset> getActiveProcessors() {
+        List<ProcessorPreset> processors = new ArrayList<ProcessorPreset>();
         for (int row = 0; row < processorsListModel.getRowCount(); row++) {
             if ((Boolean) processorsListModel.getValueAt(row, 0)) {
-                activeProcessors.add((ProcessorPreset) processorsListModel.getValueAt(row, 1));
+                processors.add((ProcessorPreset) processorsListModel.getValueAt(row, 1));
             }
         }
+        return processors;
+    }
+
+    private void generateSeries() throws IOException, FormatErrorException, InvocationTargetException, NoSuchMethodException, InstantiationException, IllegalAccessException {
+        activeProcessors.clear();
+        activeProcessors.addAll(getActiveProcessors());
 
         dataset.removeAllSeries();
         seriesIndex.clear();

@@ -151,7 +151,7 @@
               <grid row="0" column="0" row-span="1" col-span="1" vsize-policy="0" hsize-policy="7" anchor="8" fill="0" indent="0" use-parent-layout="false"/>
             </constraints>
             <properties>
-              <text value="Status"/>
+              <text value="Welcome to FlightPlot"/>
             </properties>
           </component>
         </children>
@@ -225,6 +225,14 @@
               <editable value="true"/>
               <maximumSize width="32767" height="28"/>
               <toolTipText value="Type preset name and press [Enter] to save current plots as preset"/>
+            </properties>
+          </component>
+          <component id="26fff" class="javax.swing.JButton" binding="savePresetButton" default-binding="true">
+            <constraints/>
+            <properties>
+              <maximumSize width="73" height="24"/>
+              <minimumSize width="73" height="24"/>
+              <text value="Save preset"/>
             </properties>
           </component>
           <component id="2506a" class="javax.swing.JButton" binding="deletePresetButton" default-binding="true">
