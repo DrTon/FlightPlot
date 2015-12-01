@@ -939,7 +939,7 @@ public class FlightPlot {
         int returnVal = fc.showDialog(mainFrame, "Export");
         if (returnVal == JFileChooser.APPROVE_OPTION) {
             String fileName = fc.getSelectedFile().toString();
-            if (presetExtensionFilter == fc.getFileFilter() && !fileName.toLowerCase().endsWith(".txt")) {
+            if (parametersExtensionFilter == fc.getFileFilter() && !fileName.toLowerCase().endsWith(".txt")) {
                 fileName += ".txt";
             }
             try {
