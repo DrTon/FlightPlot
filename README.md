@@ -64,13 +64,20 @@ https://github.com/DrTon/FlightPlot.git
 Build:
 ```
 cd FlightPlot
-ant  
+ant 
 ```
 
 if you want to install in ubuntu, use insall_in_ubuntu. you can flightplot in HUD
 ```
 cd FlightPlot
 sudo ant install_in_ubuntu
+```
+
+if you want to create deb file for ubuntu, use gen_deb.
+```
+cd FlightPlot
+ant gen_deb
+sudo dpkg -i out/production/FlightPlot.deb
 ```
 
 Run:

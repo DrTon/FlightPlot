@@ -1,0 +1,11 @@
+Package: FlightPlot
+Version: 0.2.20
+Section: devel
+Priority: optional
+Architecture: all
+Depends: build-essential,
+ cmake
+Maintainer: Anton Babushkin <rk3dov@gmail.com>,  SungTae Moon <munhoney@gmail.com>
+Homepage: https://github.com/DrTon/FlightPlot
+Description: Universal flight log plotter
+

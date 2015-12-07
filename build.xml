@@ -65,6 +65,17 @@
 	<copy file  = "flightplot.desktop" tofile="/usr/share/applications/flightplot.desktop" />
     </target>
 
+    <target name="gen_deb" description="generate deb file" depends="flightplot">
+        <copy file  = "out/production/flightplot.jar" tofile="packaging/ubuntu/FlightPlot/usr/local/bin/flightplot.jar" />
+        <chmod file = "packaging/ubuntu/FlightPlot/usr/local/bin/flightplot.jar" perm="755"/>
+        <exec executable="dpkg">
+            <arg value="-b"/>
+            <arg value="packaging/ubuntu/FlightPlot" />
+            <arg value="out/production/FlightPlot.deb" />
+        </exec>
+        <delete file="packaging/ubuntu/FlightPlot/usr/local/bin/flightplot.jar"/>
+    </target>
+
 
     <target name="zip_artifacts" description="Zip build artifacts for distribution" depends="flightplot_mac_os_app">
         <zip destfile="out/production/flightplot.jar.zip" basedir="out/production" includes="flightplot.jar" />
