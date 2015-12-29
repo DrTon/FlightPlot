@@ -58,13 +58,6 @@
                 />
     </target>
 
-    <target name="install_in_ubuntu" description="Install in ubuntu" depends="flightplot">
-	<copy file  = "out/production/flightplot.jar" tofile="/usr/local/bin/flightplot.jar" />	
-	<chmod file = "/usr/local/bin/flightplot.jar" perm="755"/>
-	<copy file  = "flightplot.png" tofile="/usr/share/icons/64x64/apps/flightplot.png" />	
-	<copy file  = "flightplot.desktop" tofile="/usr/share/applications/flightplot.desktop" />
-    </target>
-
     <target name="gen_deb" description="generate deb file" depends="flightplot">
         <copy file  = "out/production/flightplot.jar" tofile="packaging/ubuntu/FlightPlot/usr/local/bin/flightplot.jar" />
         <chmod file = "packaging/ubuntu/FlightPlot/usr/local/bin/flightplot.jar" perm="755"/>
