@@ -824,8 +824,13 @@ public class FlightPlot {
             }
             logReader = null;
         }
-        setStatus("Log file opened: " + logFileName);
         logReader = logReaderNew;
+        if (logReader.getErrors().size() > 0) {
+            setStatus("Log file opened: " + logFileName + " (errors: " + logReader.getErrors().size() + ", see console output)");
+            printLogErrors();
+        } else {
+            setStatus("Log file opened: " + logFileName);
+        }
         logInfo.updateInfo(logReader);
         fieldsListDialog.setFieldsList(logReader.getFields());
         onTimeModeChanged();
@@ -980,7 +985,12 @@ public class FlightPlot {
                         try {
                             generateSeries();
                             if (notEmptyPlot) {
-                                setStatus(" ");
+                                if (logReader.getErrors().size() > 0) {
+                                    setStatus("Log parsing errors, see console output");
+                                    printLogErrors();
+                                } else {
+                                    setStatus(" ");
+                                }
                             }
                         } catch (Exception e) {
                             setStatus("Error: " + e);
@@ -990,6 +1000,17 @@ public class FlightPlot {
                     }
                 });
             }
+        }
+    }
+
+    private void printLogErrors() {
+        System.err.println("Log parsing errors:");
+        int maxErrors = 100;
+        for (Exception e : logReader.getErrors().subList(0, 100)) {
+            System.err.println("\t" + e.getMessage());
+        }
+        if (logReader.getErrors().size() > maxErrors) {
+            System.err.println("\t...");
         }
     }
 
@@ -1060,6 +1081,7 @@ public class FlightPlot {
                 processors[i] = processor;
             }
             logReader.seek(timeStart);
+            logReader.clearErrors();
             Map<String, Object> data = new HashMap<String, Object>();
             while (true) {
                 long t;

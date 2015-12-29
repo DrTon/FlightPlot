@@ -56,6 +56,7 @@ public class LogInfo {
             infoTableModel.addRow(new Object[]{
                     "Start Time", startTimeStr});
             infoTableModel.addRow(new Object[]{"Updates count", logReader.getSizeUpdates()});
+            infoTableModel.addRow(new Object[]{"Errors", logReader.getErrors().size()});
             Map<String, Object> ver = logReader.getVersion();
             infoTableModel.addRow(new Object[]{"Hardware Version", ver.get("HW")});
             infoTableModel.addRow(new Object[]{"Firmware Version", ver.get("FW")});
