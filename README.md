@@ -27,9 +27,9 @@ Requirements:
  -  Java 6 or newer (JDK, http://www.oracle.com/technetwork/java/javase/downloads/index.html)
  -  ant
 
-Clone repository:
+Clone repository (`--recursive` flag is required to pull in [jMAVlib](https://github.com/DrTon/jMAVlib)):
 ```
-https://github.com/DrTon/FlightPlot.git
+git clone --recursive https://github.com/DrTon/FlightPlot.git
 ```
 
 Build:
