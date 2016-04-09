@@ -278,7 +278,6 @@ public class FlightPlot {
             openLogFileChooser.addChoosableFileFilter(filter);
         }
         openLogFileChooser.setFileFilter(logExtensionfilters[0]);
-
         openLogFileChooser.setDialogTitle("Open Log");
 
         presetComboBox.setMaximumRowCount(30);
@@ -645,38 +644,38 @@ public class FlightPlot {
         });
         fileMenu.add(fileOpenItem);
 
-        JMenuItem loadPresetItem = new JMenuItem("Load Preset...");
-        loadPresetItem.addActionListener(new ActionListener() {
+        JMenuItem importPresetItem = new JMenuItem("Import Preset...");
+        importPresetItem.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
                 showImportPresetDialog();
             }
         });
-        fileMenu.add(loadPresetItem);
+        fileMenu.add(importPresetItem);
 
-        JMenuItem savePresetItem = new JMenuItem("Save Preset...");
-        savePresetItem.addActionListener(new ActionListener() {
+        JMenuItem exportPresetItem = new JMenuItem("Export Preset...");
+        exportPresetItem.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                showPresetExportDialog();
+                showExportPresetDialog();
             }
         });
-        fileMenu.add(savePresetItem);
+        fileMenu.add(exportPresetItem);
 
-        JMenuItem exportPlotItem = new JMenuItem("Export As Image...");
-        exportPlotItem.addActionListener(new ActionListener() {
+        JMenuItem exportAsImageItem = new JMenuItem("Export As Image...");
+        exportAsImageItem.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                showPlotExportDialog();
+                showExportAsImageDialog();
             }
         });
-        fileMenu.add(exportPlotItem);
+        fileMenu.add(exportAsImageItem);
 
         JMenuItem exportTrackItem = new JMenuItem("Export Track...");
         exportTrackItem.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                showTrackExportDialog();
+                showExportTrackDialog();
             }
         });
         fileMenu.add(exportTrackItem);
@@ -685,7 +684,7 @@ public class FlightPlot {
         exportParametersItem.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                showParametersExportDialog();
+                showExportParametersDialog();
             }
         });
         fileMenu.add(exportParametersItem);
@@ -871,7 +870,7 @@ public class FlightPlot {
         }
     }
 
-    public void showPresetExportDialog() {
+    public void showExportPresetDialog() {
         JFileChooser fc = new JFileChooser();
         if (lastPresetDirectory != null) {
             fc.setCurrentDirectory(lastPresetDirectory);
@@ -886,10 +885,13 @@ public class FlightPlot {
                 fileName += ".fplot";
             }
             try {
-                Preset preset = formatPreset(presetComboBox.getSelectedItem().toString());
+                Object item = presetComboBox.getSelectedItem();
+                String presetTitle = item == null ? "" : item.toString();
+                Preset preset = formatPreset(presetTitle);
                 FileWriter fileWriter = new FileWriter(new File(fileName));
                 fileWriter.write(preset.packJSONObject().toString(1));
                 fileWriter.close();
+                setStatus("Preset saved to: " + fileName);
             } catch (Exception e) {
                 setStatus("Error: " + e);
                 e.printStackTrace();
@@ -897,7 +899,7 @@ public class FlightPlot {
         }
     }
 
-    public void showPlotExportDialog() {
+    public void showExportAsImageDialog() {
         if (logReader == null) {
             JOptionPane.showMessageDialog(mainFrame, "Log file must be opened first.", "Error",
                     JOptionPane.ERROR_MESSAGE);
@@ -912,7 +914,7 @@ public class FlightPlot {
         }
     }
 
-    public void showTrackExportDialog() {
+    public void showExportTrackDialog() {
         if (logReader == null) {
             JOptionPane.showMessageDialog(mainFrame, "Log file must be opened first.", "Error",
                     JOptionPane.ERROR_MESSAGE);
@@ -931,7 +933,7 @@ public class FlightPlot {
         setStatus(String.format("Track export: %s", message));
     }
 
-    public void showParametersExportDialog() {
+    public void showExportParametersDialog() {
         if (logReader == null) {
             JOptionPane.showMessageDialog(mainFrame, "Log file must be opened first.", "Error",
                     JOptionPane.ERROR_MESSAGE);
@@ -940,7 +942,7 @@ public class FlightPlot {
 
         JFileChooser fc = new JFileChooser();
         fc.setFileFilter(parametersExtensionFilter);
-        fc.setDialogTitle("Export Preset");
+        fc.setDialogTitle("Export Parameters");
         int returnVal = fc.showDialog(mainFrame, "Export");
         if (returnVal == JFileChooser.APPROVE_OPTION) {
             String fileName = fc.getSelectedFile().toString();
