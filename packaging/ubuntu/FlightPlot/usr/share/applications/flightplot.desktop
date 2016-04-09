@@ -1,0 +1,10 @@
+[Desktop Entry]
+Encoding=UTF-8
+Name=FlightPlot
+Type=Application
+Exec='/usr/local/bin/flightplot.jar'  Z:%f
+Terminal=false
+Icon=/usr/share/icons/64x64/apps/flightplot.png
+Comment=FlightPlot
+Categories=Utility;Application;
+Name=FlightPlot
