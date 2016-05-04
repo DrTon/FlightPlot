@@ -1107,7 +1107,12 @@ public class FlightPlot {
                 for (List<ULogReader.ParamUpdate> updList: updateMap.values()) {
                     for (ULogReader.ParamUpdate upd: updList) {
                         // add a labelled marker for each parameter update
-                        final org.jfree.chart.plot.Marker updMarker = new ValueMarker(upd.getTimestamp() * 1e-6);
+                        double mTime = upd.getTimestamp() * 1e-6;
+                        if (timeMode == TIME_MODE_GPS) {
+                            // time axis is msec instead of sec
+                            mTime *= 1e3;
+                        }
+                        final org.jfree.chart.plot.Marker updMarker = new ValueMarker(mTime);
                         updMarker.setPaint(Color.black);
                         updMarker.setLabel(upd.getName() + ":" + upd.getValue());
                         updMarker.setLabelAnchor(RectangleAnchor.TOP_RIGHT);
@@ -1150,7 +1155,7 @@ public class FlightPlot {
             setChartColors();
             setChartMarkers();
         }
-        chartPanel.repaint();
+            chartPanel.repaint();
     }
 
     private void setChartColors() {
