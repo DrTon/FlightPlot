@@ -1107,7 +1107,7 @@ public class FlightPlot {
                 for (List<ULogReader.ParamUpdate> updList: updateMap.values()) {
                     for (ULogReader.ParamUpdate upd: updList) {
                         // add a labelled marker for each parameter update
-                        double mTime = upd.getTimestamp() * 1e-6;
+                        double mTime = (upd.getTimestamp() + timeOffset) * 1e-6;
                         if (timeMode == TIME_MODE_GPS) {
                             // time axis is msec instead of sec
                             mTime *= 1e3;
