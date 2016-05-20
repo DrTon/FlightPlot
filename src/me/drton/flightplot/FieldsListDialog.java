@@ -14,7 +14,7 @@ public class FieldsListDialog extends JDialog {
 
     public FieldsListDialog(final Runnable callbackAdd) {
         setContentPane(contentPane);
-        setModal(true);
+        setModal(false);
         setTitle("Fields List");
         getRootPane().setDefaultButton(buttonAdd);
         buttonAdd.addActionListener(new ActionListener() {
