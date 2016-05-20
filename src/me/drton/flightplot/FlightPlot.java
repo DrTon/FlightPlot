@@ -168,6 +168,9 @@ public class FlightPlot {
             @Override
             public void run() {
                 StringBuilder fieldsValue = new StringBuilder();
+                String processorTitle = "New";
+                if (fieldsListDialog.getSelectedFields().size() == 1)
+                    processorTitle = fieldsListDialog.getSelectedFields().get(0);
                 for (String field : fieldsListDialog.getSelectedFields()) {
                     if (fieldsValue.length() > 0) {
                         fieldsValue.append(" ");
@@ -176,7 +179,7 @@ public class FlightPlot {
                 }
                 PlotProcessor processor = new Simple();
                 processor.setParameters(Collections.<String, Object>singletonMap("Fields", fieldsValue.toString()));
-                ProcessorPreset pp = new ProcessorPreset("New", processor.getProcessorType(),
+                ProcessorPreset pp = new ProcessorPreset(processorTitle, processor.getProcessorType(),
                         processor.getParameters(), Collections.<String, Color>emptyMap());
                 updatePresetParameters(pp, null);
                 int i = processorsListModel.getRowCount();
