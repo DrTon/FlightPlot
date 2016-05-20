@@ -214,6 +214,7 @@ public class FlightPlot {
             @Override
             public void actionPerformed(ActionEvent e) {
                 fieldsListDialog.setVisible(true);
+                fieldsListDialog.repaint();
             }
         });
         logInfoButton.addActionListener(new ActionListener() {
