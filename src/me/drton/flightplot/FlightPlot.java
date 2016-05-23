@@ -10,6 +10,7 @@ import me.drton.flightplot.processors.Simple;
 import me.drton.jmavlib.log.FormatErrorException;
 import me.drton.jmavlib.log.LogReader;
 import me.drton.jmavlib.log.px4.PX4LogReader;
+import me.drton.jmavlib.log.ulog.MessageLog;
 import me.drton.jmavlib.log.ulog.ULogReader;
 import org.jfree.chart.ChartFactory;
 import org.jfree.chart.ChartPanel;
@@ -81,7 +82,9 @@ public class FlightPlot {
     private JLabel statusLabel;
     private JPanel mainPanel;
     private JTable parametersTable;
+    private JTable logTable;
     private DefaultTableModel parametersTableModel;
+    private DefaultTableModel logsTableModel;
     private ChartPanel chartPanel;
     private JTable processorsList;
     private DefaultTableModel processorsListModel;
@@ -633,6 +636,16 @@ public class FlightPlot {
         parametersTable.getColumnModel().getColumn(1).setCellRenderer(new ParamValueTableCellRenderer());
         parametersTable.putClientProperty("JTable.autoStartsEdit", false);
         parametersTable.putClientProperty("terminateEditOnFocusLost", true);
+
+        logsTableModel = new DefaultTableModel();
+        logsTableModel.addColumn("Time");
+        logsTableModel.addColumn("Level");
+        logsTableModel.addColumn("Message");
+        logTable = new JTable(logsTableModel);
+        logTable.getColumnModel().getColumn(2).setMinWidth(350);
+        logTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        logTable.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
+
     }
 
     private void createMenuBar() {
@@ -803,11 +816,19 @@ public class FlightPlot {
     private void openLog(String logFileName) {
         String logFileNameLower = logFileName.toLowerCase();
         LogReader logReaderNew;
+        logsTableModel.setRowCount(0);
         try {
             if (logFileNameLower.endsWith(".bin") || logFileNameLower.endsWith(".px4log")) {
                 logReaderNew = new PX4LogReader(logFileName);
             } else if (logFileNameLower.endsWith(".ulg")) {
-                logReaderNew = new ULogReader(logFileName);
+                ULogReader ulogReader = new ULogReader(logFileName);
+                logReaderNew = ulogReader;
+                for (MessageLog loggedMsg : ulogReader.loggedMessages) {
+                    long t = loggedMsg.timestamp / 1000;
+                    String time = String.format("%2d:%02d:%03d", t / 1000 / 60, ((t / 1000) % 60), t % 1000);
+                    logsTableModel.addRow(new Object[] { time, loggedMsg.getLevelStr(),
+                            loggedMsg.message });
+                }
             } else {
                 setStatus("Log format not supported: " + logFileName);
                 return;
@@ -1159,7 +1180,7 @@ public class FlightPlot {
             setChartColors();
             setChartMarkers();
         }
-            chartPanel.repaint();
+        chartPanel.repaint();
     }
 
     private void setChartColors() {
