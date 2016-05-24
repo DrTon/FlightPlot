@@ -637,7 +637,12 @@ public class FlightPlot {
         parametersTable.putClientProperty("JTable.autoStartsEdit", false);
         parametersTable.putClientProperty("terminateEditOnFocusLost", true);
 
-        logsTableModel = new DefaultTableModel();
+        logsTableModel = new DefaultTableModel() {
+            @Override
+            public boolean isCellEditable(int row, int col) {
+                return false;
+            }
+        };
         logsTableModel.addColumn("Time");
         logsTableModel.addColumn("Level");
         logsTableModel.addColumn("Message");
