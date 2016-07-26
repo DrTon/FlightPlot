@@ -73,7 +73,7 @@ public class FlightPlot {
     }
 
     private static String appName = "FlightPlot";
-    private static String version = "0.2.22";
+    private static String version = "0.2.24";
     private static String appNameAndVersion = appName + " v." + version;
     private static String colorParamPrefix = "Color ";
     private final Preferences preferences;
@@ -1008,7 +1008,7 @@ public class FlightPlot {
     private void printLogErrors() {
         System.err.println("Log parsing errors:");
         int maxErrors = 100;
-        for (Exception e : logReader.getErrors().subList(0, 100)) {
+        for (Exception e : logReader.getErrors().subList(0, Math.min(logReader.getErrors().size(), maxErrors))) {
             System.err.println("\t" + e.getMessage());
         }
         if (logReader.getErrors().size() > maxErrors) {
