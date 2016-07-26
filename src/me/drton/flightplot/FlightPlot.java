@@ -768,6 +768,9 @@ public class FlightPlot {
             timeOffset = getTimeOffset(timeMode);
             logStart = logReader.getStartMicroseconds() + timeOffset;
             logSize = logReader.getSizeMicroseconds();
+            if (logSize == 0) {
+                logSize = 1000;
+            }
             rangeOld = getLogRange(timeModeOld);
         }
 
