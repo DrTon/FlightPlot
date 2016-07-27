@@ -28,6 +28,8 @@ public class PosRatePIDControlSimulator extends PlotProcessor {
     private double posSP;
     private boolean useRateSP;
     private double rateSP;
+    private double rateFF;
+    private double rateCtl;
     private double timePrev;
     private String spField;
     private String rateSpField;
@@ -47,6 +49,7 @@ public class PosRatePIDControlSimulator extends PlotProcessor {
         params.put("Ctrl Rate D", 0.0);
         params.put("Ctrl Rate D SP", false);
         params.put("Ctrl Rate Limit", 0.0);
+        params.put("Ctrl Rate FF", 0.0);
         params.put("Acc Scale", 1.0);
         params.put("Drag", 0.0);
         params.put("Use Rate SP", false);
@@ -62,6 +65,7 @@ public class PosRatePIDControlSimulator extends PlotProcessor {
         rate = 0.0;
         posSP = 0.0;
         rateSP = 0.0;
+        rateCtl = 0.0;
         timePrev = -1.0;
         timeStep = (Double) parameters.get("Time Step");
         thrustK = (Double) parameters.get("Thrust K");
@@ -80,6 +84,7 @@ public class PosRatePIDControlSimulator extends PlotProcessor {
                 "Ctrl Rate D SP") ? PID.MODE.DERIVATIVE_CALC : PID.MODE.DERIVATIVE_CALC_NO_SP;
         pidRate.setK((Double) parameters.get("Ctrl Rate P"), (Double) parameters.get("Ctrl Rate I"),
                 (Double) parameters.get("Ctrl Rate D"), (Double) parameters.get("Ctrl Rate Limit"), pidRateMode);
+        rateFF = (Double) parameters.get("Ctrl Rate FF");
         rateLPF.setCutoffFreqFactor(((Double) parameters.get("Rate LPF")) * timeStep);
         spField = (String) parameters.get("Field SP");
         rateSpField = (String) parameters.get("Field Rate SP");
@@ -108,12 +113,15 @@ public class PosRatePIDControlSimulator extends PlotProcessor {
     }
 
     private void updateSP(Map<String, Object> update) {
+        Number rateSPNum = (Number) update.get(rateSpField);
         if (useRateSP) {
-            Number v = (Number) update.get(rateSpField);
-            if (v != null) {
-                rateSP = v.doubleValue();
+            if (rateSPNum != null) {
+                rateSP = rateSPNum.doubleValue();
             }
         } else {
+            if (rateSPNum != null) {
+                rateCtl = rateSPNum.doubleValue();
+            }
             String[] p = spField.split(" ");
             if (p.length > 1) {
                 int axis = "RPY".indexOf(p[0]);
@@ -148,7 +156,7 @@ public class PosRatePIDControlSimulator extends PlotProcessor {
         pos += rate * dt;
         double rateFiltered = rateLPF.apply(rate);
         if (!useRateSP) {
-            rateSP = pidPos.getOutput(posSP - pos, - rateFiltered, dt);
+            rateSP = pidPos.getOutput(posSP - pos, - rateFiltered, dt) + rateFF * rateCtl;
         }
         double control = pidRate.getOutput(rateSP, rateFiltered, 0.0, dt, 1.0);
         controlLPF.setInput(control);
