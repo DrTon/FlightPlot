@@ -276,6 +276,7 @@ public class FlightPlot {
 
         // Open Log Dialog
         FileNameExtensionFilter[] logExtensionfilters = new FileNameExtensionFilter[]{
+                new FileNameExtensionFilter("All known Log files (*.px4log, *.bin, *.ulg)", "px4log", "bin", "ulg"),
                 new FileNameExtensionFilter("PX4/APM Log (*.px4log, *.bin)", "px4log", "bin"),
                 new FileNameExtensionFilter("ULog (*.ulg)", "ulg")
         };
