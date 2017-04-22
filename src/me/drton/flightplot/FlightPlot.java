@@ -90,7 +90,7 @@ public class FlightPlot {
     private JButton removeProcessorButton;
     private JButton openLogButton;
     private JButton fieldsListButton;
-    private JComboBox<Preset> presetComboBox;
+    private JComboBox presetComboBox;
     private List<Preset> presetsList = new ArrayList<Preset>();
     private JButton deletePresetButton;
     private JButton logInfoButton;
@@ -110,6 +110,7 @@ public class FlightPlot {
     private FileNameExtensionFilter presetExtensionFilter = new FileNameExtensionFilter("FlightPlot Presets (*.fplot)",
             "fplot");
     private FileNameExtensionFilter parametersExtensionFilter = new FileNameExtensionFilter("Parameters (*.txt)", "txt");
+    private FileNameExtensionFilter csvExtensionFilter = new FileNameExtensionFilter("CSV (*.csv, *.txt)", "csv", "txt");
     private AtomicBoolean invokeProcessFile = new AtomicBoolean(false);
     private TrackExportDialog trackExportDialog;
     private PlotExportDialog plotExportDialog;
@@ -689,6 +690,15 @@ public class FlightPlot {
         });
         fileMenu.add(exportParametersItem);
 
+        JMenuItem exportToCSVItem = new JMenuItem("Export to CSV...");
+        exportToCSVItem.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                showExportToCSVDialog();
+            }
+        });
+        fileMenu.add(exportToCSVItem);
+
         if (!OSValidator.isMac()) {
             fileMenu.add(new JPopupMenu.Separator());
             JMenuItem exitItem = new JMenuItem("Exit");
@@ -974,6 +984,31 @@ public class FlightPlot {
         }
     }
 
+    public void showExportToCSVDialog() {
+        if (logReader == null) {
+            JOptionPane.showMessageDialog(mainFrame, "Log file must be opened first.", "Error",
+                    JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        JFileChooser fc = new JFileChooser();
+        fc.setFileFilter(csvExtensionFilter);
+        fc.setDialogTitle("Export to CSV");
+        int returnVal = fc.showDialog(mainFrame, "Export");
+        if (returnVal == JFileChooser.APPROVE_OPTION) {
+            String fileName = fc.getSelectedFile().toString();
+            if (csvExtensionFilter == fc.getFileFilter() && !fileName.toLowerCase().endsWith(".csv") && !fileName.toLowerCase().endsWith(".txt")) {
+                fileName += ".txt";
+            }
+            try {
+                generateCSV(fileName);
+            } catch (Exception e) {
+                setStatus("Error: " + e);
+                e.printStackTrace();
+            }
+        }
+    }
+
     private void processFile() {
         if (logReader != null) {
             if (invokeProcessFile.compareAndSet(false, true)) {
@@ -1135,6 +1170,70 @@ public class FlightPlot {
             setChartMarkers();
         }
         chartPanel.repaint();
+    }
+
+    private void generateCSV(String fileName) throws IOException, FormatErrorException, InvocationTargetException, NoSuchMethodException, InstantiationException, IllegalAccessException {
+        List<ProcessorPreset> csvProcessors = new ArrayList<ProcessorPreset>();
+        csvProcessors.addAll(getActiveProcessors());
+
+        PlotProcessor[] processors = new PlotProcessor[csvProcessors.size()];
+
+        // Update time offset according to selected time mode
+        long timeOffset = getTimeOffset(timeMode);
+
+        // Displayed log range in seconds of native log time
+        Range range = getLogRange(timeMode);
+
+        // Process some extra data in hidden areas
+        long timeStart = (long) (range.getLowerBound() * 1e6);
+        long timeStop = (long) (range.getUpperBound() * 1e6);
+        timeStart = Math.max(logReader.getStartMicroseconds(), timeStart);
+        timeStop = Math.min(logReader.getStartMicroseconds() + logReader.getSizeMicroseconds(), timeStop);
+
+        FileWriter fileWriter = new FileWriter(new File(fileName));
+
+        int displayPixels = 2000;
+        double skip = range.getLength() / displayPixels;
+        if (processors.length > 0) {
+            for (int i = 0; i < csvProcessors.size(); i++) {
+                ProcessorPreset pp = csvProcessors.get(i);
+                PlotProcessor processor;
+                processor = processorsTypesList.getProcessorInstance(pp, skip, logReader.getFields());
+                processor.setFieldsList(logReader.getFields());
+                processors[i] = processor;
+            }
+            logReader.seek(timeStart);
+            logReader.clearErrors();
+            Map<String, Object> data = new HashMap<String, Object>();
+            while (true) {
+                long t;
+                data.clear();
+                try {
+                    t = logReader.readUpdate(data);
+                } catch (EOFException e) {
+                    break;
+                }
+                if (t > timeStop) {
+                    break;
+                }
+                for (PlotProcessor processor : processors) {
+                    processor.process((t + timeOffset) * 1e-6, data);
+                }
+            }
+            for (int i = 0; i < csvProcessors.size(); i++) {
+                PlotProcessor processor = processors[i];
+                for (PlotItem item : processor.getSeriesList()) {
+                    if (item instanceof Series) {
+                        Series series = (Series) item;
+                        for (XYPoint point : series) {
+                            String sb = String.valueOf(point.x) + ";" + point.y + ";" + "\n";
+                            fileWriter.write(sb);
+                        }
+                    }
+                }
+            }
+        }
+        fileWriter.close();
     }
 
     private void setChartColors() {
