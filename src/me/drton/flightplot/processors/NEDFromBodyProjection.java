@@ -78,18 +78,41 @@ public class NEDFromBodyProjection extends PlotProcessor {
     public void process(double time, Map<String, Object> update) {
         boolean act = false;
 
-        Number roll = (Number) update.get(param_Fields_Att[0]);
-        Number pitch = (Number) update.get(param_Fields_Att[1]);
-        Number yaw = (Number) update.get(param_Fields_Att[2]);
+        if (param_Fields_Att.length == 3) {
+            Number roll = (Number) update.get(param_Fields_Att[0]);
+            Number pitch = (Number) update.get(param_Fields_Att[1]);
+            Number yaw = (Number) update.get(param_Fields_Att[2]);
 
-        if (roll != null && pitch != null && yaw != null) {
-            // Update rotation matrix
-            r.set(RotationConversion.rotationMatrixByEulerAngles(roll.doubleValue() + param_Att_Offsets[0],
-                    pitch.doubleValue() + param_Att_Offsets[1], yaw.doubleValue() + param_Att_Offsets[2]));
-            if (param_Backward) {
-                r.transpose();
+            if (roll != null && pitch != null && yaw != null) {
+                // Update rotation matrix
+                r.set(RotationConversion.rotationMatrixByEulerAngles(roll.doubleValue() + param_Att_Offsets[0],
+                        pitch.doubleValue() + param_Att_Offsets[1], yaw.doubleValue() + param_Att_Offsets[2]));
+                if (param_Backward) {
+                    r.transpose();
+                }
+                act = true;
             }
-            act = true;
+        } else if (param_Fields_Att.length == 4) {
+            double[] q = new double[4];
+            boolean notNull = true;
+            for (int i = 0; i < 4; ++i) {
+                Number qNum = (Number) update.get(param_Fields_Att[i]);
+                if (qNum == null) {
+                    notNull = false;
+                } else {
+                    q[i] = qNum.doubleValue();
+                }
+            }
+
+            if (notNull) {
+                // Update rotation matrix
+                r.set(RotationConversion.rotationMatrixByQuaternion(q));
+                r.mul(new Matrix3d(RotationConversion.rotationMatrixByEulerAngles(param_Att_Offsets[0], param_Att_Offsets[1], param_Att_Offsets[2])));
+                if (param_Backward) {
+                    r.transpose();
+                }
+                act = true;
+            }
         }
 
         for (int i = 0; i < 3; i++) {
