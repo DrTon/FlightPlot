@@ -41,7 +41,7 @@ public class HighPassFilter {
                 this.tLast = t;
                 this.inLast = in;
                 this.valueFiltered = 0;
-                return in;
+                return 0;
             } else {
                 double dt = t - tLast;
                 this.valueFiltered = rc / (rc + dt) * (valueFiltered + in - inLast);
