@@ -1,5 +1,6 @@
 package me.drton.flightplot.processors;
 
+import me.drton.flightplot.processors.tools.HighPassFilter;
 import me.drton.flightplot.processors.tools.LowPassFilter;
 
 import java.util.HashMap;
@@ -14,6 +15,7 @@ public class Simple extends PlotProcessor {
     protected double param_Offset;
     protected double param_Delay;
     protected LowPassFilter[] lowPassFilters;
+    protected HighPassFilter[] highPassFilters;
 
     @Override
     public Map<String, Object> getDefaultParameters() {
@@ -21,6 +23,7 @@ public class Simple extends PlotProcessor {
         params.put("Fields", "ATT.Pitch ATT.Roll");
         params.put("Delay", 0.0);
         params.put("LPF", 0.0);
+        params.put("HPF", 0.0);
         params.put("Scale", 1.0);
         params.put("Offset", 0.0);
         return params;
@@ -33,10 +36,14 @@ public class Simple extends PlotProcessor {
         param_Offset = (Double) parameters.get("Offset");
         param_Delay = (Double) parameters.get("Delay");
         lowPassFilters = new LowPassFilter[param_Fields.length];
+        highPassFilters = new HighPassFilter[param_Fields.length];
         for (int i = 0; i < param_Fields.length; i++) {
             LowPassFilter lowPassFilter = new LowPassFilter();
             lowPassFilter.setF((Double) parameters.get("LPF"));
             lowPassFilters[i] = lowPassFilter;
+            HighPassFilter highPassFilter = new HighPassFilter();
+            highPassFilter.setF((Double) parameters.get("HPF"));
+            highPassFilters[i] = highPassFilter;
         }
         for (String field : param_Fields) {
             addSeries(field);
@@ -62,6 +69,7 @@ public class Simple extends PlotProcessor {
                     addPoint(i, time, Double.NaN);
                 } else {
                     out = lowPassFilters[i].getOutput(time, out);
+                    out = highPassFilters[i].getOutput(time, out);
                     out = postProcessValue(i, time, out);
                     addPoint(i, time + param_Delay, out * param_Scale + param_Offset);
                 }
