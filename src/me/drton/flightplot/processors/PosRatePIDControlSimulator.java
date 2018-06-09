@@ -21,6 +21,7 @@ public class PosRatePIDControlSimulator extends PlotProcessor {
     private DelayLine<Double> delayLine = new DelayLine<Double>();
     private Filter rateLPF = new Batterworth2pLPF();
     private LowPassFilter controlLPF = new LowPassFilter();
+    private LowPassFilter controlOutLPF = new LowPassFilter();
     private PID pidPos = new PID();
     private PID pidRate = new PID();
     private double pos;
@@ -31,6 +32,7 @@ public class PosRatePIDControlSimulator extends PlotProcessor {
     private double rateFF;
     private double rateCtl;
     private double timePrev;
+    private double controlOut;
     private String spField;
     private String rateSpField;
 
@@ -38,9 +40,10 @@ public class PosRatePIDControlSimulator extends PlotProcessor {
     public Map<String, Object> getDefaultParameters() {
         Map<String, Object> params = new HashMap<String, Object>();
         params.put("Time Step", 0.004);
-        params.put("Thrust T", 0.03);
+        params.put("Thrust T", 0.3);
         params.put("Thrust Delay", 0.05);
         params.put("Thrust K", 200.0);
+        params.put("Ctrl Out T", 0.4);
         params.put("Ctrl P", 5.0);
         params.put("Ctrl D", 0.0);
         params.put("Ctrl Limit", 0.0);
@@ -67,6 +70,7 @@ public class PosRatePIDControlSimulator extends PlotProcessor {
         rateSP = 0.0;
         rateCtl = 0.0;
         timePrev = -1.0;
+        controlOut = 0.0;
         timeStep = (Double) parameters.get("Time Step");
         thrustK = (Double) parameters.get("Thrust K");
         accScale = (Double) parameters.get("Acc Scale");
@@ -76,12 +80,14 @@ public class PosRatePIDControlSimulator extends PlotProcessor {
         delayLine.setDelay((Double) parameters.get("Thrust Delay"));
         controlLPF.reset();
         controlLPF.setT((Double) parameters.get("Thrust T"));
+        controlOutLPF.reset();
+        controlOutLPF.setT((Double) parameters.get("Ctrl Out T"));
         pidPos.reset();
         pidPos.setK((Double) parameters.get("Ctrl P"), 0.0, (Double) parameters.get("Ctrl D"),
                 (Double) parameters.get("Ctrl Limit"), PID.MODE.DERIVATIVE_SET);
         pidRate.reset();
         PID.MODE pidRateMode = (Boolean) parameters.get(
-                "Ctrl Rate D SP") ? PID.MODE.DERIVATIVE_CALC : PID.MODE.DERIVATIVE_CALC_NO_SP;
+                "Ctrl Rate D SP") ? PID.MODE.DERIVATIVE_CALC : PID.MODE.DERIVATIVE_SET;
         pidRate.setK((Double) parameters.get("Ctrl Rate P"), (Double) parameters.get("Ctrl Rate I"),
                 (Double) parameters.get("Ctrl Rate D"), (Double) parameters.get("Ctrl Rate Limit"), pidRateMode);
         rateFF = (Double) parameters.get("Ctrl Rate FF");
@@ -147,7 +153,8 @@ public class PosRatePIDControlSimulator extends PlotProcessor {
     }
 
     private void updateSimulation(double time, double dt) {
-        Double force = delayLine.getOutput(time, controlLPF.getOutput(time, 0.0));
+        controlOut = controlLPF.getOutput(time, 0.0);
+        Double force = delayLine.getOutput(time, controlOut);
         if (force == null) {
             force = 0.0;
         }
@@ -158,7 +165,8 @@ public class PosRatePIDControlSimulator extends PlotProcessor {
         if (!useRateSP) {
             rateSP = pidPos.getOutput(posSP - pos, - rateFiltered, dt) + rateFF * rateCtl;
         }
-        double control = pidRate.getOutput(rateSP, rateFiltered, 0.0, dt, 1.0);
+        double control = pidRate.getOutput(rateSP, rateFiltered, -controlOutLPF.getOutput(time, 0), dt, 1.0);
+        controlOutLPF.setInput(control);
         controlLPF.setInput(control);
 
         addPoint(0, time, rate);
